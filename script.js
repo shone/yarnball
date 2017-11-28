@@ -12,10 +12,10 @@ function doArrayLayout(startNode, forwardNode) {
       return link.from === currentNode && link.via.instances.has(forwardNode);
     });
     if (forwardLink) {
-      forwardLink.to.style.top = currentNode.style.top;
-      forwardLink.to.style.left = (parseFloat(currentNode.style.left) + 200) + 'px';
-      forwardLink.via.style.top = (parseFloat(currentNode.style.top) - 200) + 'px';
-      forwardLink.via.style.left = (parseFloat(currentNode.style.left) + 100) + 'px';
+      forwardLink.to.style.left = currentNode.style.left;
+      forwardLink.to.style.top = (parseFloat(currentNode.style.top) + 200) + 'px';
+      forwardLink.via.style.left = (parseFloat(currentNode.style.left) - 200) + 'px';
+      forwardLink.via.style.top = (parseFloat(currentNode.style.top) + 100) + 'px';
       layoutLink(forwardLink);
       forwardLink.via.classList.add('selected');
       currentNode = forwardLink.to;
@@ -23,6 +23,11 @@ function doArrayLayout(startNode, forwardNode) {
       currentNode = null;
     }
   }
+}
+
+function getSingleSelectedNode() {
+  var selectedNodes = document.querySelectorAll('.node.selected');
+  return selectedNodes.length === 1 ? selectedNodes[0] : null;
 }
 
 function createNode(position) {
@@ -40,9 +45,9 @@ function createNode(position) {
   var nodePositionOnMousedown = null;
   function handleNodeMousedown(event) {
     if (event.button === 0 && event.ctrlKey && event.altKey) {
-      var selectedNodes = document.querySelectorAll('.node.selected');
-      if (selectedNodes.length === 1) {
-        doArrayLayout(selectedNodes[0], node);
+      var selectedNode = getSingleSelectedNode();
+      if (selectedNode) {
+        doArrayLayout(selectedNode, node);
       }
     } else if (event.button === 0) {
       event.preventDefault();
@@ -134,9 +139,8 @@ function handleBackgroundMousemove(event) {
 var renameInput = null;
 body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
-    var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
-    if (selectedNodes.length === 1) {
-      var selectedNode = selectedNodes[0];
+    var selectedNode = getSingleSelectedNode();
+    if (selectedNode) {
       if (!renameInput) {
         renameInput = document.createElement('input');
         renameInput.value = selectedNode.textContent;
@@ -182,16 +186,42 @@ document.addEventListener('keypress', event => {
       link.to.links.delete(link);
       link.remove()
     });
+  } else if (event.key === 'f') {
+    var selectedNode = getSingleSelectedNode();
+    if (selectedNode) {
+      var f = compileFunction(selectedNode);
+      f();
+    }
   }
 });
 
-function layoutLink(link, lastPosition) {
-  if (link.to) {
-    link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + parseFloat(link.to.style.left) + ',' + parseFloat(link.to.style.top));
-  } else if (link.via) {
-    link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + lastPosition.x + ',' + lastPosition.y);
+function compileFunction(node) {
+  var nextStatementLink = Array.from(node.links).find(link => link.via.textContent === 'nextStatement');
+  if (nextStatementLink) {
+    var f = new Function([], nextStatementLink.to.textContent);
+    return f;
   } else {
-    link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + lastPosition.x + ',' + lastPosition.y);
+    return new Function([], "");
+  }
+}
+
+function compileStatement(node) {
+  var isLink = Array.from(node.links).find(link => link.via.textContent === 'is');
+  if (isLink.to.textContent === 'call') {
+    
+  }
+}
+
+function layoutLink(link, lastPosition) {
+  function pos(node) {
+    return parseFloat(node.style.left) + ',' + parseFloat(node.style.top);
+  }
+  if (link.to) {
+    link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
+  } else if (link.via) {
+    link.setAttribute('points', [pos(link.from), pos(link.via), lastPosition.x + ',' + lastPosition.y].join(' '));
+  } else {
+    link.setAttribute('points', [pos(link.from), lastPosition.x + ',' + lastPosition.y].join(' '));
   }
 }
 
