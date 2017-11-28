@@ -6,23 +6,26 @@ var lastCursorPosition = {x: 0, y: 0};
 
 function doArrayLayout(startNode, forwardNode) {
   var currentNode = startNode;
+  var affectedLinks = new Set();
   while (currentNode) {
     currentNode.classList.add('selected');
     var forwardLink = Array.from(currentNode.links).find(link => {
       return link.from === currentNode && link.via.instances.has(forwardNode);
     });
     if (forwardLink) {
-      forwardLink.to.style.left = currentNode.style.left;
-      forwardLink.to.style.top = (parseFloat(currentNode.style.top) + 200) + 'px';
+      forwardLink.to.style.left  = currentNode.style.left;
+      forwardLink.to.style.top   = (parseFloat(currentNode.style.top) + 200) + 'px';
+      forwardLink.to.links.forEach(node => affectedLinks.add(node));
       forwardLink.via.style.left = (parseFloat(currentNode.style.left) - 200) + 'px';
-      forwardLink.via.style.top = (parseFloat(currentNode.style.top) + 100) + 'px';
-      layoutLink(forwardLink);
+      forwardLink.via.style.top  = (parseFloat(currentNode.style.top) + 100) + 'px';
+      forwardLink.via.links.forEach(link => affectedLinks.add(link));
       forwardLink.via.classList.add('selected');
       currentNode = forwardLink.to;
     } else {
       currentNode = null;
     }
   }
+  affectedLinks.forEach(link => layoutLink(link));
 }
 
 function getSingleSelectedNode() {
@@ -196,19 +199,28 @@ document.addEventListener('keypress', event => {
 });
 
 function compileFunction(node) {
-  var nextStatementLink = Array.from(node.links).find(link => link.via.textContent === 'nextStatement');
-  if (nextStatementLink) {
-    var f = new Function([], nextStatementLink.to.textContent);
-    return f;
-  } else {
-    return new Function([], "");
+  var statements = [];
+  var nextStatementLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'nextStatement');
+  while (nextStatementLink) {
+    statements.push(compileStatement(nextStatementLink.to));
+    nextStatementLink = Array.from(nextStatementLink.to.links).find(link => link.from === nextStatementLink.to && link.via.textContent === 'nextStatement');
   }
+  return new Function([], statements.join(';'));
 }
 
 function compileStatement(node) {
-  var isLink = Array.from(node.links).find(link => link.via.textContent === 'is');
-  if (isLink.to.textContent === 'call') {
-    
+  var callsLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'calls');
+  if (callsLink) {
+    var arg0link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg0');
+    if (arg0link) {
+      return callsLink.to.textContent + '(' + arg0link.to.textContent + ')';
+    } else {
+      return callsLink.to.textContent + '()';
+    }
+  }
+  var evalLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'eval');
+  if (evalLink) {
+    return evalLink.to.textContent;
   }
 }
 
