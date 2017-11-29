@@ -1,4 +1,6 @@
-restoreState();
+if (localStorage.saved_state) {
+  restoreState();
+}
 
 var body = document.getElementsByTagName('body')[0];
 var linksSvg = document.getElementById('links-svg');
@@ -320,11 +322,11 @@ function saveState() {
     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
   });
-  localStorage['saved_state'] = document.getElementsByTagName('body')[0].innerHTML;
+  localStorage.saved_state = document.getElementsByTagName('body')[0].innerHTML;
 }
 
 function restoreState() {
-  document.getElementsByTagName('body')[0].innerHTML = localStorage['saved_state'];
+  document.getElementsByTagName('body')[0].innerHTML = localStorage.saved_state;
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
