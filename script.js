@@ -1,3 +1,5 @@
+restoreState();
+
 var body = document.getElementsByTagName('body')[0];
 var linksSvg = document.getElementById('links-svg');
 
@@ -43,51 +45,49 @@ function createNode(position) {
   node.instances.add(node);
   node.links = new Set();
   body.appendChild(node);
-
-  // Node dragging
-  var nodePositionOnMousedown = null;
-  function handleNodeMousedown(event) {
-    if (event.button === 0 && event.ctrlKey && event.altKey) {
-      var selectedNode = getSingleSelectedNode();
-      if (selectedNode) {
-        doArrayLayout(selectedNode, node);
-      }
-    } else if (event.button === 0) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!event.target.classList.contains('selected') && !event.shiftKey) {
-        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-      }
-      event.target.classList.add('selected');
-      cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
-      lastCursorPosition = cursorOnMousedownPosition;
-      nodePositionOnMousedown = {x: parseFloat(event.target.style.left), y: parseFloat(event.target.style.top)};
-      window.addEventListener('mousemove', handleNodeMousemove);
-      window.addEventListener('mouseup',   handleNodeMouseup);
-      return false;
-    }
-  }
-  function handleNodeMouseup() {
-    window.removeEventListener('mousemove', handleNodeMousemove);
-    window.removeEventListener('mouseup',   handleNodeMouseup);
-  }
-  function handleNodeMousemove(event) {
-    var deltaX = event.pageX - lastCursorPosition.x;
-    var deltaY = event.pageY - lastCursorPosition.y;
-    lastCursorPosition = {x: event.pageX, y: event.pageY};
-    var affectedLinks = new Set();
-    document.querySelectorAll('.node.selected').forEach(node => {
-      node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
-      node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
-      node.links.forEach(link => {affectedLinks.add(link)});
-    });
-    affectedLinks.forEach(link => {
-      link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + parseFloat(link.to.style.left) + ',' + parseFloat(link.to.style.top));
-    });
-  }
-  node.addEventListener('mousedown', handleNodeMousedown);
-
   return node;
+}
+
+// Node dragging
+var nodePositionOnMousedown = null;
+function handleNodeMousedown(event) {
+  if (event.button === 0 && event.ctrlKey && event.altKey) {
+    var selectedNode = getSingleSelectedNode();
+    if (selectedNode) {
+      doArrayLayout(selectedNode, node);
+    }
+  } else if (event.button === 0) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.target.classList.contains('selected') && !event.shiftKey) {
+      Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+    }
+    event.target.classList.add('selected');
+    cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
+    lastCursorPosition = cursorOnMousedownPosition;
+    nodePositionOnMousedown = {x: parseFloat(event.target.style.left), y: parseFloat(event.target.style.top)};
+    window.addEventListener('mousemove', handleNodeMousemove);
+    window.addEventListener('mouseup',   handleNodeMouseup);
+    return false;
+  }
+}
+function handleNodeMouseup() {
+  window.removeEventListener('mousemove', handleNodeMousemove);
+  window.removeEventListener('mouseup',   handleNodeMouseup);
+}
+function handleNodeMousemove(event) {
+  var deltaX = event.pageX - lastCursorPosition.x;
+  var deltaY = event.pageY - lastCursorPosition.y;
+  lastCursorPosition = {x: event.pageX, y: event.pageY};
+  var affectedLinks = new Set();
+  document.querySelectorAll('.node.selected').forEach(node => {
+    node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
+    node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
+    node.links.forEach(link => {affectedLinks.add(link)});
+  });
+  affectedLinks.forEach(link => {
+    link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + parseFloat(link.to.style.left) + ',' + parseFloat(link.to.style.top));
+  });
 }
 
 // Node creation
@@ -129,8 +129,8 @@ function handleBackgroundMousemove(event) {
   updateSelectionBox();
   Array.from(document.getElementsByClassName('node')).forEach((node) => {
     var inSelectionBox = !(
-      ((parseFloat(node.style.left) + (node.offsetWidth / 2))  < selectionBoxPosition.left)  ||
-      ((parseFloat(node.style.left) - (node.offsetWidth / 2))  > selectionBoxPosition.right) ||
+      ((parseFloat(node.style.left) + (node.offsetWidth  / 2)) < selectionBoxPosition.left)  ||
+      ((parseFloat(node.style.left) - (node.offsetWidth  / 2)) > selectionBoxPosition.right) ||
       ((parseFloat(node.style.top)  + (node.offsetHeight / 2)) < selectionBoxPosition.top)   ||
       ((parseFloat(node.style.top)  - (node.offsetHeight / 2)) > selectionBoxPosition.bottom)
     );
@@ -195,6 +195,10 @@ document.addEventListener('keypress', event => {
       var f = compileFunction(selectedNode);
       f();
     }
+  } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
+    saveState();
+  } else if (event.key === 'F' && event.shiftKey && event.ctrlKey) {
+    restoreState();
   }
 });
 
@@ -213,7 +217,12 @@ function compileStatement(node) {
   if (callsLink) {
     var arg0link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg0');
     if (arg0link) {
-      return callsLink.to.textContent + '(' + arg0link.to.textContent + ')';
+      var arg1link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg1');
+      if (arg1link) {
+        return callsLink.to.textContent + '(' + arg0link.to.textContent + ',' + arg1link.to.textContent + ')';
+      } else {
+        return callsLink.to.textContent + '(' + arg0link.to.textContent + ')';
+      }
     } else {
       return callsLink.to.textContent + '()';
     }
@@ -249,10 +258,6 @@ body.addEventListener('mousedown', event => {
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
     var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    link.addEventListener('click', event => {
-      Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
-      link.classList.add('selected');
-    });
     link.classList.add('link');
     link.setAttribute('marker-end', 'url(#Triangle)');
     linksSvg.appendChild(link);
@@ -288,7 +293,45 @@ body.addEventListener('mousedown', event => {
     window.addEventListener('mouseover', handleMouseover);
     window.addEventListener('mouseup', handleMouseup);
     return false;
+  } else if (event.target.classList.contains('node')) {
+    handleNodeMousedown(event);
+  } else if (event.target.classList.contains('link')) {
+    Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
+    event.target.classList.add('selected');
   } else {
     handleBackgroundMousedownForSelectionBox(event);
   }
 });
+
+function saveState() {
+  var id = 0;
+  Array.from(document.getElementsByClassName('node')).forEach(node => {
+    node.id = id;
+    id = id + 1;
+  });
+  Array.from(document.getElementsByClassName('link')).forEach(link => {
+    link.id = id;
+    id = id + 1;
+    link.setAttribute('data-from', link.from.id);
+    link.setAttribute('data-via',  link.via.id);
+    link.setAttribute('data-to',   link.to.id);
+  });
+  Array.from(document.getElementsByClassName('node')).forEach(node => {
+    node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
+    node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
+  });
+  localStorage['saved_state'] = document.getElementsByTagName('body')[0].innerHTML;
+}
+
+function restoreState() {
+  document.getElementsByTagName('body')[0].innerHTML = localStorage['saved_state'];
+  Array.from(document.getElementsByClassName('link')).forEach(link => {
+    link.from = document.getElementById(link.getAttribute('data-from'));
+    link.via  = document.getElementById(link.getAttribute('data-via'));
+    link.to   = document.getElementById(link.getAttribute('data-to'));
+  });
+  Array.from(document.getElementsByClassName('node')).forEach(node => {
+    node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+    node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+  });
+}
