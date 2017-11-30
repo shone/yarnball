@@ -40,7 +40,6 @@ function getSingleSelectedNode() {
 function createNode(position) {
   var node = document.createElement('div');
   node.classList.add('node');
-  node.textContent = 'new node';
   node.style.left = String(position.x) + 'px';
   node.style.top  = String(position.y) + 'px';
   node.instances = new Set();
