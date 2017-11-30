@@ -194,7 +194,7 @@ document.addEventListener('keypress', event => {
   } else if (event.key === 'f') {
     var selectedNode = getSingleSelectedNode();
     if (selectedNode) {
-      var f = compileFunction(selectedNode);
+      var f = compileStatements(selectedNode);
       f();
     }
   } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
@@ -204,13 +204,13 @@ document.addEventListener('keypress', event => {
   }
 });
 
-function compileFunction(node) {
+function compileStatements(node) {
   var statements = [];
-  var nextStatementLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'nextStatement');
-  while (nextStatementLink) {
-    statements.push(compileStatement(nextStatementLink.to));
-    nextStatementLink = Array.from(nextStatementLink.to.links).find(link => link.from === nextStatementLink.to && link.via.textContent === 'nextStatement');
-  }
+  do {
+    statements.push(compileStatement(node));
+    var nextStatementLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ';');
+    node = nextStatementLink ? nextStatementLink.to : null;
+  } while(node)
   return new Function([], statements.join(';'));
 }
 
