@@ -56,7 +56,7 @@ function handleNodeMousedown(event) {
   if (event.button === 0 && event.ctrlKey && event.altKey) {
     var selectedNode = getSingleSelectedNode();
     if (selectedNode) {
-      doArrayLayout(selectedNode, node);
+      doArrayLayout(selectedNode, event.target);
     }
   } else if (event.button === 0) {
     event.preventDefault();
