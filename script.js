@@ -52,9 +52,10 @@ function getSingleSelectedNode() {
   return selectedNodes.length === 1 ? selectedNodes[0] : null;
 }
 
-function createNode(position) {
+function createNode(position, text) {
   var node = document.createElement('div');
   node.classList.add('node');
+  node.textContent = text;
   node.style.left = String(position.x) + 'px';
   node.style.top  = String(position.y) + 'px';
   node.instances = new Set();
@@ -62,6 +63,28 @@ function createNode(position) {
   node.links = new Set();
   body.appendChild(node);
   return node;
+}
+
+function createLink(options) {
+  var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  link.classList.add('link');
+  link.setAttribute('marker-end', 'url(#Triangle)');
+  linksSvg.appendChild(link);
+  if (options) {
+    if (options.from) {
+      link.from = options.from;
+      options.from.links.add(link);
+    }
+    if (options.via) {
+      link.via = options.via;
+      options.via.links.add(link);
+    }
+    if (options.to) {
+      link.to = options.to;
+      options.to.links.add(link);
+    }
+  }
+  return link;
 }
 
 // Node dragging
@@ -209,7 +232,12 @@ document.addEventListener('keypress', event => {
     var selectedNode = getSingleSelectedNode();
     if (selectedNode) {
       var f = compileStatements(selectedNode);
-      f();
+      f().then(returnValue => {
+        if (typeof returnValue === 'object') {
+          selectedNode.classList.remove('selected');
+          makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+        }
+      });
     }
   } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
     saveState();
@@ -243,6 +271,47 @@ function compileStatement(node) {
   }
 }
 
+function makeJsonGraph(json, position) {
+  var firstKeyNode = null;
+  var previousKeyNode = null;
+  for (var key in json) {
+    var keyNode = null;
+    if (typeof json[key] === 'object') {
+      keyNode = createNode(position, key);
+      var valueViaNode = createNode({x: position.x + 150, y: position.y}, ':');
+      valueViaNode.classList.add('selected');
+      position.x += 300;
+      var valueNode = makeJsonGraph(json[key], position);
+      if (!valueNode) {
+        valueNode = createNode({x: position.x, y: position.y}, json[key]);
+      }
+      valueNode.classList.add('selected');
+      position.x -= 300;
+      var valueLink = createLink({from: keyNode, via: valueViaNode, to: valueNode});
+      layoutLink(valueLink);
+    } else {
+      keyNode = createNode(position, key);
+      var valueViaNode = createNode({x: position.x + 150, y: position.y}, ':');
+      var valueNode = createNode({x: position.x + 300, y: position.y}, json[key]);
+      var valueLink = createLink({from: keyNode, via: valueViaNode, to: valueNode});
+      valueViaNode.classList.add('selected');
+      valueNode.classList.add('selected');
+      layoutLink(valueLink);
+      position.y += 170;
+    }
+    keyNode.classList.add('selected');
+    if (keyNode && previousKeyNode) {
+      var nextKeyViaNode = createNode({x: position.x - 100, y: parseFloat(previousKeyNode.style.top) + 85}, ',');
+      nextKeyViaNode.classList.add('selected');
+      var nextKeyLink = createLink({from: previousKeyNode, via: nextKeyViaNode, to: keyNode});
+      layoutLink(nextKeyLink);
+    }
+    if (!firstKeyNode) firstKeyNode = keyNode;
+    previousKeyNode = keyNode;
+  }
+  return firstKeyNode;
+}
+
 function layoutLink(link, lastPosition) {
   function pos(node) {
     return parseFloat(node.style.left) + ',' + parseFloat(node.style.top);
@@ -267,10 +336,7 @@ body.addEventListener('mousedown', event => {
     return false;
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
-    var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    link.classList.add('link');
-    link.setAttribute('marker-end', 'url(#Triangle)');
-    linksSvg.appendChild(link);
+    var link = createLink();
     cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
     link.from = event.target;
     function handleMousemove(event) {
