@@ -168,10 +168,10 @@ function handleBackgroundMousemove(event) {
   updateSelectionBox();
   Array.from(document.getElementsByClassName('node')).forEach((node) => {
     var inSelectionBox = !(
-      ((parseFloat(node.style.left) + (node.offsetWidth  / 2)) < selectionBoxPosition.left)  ||
-      ((parseFloat(node.style.left) - (node.offsetWidth  / 2)) > selectionBoxPosition.right) ||
-      ((parseFloat(node.style.top)  + (node.offsetHeight / 2)) < selectionBoxPosition.top)   ||
-      ((parseFloat(node.style.top)  - (node.offsetHeight / 2)) > selectionBoxPosition.bottom)
+      ((parseFloat(node.style.left) + (node.offsetWidth  - 41)) < selectionBoxPosition.left)  ||
+      ((parseFloat(node.style.left) - 41)                       > selectionBoxPosition.right) ||
+      ((parseFloat(node.style.top)  + (node.offsetHeight - 41)) < selectionBoxPosition.top)   ||
+      ((parseFloat(node.style.top)  - 41)                       > selectionBoxPosition.bottom)
     );
     node.classList.toggle('selected', inSelectionBox);
   });
@@ -232,12 +232,18 @@ document.addEventListener('keypress', event => {
     var selectedNode = getSingleSelectedNode();
     if (selectedNode) {
       var f = compileStatements(selectedNode);
-      f().then(returnValue => {
-        if (typeof returnValue === 'object') {
-          selectedNode.classList.remove('selected');
-          makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
-        }
-      });
+      var returnValue = f();
+      if (typeof returnValue.then === 'function') {
+        returnValue.then(promisedValue => {
+          if (typeof promisedValue === 'object') {
+            selectedNode.classList.remove('selected');
+            makeJsonGraph(promisedValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+          }
+        });
+      } else if (typeof returnValue === 'object') {
+        selectedNode.classList.remove('selected');
+        makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+      }
     }
   } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
     saveState();
@@ -247,7 +253,9 @@ document.addEventListener('keypress', event => {
 });
 
 function compileStatements(node) {
-  return new Function([], Array.from(followListNodes(node, ';')).map(compileStatement).join(';'));
+  var statements = Array.from(followListNodes(node, ';')).map(compileStatement);
+  statements[statements.length-1] = 'return ' + statements[statements.length-1];
+  return new Function([], statements.join(';'));
 }
 
 function compileStatement(node) {
@@ -265,10 +273,34 @@ function compileStatement(node) {
       return callsLink.to.textContent + '()';
     }
   }
+
   var evalLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'eval');
   if (evalLink) {
     return evalLink.to.textContent;
   }
+
+  var valueLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ':');
+  if (valueLink) {
+    return compileJson(node);
+  }
+
+  return node.textContent;
+}
+
+function compileJson(node) {
+  var siblingLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ',');
+  var valueLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ':');
+  if (!siblingLink && !valueLink) {
+    return node.textContent;
+  }
+  return '{' + Array.from(followListNodes(node, ',')).map(keyNode => {
+    var valueLink = Array.from(keyNode.links).find(link => link.from === keyNode && link.via.textContent === ':');
+    if (valueLink) {
+      return "'" + keyNode.textContent + "':" + compileJson(valueLink.to);
+    } else {
+      return "'" + keyNode.textContent + "':undefined";
+    }
+  }).join(',') + '}';
 }
 
 function makeJsonGraph(json, position) {
@@ -292,7 +324,11 @@ function makeJsonGraph(json, position) {
     } else {
       keyNode = createNode(position, key);
       var valueViaNode = createNode({x: position.x + 150, y: position.y}, ':');
-      var valueNode = createNode({x: position.x + 300, y: position.y}, json[key]);
+      var valueText = json[key];
+      if (typeof json[key] === 'string') {
+        valueText = "'" + json[key] + "'";
+      }
+      var valueNode = createNode({x: position.x + 300, y: position.y}, valueText);
       var valueLink = createLink({from: keyNode, via: valueViaNode, to: valueNode});
       valueViaNode.classList.add('selected');
       valueNode.classList.add('selected');
@@ -393,7 +429,9 @@ function saveState() {
     link.setAttribute('data-to',   link.to.id);
   });
   Array.from(document.getElementsByClassName('node')).forEach(node => {
-    node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
+    node.setAttribute('data-links', Array.from(node.links).map(function(link) {
+      return link.id;
+    }).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
   });
   localStorage.saved_state = document.getElementsByTagName('body')[0].innerHTML;
@@ -407,7 +445,11 @@ function restoreState() {
     link.to   = document.getElementById(link.getAttribute('data-to'));
   });
   Array.from(document.getElementsByClassName('node')).forEach(node => {
-    node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+    if (node.getAttribute('data-links')) {
+      node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+    } else {
+      node.links = new Set();
+    }
     node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
   });
 }
