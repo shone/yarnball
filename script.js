@@ -199,18 +199,38 @@ body.addEventListener('keydown', event => {
   }
 });
 
+function duplicateNodes(nodes) {
+  var affectedLinks = new Set();
+  var duplicatedNodesMap = new Map();
+  nodes = new Set(nodes);
+  nodes.forEach(node => {
+    node.links.forEach(link => affectedLinks.add(link));
+    var nodeInstance = createNode({x: parseFloat(node.style.left) + 10, y: parseFloat(node.style.top) + 10});
+    nodeInstance.textContent = node.textContent;
+    node.instances.add(nodeInstance);
+    nodeInstance.instances = node.instances;
+    node.classList.remove('selected');
+    nodeInstance.classList.add('selected');
+    duplicatedNodesMap.set(node, nodeInstance);
+  });
+  affectedLinks = new Set(Array.from(affectedLinks).filter(link => {
+    return nodes.has(link.from) && nodes.has(link.via) && nodes.has(link.to);
+  }));
+  affectedLinks.forEach(link => {
+    var duplicatedLink = createLink({
+      from: duplicatedNodesMap.get(link.from),
+      via:  duplicatedNodesMap.get(link.via),
+      to:   duplicatedNodesMap.get(link.to),
+    });
+    layoutLink(duplicatedLink);
+  });
+}
+
 document.addEventListener('keypress', event => {
   if (renameInput) return;
   if (event.key === 'd') {
     event.preventDefault();
-    Array.from(document.getElementsByClassName('selected')).forEach(node => {
-      var nodeInstance = createNode({x: parseFloat(node.style.left) + 10, y: parseFloat(node.style.top) + 10});
-      nodeInstance.textContent = node.textContent;
-      node.instances.add(nodeInstance);
-      nodeInstance.instances = node.instances;
-      node.classList.remove('selected');
-      nodeInstance.classList.add('selected');
-    });
+    duplicateNodes(Array.from(document.getElementsByClassName('selected')));
     return false;
   } else if (event.key === 'Delete') {
     var affectedLinks = new Set();
@@ -265,9 +285,9 @@ function compileStatement(node) {
     if (arg0link) {
       var arg1link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg1');
       if (arg1link) {
-        return callsLink.to.textContent + '(' + arg0link.to.textContent + ',' + arg1link.to.textContent + ')';
+        return callsLink.to.textContent + '(' + compileJson(arg0link.to) + ',' + compileJson(arg1link.to) + ')';
       } else {
-        return callsLink.to.textContent + '(' + arg0link.to.textContent + ')';
+        return callsLink.to.textContent + '(' + compileJson(arg0link.to) + ')';
       }
     } else {
       return callsLink.to.textContent + '()';
