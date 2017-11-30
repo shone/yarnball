@@ -8,28 +8,43 @@ var linksSvg = document.getElementById('links-svg');
 var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
 
-function doArrayLayout(startNode, forwardNode) {
-  var currentNode = startNode;
-  var affectedLinks = new Set();
-  while (currentNode) {
-    currentNode.classList.add('selected');
-    var forwardLink = Array.from(currentNode.links).find(link => {
-      return link.from === currentNode && link.via.instances.has(forwardNode);
-    });
+function* followListLinks(node, forward) {
+  do {
+    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
     if (forwardLink) {
-      forwardLink.to.style.left  = currentNode.style.left;
-      forwardLink.to.style.top   = (parseFloat(currentNode.style.top) + 200) + 'px';
-      forwardLink.to.links.forEach(node => affectedLinks.add(node));
-      forwardLink.via.style.left = (parseFloat(currentNode.style.left) - 200) + 'px';
-      forwardLink.via.style.top  = (parseFloat(currentNode.style.top) + 100) + 'px';
-      forwardLink.via.links.forEach(link => affectedLinks.add(link));
-      forwardLink.via.classList.add('selected');
-      currentNode = forwardLink.to;
-    } else {
-      currentNode = null;
+      yield forwardLink;
     }
+    node = forwardLink ? forwardLink.to : null;
+  } while(node)
+}
+
+function* followListNodes(node, forward) {
+  do {
+    yield node;
+    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
+    node = forwardLink ? forwardLink.to : null;
+  } while(node)
+}
+
+function doArrayLayout(startNode, forwardNode) {
+  var previousNode = startNode;
+  var affectedLinks = new Set();
+  for (let currentLink of followListLinks(startNode, forwardNode)) {
+    currentLink.from.classList.add('selected');
+    currentLink.via.classList.add('selected');
+    currentLink.to.classList.add('selected');
+
+    currentLink.to.style.left = previousNode.style.left;
+    currentLink.to.style.top = (parseFloat(previousNode.style.top) + 200) + 'px';
+    currentLink.to.links.forEach(link => affectedLinks.add(link));
+
+    currentLink.via.style.left = (parseFloat(previousNode.style.left) - 200) + 'px';
+    currentLink.via.style.top  = (parseFloat(previousNode.style.top) + 100) + 'px';
+    currentLink.via.links.forEach(link => affectedLinks.add(link));
+
+    previousNode = currentLink.to;
   }
-  affectedLinks.forEach(link => layoutLink(link));
+  affectedLinks.forEach(layoutLink);
 }
 
 function getSingleSelectedNode() {
@@ -84,7 +99,7 @@ function handleNodeMousemove(event) {
   document.querySelectorAll('.node.selected').forEach(node => {
     node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
     node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
-    node.links.forEach(link => {affectedLinks.add(link)});
+    node.links.forEach(link => affectedLinks.add(link));
   });
   affectedLinks.forEach(link => {
     link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + parseFloat(link.to.style.left) + ',' + parseFloat(link.to.style.top));
@@ -178,7 +193,7 @@ document.addEventListener('keypress', event => {
     var affectedLinks = new Set();
     Array.from(document.getElementsByClassName('selected')).forEach(element => {
       if (element.classList.contains('node')) {
-        element.links.forEach(link => {affectedLinks.add(link);});
+        element.links.forEach(link => affectedLinks.add(link));
         element.remove();
       } else if (element.classList.contains('link')) {
         affectedLinks.add(element);
@@ -204,13 +219,7 @@ document.addEventListener('keypress', event => {
 });
 
 function compileStatements(node) {
-  var statements = [];
-  do {
-    statements.push(compileStatement(node));
-    var nextStatementLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ';');
-    node = nextStatementLink ? nextStatementLink.to : null;
-  } while(node)
-  return new Function([], statements.join(';'));
+  return new Function([], Array.from(followListNodes(node, ';')).map(compileStatement).join(';'));
 }
 
 function compileStatement(node) {
