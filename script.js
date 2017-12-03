@@ -434,13 +434,27 @@ body.addEventListener('mousedown', event => {
     window.addEventListener('mouseover', handleMouseover);
     window.addEventListener('mouseup', handleMouseup);
     return false;
-  } else if (event.target.classList.contains('node')) {
+  } else if (event.button === 0 && event.target.classList.contains('node')) {
     handleNodeMousedown(event);
-  } else if (event.target.classList.contains('link')) {
+  } else if (event.button === 0 && event.target.classList.contains('link')) {
     if (!event.shiftKey) {
       Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
     }
     event.target.classList.add('selected');
+  } else if (event.button === 1) {
+    event.preventDefault();
+    var lastMousePosition = {x: event.screenX, y: event.screenY};
+    function handlePanMousemove(event) {
+      window.scrollBy(lastMousePosition.x - event.screenX, lastMousePosition.y - event.screenY);
+      lastMousePosition = {x: event.screenX, y: event.screenY};
+    }
+    function handlePanMouseup(event) {
+      window.removeEventListener('mousemove', handlePanMousemove);
+      window.removeEventListener('mouseup', handlePanMouseup);
+    }
+    window.addEventListener('mousemove', handlePanMousemove);
+    window.addEventListener('mouseup', handlePanMouseup);
+    return false;
   } else {
     handleBackgroundMousedownForSelectionBox(event);
   }
