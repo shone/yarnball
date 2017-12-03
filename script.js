@@ -51,15 +51,11 @@ function doArrayLayout(startNode, forwardNode) {
   affectedLinks.forEach(layoutLink);
 }
 
-function getSingleSelectedNode() {
-  var selectedNodes = document.querySelectorAll('.node.selected');
-  return selectedNodes.length === 1 ? selectedNodes[0] : null;
-}
-
 function createNode(position, text) {
   var node = document.createElement('div');
   node.classList.add('node');
   node.textContent = text;
+  node.setAttribute('tabindex', '0');
   node.style.left = String(position.x) + 'px';
   node.style.top  = String(position.y) + 'px';
   node.instances = new Set();
@@ -95,13 +91,13 @@ function createLink(options) {
 var nodePositionOnMousedown = null;
 function handleNodeMousedown(event) {
   if (event.button === 0 && event.ctrlKey && event.altKey) {
-    var selectedNode = getSingleSelectedNode();
-    if (selectedNode) {
-      doArrayLayout(selectedNode, event.target);
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      doArrayLayout(document.activeElement, event.target);
     }
   } else if (event.button === 0) {
     event.preventDefault();
     event.stopPropagation();
+    event.target.focus();
     var clickedNodes = new Set([event.target]);
     if (event.target.classList.contains('collapsed')) {
       var collapsedNodes = getCollapsedNodes(event.target.collapsedLink);
@@ -175,6 +171,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
   event.preventDefault();
   if (!event.shiftKey) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+    if (document.activeElement) document.activeElement.blur();
   } else {
     selectedNodesToPreserve = new Set(Array.from(document.getElementsByClassName('selected')));
   }
@@ -219,20 +216,20 @@ function handleBackgroundMousemove(event) {
 var renameInput = null;
 body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
-    var selectedNode = getSingleSelectedNode();
-    if (selectedNode) {
-      if (!renameInput) {
+    if (!renameInput) {
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
         renameInput = document.createElement('input');
-        renameInput.value = selectedNode.textContent;
-        selectedNode.textContent = '';
+        renameInput.value = document.activeElement.textContent;
+        document.activeElement.textContent = '';
         renameInput.select();
-        selectedNode.appendChild(renameInput);
+        document.activeElement.appendChild(renameInput);
         renameInput.focus();
-      } else {
-        renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
-        renameInput.remove();
-        renameInput = null;
       }
+    } else {
+      renameInput.parentElement.focus();
+      renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
+      renameInput.remove();
+      renameInput = null;
     }
   }
 });
@@ -287,33 +284,30 @@ document.addEventListener('keypress', event => {
       link.remove()
     });
   } else if (event.key === 'g') {
-    var selectedNode = getSingleSelectedNode();
-    if (selectedNode) {
-      console.log(compileStatements(selectedNode));
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      console.log(compileStatements(document.activeElement));
     }
   } else if (event.key === 'f') {
-    var selectedNode = getSingleSelectedNode();
-    if (selectedNode) {
-      var f = new Function([], compileStatements(selectedNode));
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var f = new Function([], compileStatements(document.activeElement));
       var returnValue = f();
       if (typeof returnValue !== 'undefined') {
         if (typeof returnValue.then === 'function') {
           returnValue.then(promisedValue => {
             if (typeof promisedValue === 'object') {
-              selectedNode.classList.remove('selected');
-              makeJsonGraph(promisedValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+              document.activeElement.classList.remove('selected');
+              makeJsonGraph(promisedValue, {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)});
             }
           });
         } else if (typeof returnValue === 'object') {
-          selectedNode.classList.remove('selected');
-          makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+          document.activeElement.classList.remove('selected');
+          makeJsonGraph(returnValue, {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)});
         }
       }
     }
   } else if (event.key === 'h') {
-    var selectedNode = getSingleSelectedNode();
-    if (selectedNode) {
-      var html = compileHtml(selectedNode);
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var html = compileHtml(document.activeElement);
       var iFrame = document.createElement('iframe');
       iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
       document.body.appendChild(iFrame);
@@ -395,7 +389,6 @@ function layoutLink(link, lastPosition) {
   }
 }
 
-// Node linking
 document.addEventListener('contextmenu', event => event.preventDefault());
 body.addEventListener('mousedown', event => {
   if (event.button === 0 && event.ctrlKey && event.shiftKey) {
@@ -403,6 +396,7 @@ body.addEventListener('mousedown', event => {
     var node = createNode({x: event.pageX, y: event.pageY});
     Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
     node.classList.add('selected');
+    node.focus();
     return false;
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
@@ -504,5 +498,6 @@ function restoreState() {
     } else {
       node.instances = new Set([node]);
     }
+    node.setAttribute('tabindex', '-1');
   });
 }
