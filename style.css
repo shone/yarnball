@@ -11,6 +11,10 @@ html,body {
   pointer-events: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .node {
   position: absolute;
   background-color: #fff;
@@ -31,6 +35,10 @@ html,body {
 
 .node.selected {
   background-color: orange;
+}
+
+.node.collapsed {
+  outline: 4px solid green;
 }
 
 .link {

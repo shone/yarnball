@@ -102,13 +102,18 @@ function handleNodeMousedown(event) {
   } else if (event.button === 0) {
     event.preventDefault();
     event.stopPropagation();
+    var clickedNodes = new Set([event.target]);
+    if (event.target.classList.contains('collapsed')) {
+      var collapsedNodes = getCollapsedNodes(event.target.collapsedLink);
+      collapsedNodes.forEach(node => {clickedNodes.add(node)});
+    }
     if (event.shiftKey) {
-      event.target.classList.toggle('selected');
+      clickedNodes.forEach(node => {node.classList.toggle('selected')});
     } else {
       if (!event.target.classList.contains('selected')) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
-      event.target.classList.add('selected');
+      clickedNodes.forEach(node => {node.classList.add('selected')});
     }
     cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
     lastCursorPosition = cursorOnMousedownPosition;
@@ -133,14 +138,25 @@ function handleNodeMousemove(event) {
     node.links.forEach(link => affectedLinks.add(link));
   });
   affectedLinks.forEach(link => {
-    link.setAttribute('points', parseFloat(link.from.style.left) + ',' + parseFloat(link.from.style.top) + ' ' + parseFloat(link.via.style.left) + ',' + parseFloat(link.via.style.top) + ' ' + parseFloat(link.to.style.left) + ',' + parseFloat(link.to.style.top));
+    layoutLink(link);
   });
 }
 
-// Node creation
 body.addEventListener('dblclick', (event) => {
   if (event.target.classList.contains('node')) {
-    event.target.instances.forEach(node => node.classList.add('selected'));
+    event.target.instances.forEach(node => {
+      if (!node.classList.contains('hidden')) {
+        node.classList.add('selected')
+      }
+    });
+  } else if (event.target.classList.contains('link')) {
+    if (!event.target.classList.contains('collapsed')) {
+      var connectedLinks = new Set([event.target]);
+      var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
+      getAllConnectedNodesAndLinks(event.target.to, connectedNodes, connectedLinks);
+      connectedNodes.delete(event.target.from);
+      connectedNodes.forEach(node => {node.classList.add('selected')});
+    }
   }
 });
 
@@ -182,7 +198,8 @@ function handleBackgroundMousemove(event) {
   selectionBoxPosition.right  = Math.max(cursorOnMousedownPosition.x, event.pageX);
   selectionBoxPosition.bottom = Math.max(cursorOnMousedownPosition.y, event.pageY);
   updateSelectionBox();
-  Array.from(document.getElementsByClassName('node')).forEach((node) => {
+  var visibleNodes = Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+  visibleNodes.forEach((node) => {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
     var inSelectionBox = !(
       ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
@@ -190,7 +207,11 @@ function handleBackgroundMousemove(event) {
       ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
       ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
     );
-    node.classList.toggle('selected', inSelectionBox);
+    if (node.collapsedLink) {
+      getCollapsedNodes(node.collapsedLink).forEach(node => {node.classList.toggle('selected', inSelectionBox)});
+    } else {
+      node.classList.toggle('selected', inSelectionBox);
+    }
   });
 }
 
@@ -301,15 +322,72 @@ document.addEventListener('keypress', event => {
     saveState();
   } else if (event.key === 'F' && event.shiftKey && event.ctrlKey) {
     restoreState();
+  } else if (event.key === '-' || event.key === '+' || event.key === '=') {
+    document.querySelectorAll('.link.selected').forEach(link => {
+      var connectedLinks = new Set([link]);
+      var connectedNodes = new Set([link.from, link.via, link.to]);
+      getAllConnectedNodesAndLinks(link.to, connectedNodes, connectedLinks);
+      connectedLinks.delete(link);
+      connectedNodes.delete(link.from);
+      connectedNodes.delete(link.via);
+      connectedNodes.forEach(node => {node.classList.toggle('hidden', event.key === '-')});
+      connectedLinks.forEach(link => {link.classList.toggle('hidden', event.key === '-')});
+      link.via.classList.toggle('collapsed', event.key === '-');
+      link.classList.toggle('collapsed', event.key === '-');
+      if (event.key === '-') {
+        link.via.collapsedLink = link;
+      } else {
+        link.via.collapsedLink = null;
+      }
+      layoutLink(link);
+    });
   }
 });
+
+function getCollapsedNodes(collapsedLink) {
+  var connectedLinks = new Set([collapsedLink]);
+  var connectedNodes = new Set([collapsedLink.from, collapsedLink.via, collapsedLink.to]);
+  getAllConnectedNodesAndLinks(collapsedLink.to, connectedNodes, connectedLinks);
+  connectedNodes.delete(collapsedLink.from);
+  return connectedNodes;
+}
+
+function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
+  connectedNodes = connectedNodes || new Set();
+  connectedLinks = connectedLinks || new Set();
+  node.links.forEach(link => {
+    if (!connectedLinks.has(link)) {
+      connectedLinks.add(link);
+      if (!connectedNodes.has(link.from)) {
+        connectedNodes.add(link.from);
+        getAllConnectedNodesAndLinks(link.from, connectedNodes, connectedLinks);
+      }
+      if (!connectedNodes.has(link.via)) {
+        connectedNodes.add(link.via);
+        getAllConnectedNodesAndLinks(link.via, connectedNodes, connectedLinks);
+      }
+      if (!connectedNodes.has(link.to)) {
+        connectedNodes.add(link.to);
+        getAllConnectedNodesAndLinks(link.to, connectedNodes, connectedLinks);
+      }
+    }
+  });
+  return {
+    nodes: connectedNodes,
+    links: connectedLinks,
+  }
+}
 
 function layoutLink(link, lastPosition) {
   function pos(node) {
     return parseFloat(node.style.left) + ',' + parseFloat(node.style.top);
   }
   if (link.to) {
-    link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
+    if (link.classList.contains('collapsed')) {
+      link.setAttribute('points', [pos(link.from), pos(link.via)].join(' '));
+    } else {
+      link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
+    }
   } else if (link.via) {
     link.setAttribute('points', [pos(link.from), pos(link.via), lastPosition.x + ',' + lastPosition.y].join(' '));
   } else {
@@ -335,7 +413,8 @@ body.addEventListener('mousedown', event => {
       layoutLink(link, {x: event.pageX, y: event.pageY});
     }
     function handleMouseover(event) {
-      if (event.target.classList.contains('node') && event.target !== link.via && event.target !== link.to && event.target !== link.from) {
+      if (event.target.classList.contains('node') && !event.target.classList.contains('hidden') &&
+        event.target !== link.via && event.target !== link.to && event.target !== link.from) {
         if (!link.via) {
           link.via = event.target;
         } else {
@@ -364,7 +443,9 @@ body.addEventListener('mousedown', event => {
   } else if (event.target.classList.contains('node')) {
     handleNodeMousedown(event);
   } else if (event.target.classList.contains('link')) {
-    Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
+    if (!event.shiftKey) {
+      Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
+    }
     event.target.classList.add('selected');
   } else {
     handleBackgroundMousedownForSelectionBox(event);
