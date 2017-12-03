@@ -8,6 +8,10 @@ var linksSvg = document.getElementById('links-svg');
 var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
 
+function findLinkVia(node, via) {
+  return Array.from(node.links).find(link => link.from === node && link.via.textContent === via);
+}
+
 function* followListLinks(node, forward) {
   do {
     var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
@@ -98,10 +102,14 @@ function handleNodeMousedown(event) {
   } else if (event.button === 0) {
     event.preventDefault();
     event.stopPropagation();
-    if (!event.target.classList.contains('selected') && !event.shiftKey) {
-      Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+    if (event.shiftKey) {
+      event.target.classList.toggle('selected');
+    } else {
+      if (!event.target.classList.contains('selected')) {
+        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+      }
+      event.target.classList.add('selected');
     }
-    event.target.classList.add('selected');
     cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
     lastCursorPosition = cursorOnMousedownPosition;
     nodePositionOnMousedown = {x: parseFloat(event.target.style.left), y: parseFloat(event.target.style.top)};
@@ -131,22 +139,29 @@ function handleNodeMousemove(event) {
 
 // Node creation
 body.addEventListener('dblclick', (event) => {
-  var node = createNode({x: event.pageX, y: event.pageY});
+  if (event.target.classList.contains('node')) {
+    event.target.instances.forEach(node => node.classList.add('selected'));
+  }
 });
 
 // Selection box
 var selectionBox = document.getElementById("selection-box");
 var selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
 function updateSelectionBox() {
-  selectionBox.style.left   = selectionBoxPosition.left   + 'px';
-  selectionBox.style.top    = selectionBoxPosition.top    + 'px';
+  selectionBox.style.left   =  selectionBoxPosition.left   + 'px';
+  selectionBox.style.top    =  selectionBoxPosition.top    + 'px';
   selectionBox.style.width  = (selectionBoxPosition.right  - selectionBoxPosition.left) + 'px';
   selectionBox.style.height = (selectionBoxPosition.bottom - selectionBoxPosition.top)  + 'px';
 }
+var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
   if (event.target.tagName !== 'BODY') return;
   event.preventDefault();
-  Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+  if (!event.shiftKey) {
+    Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+  } else {
+    selectedNodesToPreserve = new Set(Array.from(document.getElementsByClassName('selected')));
+  }
   window.addEventListener('mousemove', handleBackgroundMousemove);
   window.addEventListener('mouseup',   handleBackgroundMouseup);
   cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
@@ -159,6 +174,7 @@ function handleBackgroundMouseup(event) {
   window.removeEventListener('mouseup',   handleBackgroundMouseup);
   selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
   updateSelectionBox();
+  selectedNodesToPreserve = null;
 }
 function handleBackgroundMousemove(event) {
   selectionBoxPosition.left   = Math.min(cursorOnMousedownPosition.x, event.pageX);
@@ -167,11 +183,12 @@ function handleBackgroundMousemove(event) {
   selectionBoxPosition.bottom = Math.max(cursorOnMousedownPosition.y, event.pageY);
   updateSelectionBox();
   Array.from(document.getElementsByClassName('node')).forEach((node) => {
+    if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
     var inSelectionBox = !(
-      ((parseFloat(node.style.left) + (node.offsetWidth  - 41)) < selectionBoxPosition.left)  ||
-      ((parseFloat(node.style.left) - 41)                       > selectionBoxPosition.right) ||
-      ((parseFloat(node.style.top)  + (node.offsetHeight - 41)) < selectionBoxPosition.top)   ||
-      ((parseFloat(node.style.top)  - 41)                       > selectionBoxPosition.bottom)
+      ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
+      ((parseFloat(node.style.left) - 25)                       > selectionBoxPosition.right) ||
+      ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
+      ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
     );
     node.classList.toggle('selected', inSelectionBox);
   });
@@ -248,22 +265,37 @@ document.addEventListener('keypress', event => {
       link.to.links.delete(link);
       link.remove()
     });
+  } else if (event.key === 'g') {
+    var selectedNode = getSingleSelectedNode();
+    if (selectedNode) {
+      console.log(compileStatements(selectedNode));
+    }
   } else if (event.key === 'f') {
     var selectedNode = getSingleSelectedNode();
     if (selectedNode) {
-      var f = compileStatements(selectedNode);
+      var f = new Function([], compileStatements(selectedNode));
       var returnValue = f();
-      if (typeof returnValue.then === 'function') {
-        returnValue.then(promisedValue => {
-          if (typeof promisedValue === 'object') {
-            selectedNode.classList.remove('selected');
-            makeJsonGraph(promisedValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
-          }
-        });
-      } else if (typeof returnValue === 'object') {
-        selectedNode.classList.remove('selected');
-        makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+      if (typeof returnValue !== 'undefined') {
+        if (typeof returnValue.then === 'function') {
+          returnValue.then(promisedValue => {
+            if (typeof promisedValue === 'object') {
+              selectedNode.classList.remove('selected');
+              makeJsonGraph(promisedValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+            }
+          });
+        } else if (typeof returnValue === 'object') {
+          selectedNode.classList.remove('selected');
+          makeJsonGraph(returnValue, {x: parseFloat(selectedNode.style.left), y: parseFloat(selectedNode.style.top)});
+        }
       }
+    }
+  } else if (event.key === 'h') {
+    var selectedNode = getSingleSelectedNode();
+    if (selectedNode) {
+      var html = compileHtml(selectedNode);
+      var iFrame = document.createElement('iframe');
+      iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
+      document.body.appendChild(iFrame);
     }
   } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
     saveState();
@@ -271,102 +303,6 @@ document.addEventListener('keypress', event => {
     restoreState();
   }
 });
-
-function compileStatements(node) {
-  var statements = Array.from(followListNodes(node, ';')).map(compileStatement);
-  statements[statements.length-1] = 'return ' + statements[statements.length-1];
-  return new Function([], statements.join(';'));
-}
-
-function compileStatement(node) {
-  var callsLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'calls');
-  if (callsLink) {
-    var arg0link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg0');
-    if (arg0link) {
-      var arg1link = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'arg1');
-      if (arg1link) {
-        return callsLink.to.textContent + '(' + compileJson(arg0link.to) + ',' + compileJson(arg1link.to) + ')';
-      } else {
-        return callsLink.to.textContent + '(' + compileJson(arg0link.to) + ')';
-      }
-    } else {
-      return callsLink.to.textContent + '()';
-    }
-  }
-
-  var evalLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === 'eval');
-  if (evalLink) {
-    return evalLink.to.textContent;
-  }
-
-  var valueLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ':');
-  if (valueLink) {
-    return compileJson(node);
-  }
-
-  return node.textContent;
-}
-
-function compileJson(node) {
-  var siblingLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ',');
-  var valueLink = Array.from(node.links).find(link => link.from === node && link.via.textContent === ':');
-  if (!siblingLink && !valueLink) {
-    return node.textContent;
-  }
-  return '{' + Array.from(followListNodes(node, ',')).map(keyNode => {
-    var valueLink = Array.from(keyNode.links).find(link => link.from === keyNode && link.via.textContent === ':');
-    if (valueLink) {
-      return "'" + keyNode.textContent + "':" + compileJson(valueLink.to);
-    } else {
-      return "'" + keyNode.textContent + "':undefined";
-    }
-  }).join(',') + '}';
-}
-
-function makeJsonGraph(json, position) {
-  var firstKeyNode = null;
-  var previousKeyNode = null;
-  for (var key in json) {
-    var keyNode = null;
-    if (typeof json[key] === 'object') {
-      keyNode = createNode(position, key);
-      var valueViaNode = createNode({x: position.x + 150, y: position.y}, ':');
-      valueViaNode.classList.add('selected');
-      position.x += 300;
-      var valueNode = makeJsonGraph(json[key], position);
-      if (!valueNode) {
-        valueNode = createNode({x: position.x, y: position.y}, json[key]);
-      }
-      valueNode.classList.add('selected');
-      position.x -= 300;
-      var valueLink = createLink({from: keyNode, via: valueViaNode, to: valueNode});
-      layoutLink(valueLink);
-    } else {
-      keyNode = createNode(position, key);
-      var valueViaNode = createNode({x: position.x + 150, y: position.y}, ':');
-      var valueText = json[key];
-      if (typeof json[key] === 'string') {
-        valueText = "'" + json[key] + "'";
-      }
-      var valueNode = createNode({x: position.x + 300, y: position.y}, valueText);
-      var valueLink = createLink({from: keyNode, via: valueViaNode, to: valueNode});
-      valueViaNode.classList.add('selected');
-      valueNode.classList.add('selected');
-      layoutLink(valueLink);
-      position.y += 170;
-    }
-    keyNode.classList.add('selected');
-    if (keyNode && previousKeyNode) {
-      var nextKeyViaNode = createNode({x: position.x - 100, y: parseFloat(previousKeyNode.style.top) + 85}, ',');
-      nextKeyViaNode.classList.add('selected');
-      var nextKeyLink = createLink({from: previousKeyNode, via: nextKeyViaNode, to: keyNode});
-      layoutLink(nextKeyLink);
-    }
-    if (!firstKeyNode) firstKeyNode = keyNode;
-    previousKeyNode = keyNode;
-  }
-  return firstKeyNode;
-}
 
 function layoutLink(link, lastPosition) {
   function pos(node) {
@@ -384,7 +320,7 @@ function layoutLink(link, lastPosition) {
 // Node linking
 document.addEventListener('contextmenu', event => event.preventDefault());
 body.addEventListener('mousedown', event => {
-  if (event.button === 0 && event.shiftKey) {
+  if (event.button === 0 && event.ctrlKey && event.shiftKey) {
     event.preventDefault();
     var node = createNode({x: event.pageX, y: event.pageY});
     Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
@@ -435,6 +371,18 @@ body.addEventListener('mousedown', event => {
   }
 });
 
+body.addEventListener('mouseover', event => {
+  if (event.target.classList.contains('node')) {
+    event.target.instances.forEach(node => node.classList.add('highlighted'));
+  }
+});
+
+body.addEventListener('mouseout', event => {
+  if (event.target.classList.contains('node')) {
+    event.target.instances.forEach(node => node.classList.remove('highlighted'));
+  }
+});
+
 function saveState() {
   var id = 0;
   Array.from(document.getElementsByClassName('node')).forEach(node => {
@@ -470,6 +418,10 @@ function restoreState() {
     } else {
       node.links = new Set();
     }
-    node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+    if (node.getAttribute('data-instances')) {
+      node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+    } else {
+      node.instances = new Set([node]);
+    }
   });
 }
