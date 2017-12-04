@@ -6,11 +6,6 @@ function compileStatements(node) {
   return Array.from(followListNodes(node, ';')).map(compileStatement).join(';');
 }
 
-function findNodeVia(node, via) {
-  var link = findLinkVia(node, via);
-  return link ? link.to : null;
-}
-
 function compileStatement(node) {
   if (findLinkVia(node, 'calls')) {
     return compileFunctionCall(node);

@@ -9,7 +9,16 @@ var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
 
 function findLinkVia(node, via) {
-  return Array.from(node.links).find(link => link.from === node && link.via.textContent === via);
+  for (var instance of node.instances) {
+    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && link.via.textContent === via);
+    if (link) return link;
+  }
+  return null;
+}
+
+function findNodeVia(node, via) {
+  var link = findLinkVia(node, via);
+  return link ? link.to : null;
 }
 
 function* followListLinks(node, forward) {
@@ -25,8 +34,7 @@ function* followListLinks(node, forward) {
 function* followListNodes(node, forward) {
   do {
     yield node;
-    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
-    node = forwardLink ? forwardLink.to : null;
+    node = findNodeVia(node, forward) || null;
   } while(node)
 }
 
@@ -58,8 +66,7 @@ function createNode(position, text) {
   node.setAttribute('tabindex', '0');
   node.style.left = String(position.x) + 'px';
   node.style.top  = String(position.y) + 'px';
-  node.instances = new Set();
-  node.instances.add(node);
+  node.instances = new Set([node]);
   node.links = new Set();
   body.appendChild(node);
   return node;
@@ -99,9 +106,8 @@ function handleNodeMousedown(event) {
     event.stopPropagation();
     event.target.focus();
     var clickedNodes = new Set([event.target]);
-    if (event.target.classList.contains('collapsed')) {
-      var collapsedNodes = getCollapsedNodes(event.target.collapsedLink);
-      collapsedNodes.forEach(node => {clickedNodes.add(node)});
+    if (event.target.collapsedNodes) {
+      event.target.collapsedNodes.forEach(node => clickedNodes.add(node));
     }
     if (event.shiftKey) {
       clickedNodes.forEach(node => {node.classList.toggle('selected')});
@@ -156,6 +162,22 @@ body.addEventListener('dblclick', (event) => {
   }
 });
 
+function getClosestNodeTo(position, nodes) {
+  nodes = nodes || Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+  var closestNode = null;
+  var closestNodeDistance = null;
+  for (var node of nodes) {
+    var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+    var delta = {x: position.x - nodePosition.x, y: position.y - nodePosition.y};
+    var distance = (delta.x * delta.x) + (delta.y * delta.y);
+    if (!closestNode || distance < closestNodeDistance) {
+      closestNode = node;
+      closestNodeDistance = distance;
+    }
+  }
+  return closestNode;
+}
+
 // Selection box
 var selectionBox = document.getElementById("selection-box");
 var selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
@@ -196,7 +218,7 @@ function handleBackgroundMousemove(event) {
   selectionBoxPosition.bottom = Math.max(cursorOnMousedownPosition.y, event.pageY);
   updateSelectionBox();
   var visibleNodes = Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
-  visibleNodes.forEach((node) => {
+  visibleNodes.forEach(node => {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
     var inSelectionBox = !(
       ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
@@ -204,12 +226,15 @@ function handleBackgroundMousemove(event) {
       ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
       ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
     );
-    if (node.collapsedLink) {
-      getCollapsedNodes(node.collapsedLink).forEach(node => {node.classList.toggle('selected', inSelectionBox)});
-    } else {
-      node.classList.toggle('selected', inSelectionBox);
+    node.classList.toggle('selected', inSelectionBox);
+    if (node.collapsedNodes) {
+      node.collapsedNodes.forEach(node => node.classList.toggle('selected', inSelectionBox));
     }
   });
+  var closestNode = getClosestNodeTo({x: event.pageX, y: event.pageY}, Array.from(document.querySelectorAll('.node.selected')));
+  if (closestNode) {
+    closestNode.focus();
+  }
 }
 
 // Node renaming
@@ -306,8 +331,13 @@ document.addEventListener('keypress', event => {
         }
       }
     }
+  } else if (event.key === 'j') {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      console.log(compileHtml(document.activeElement));
+    }
   } else if (event.key === 'h') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
+      Array.from(document.getElementsByTagName('iframe')).forEach(iframe => iframe.remove());
       var html = compileHtml(document.activeElement);
       var iFrame = document.createElement('iframe');
       iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
@@ -318,34 +348,37 @@ document.addEventListener('keypress', event => {
   } else if (event.key === 'F' && event.shiftKey && event.ctrlKey) {
     restoreState();
   } else if (event.key === '-' || event.key === '+' || event.key === '=') {
-    document.querySelectorAll('.link.selected').forEach(link => {
-      var connectedLinks = new Set([link]);
-      var connectedNodes = new Set([link.from, link.via, link.to]);
-      getAllConnectedNodesAndLinks(link.to, connectedNodes, connectedLinks);
-      connectedLinks.delete(link);
-      connectedNodes.delete(link.from);
-      connectedNodes.delete(link.via);
-      connectedNodes.forEach(node => {node.classList.toggle('hidden', event.key === '-')});
-      connectedLinks.forEach(link => {link.classList.toggle('hidden', event.key === '-')});
-      link.via.classList.toggle('collapsed', event.key === '-');
-      link.classList.toggle('collapsed', event.key === '-');
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
       if (event.key === '-') {
-        link.via.collapsedLink = link;
+        if (document.querySelectorAll('.node.selected').length > 1) {
+          var collapsedNodes = new Set(document.querySelectorAll('.node.selected'));
+          var collapsedLinks = new Set();
+          collapsedNodes.delete(document.activeElement);
+          collapsedNodes.forEach(node => {
+            node.classList.add('hidden');
+            node.links.forEach(link => collapsedLinks.add(link));
+          });
+          collapsedLinks.forEach(link => {
+            link.classList.add('hidden');
+          });
+          document.activeElement.collapsedNodes = collapsedNodes;
+          document.activeElement.collapsedLinks = collapsedLinks;
+          document.activeElement.classList.add('collapsed');
+        }
       } else {
-        link.via.collapsedLink = null;
+        if (document.activeElement.collapsedNodes) {
+          document.activeElement.collapsedNodes.forEach(node => node.classList.remove('hidden'));
+          document.activeElement.collapsedNodes = null;
+        }
+        if (document.activeElement.collapsedLinks) {
+          document.activeElement.collapsedLinks.forEach(link => link.classList.remove('hidden'));
+          document.activeElement.collapsedLinks = null;
+        }
+        document.activeElement.classList.remove('collapsed');
       }
-      layoutLink(link);
-    });
+    }
   }
 });
-
-function getCollapsedNodes(collapsedLink) {
-  var connectedLinks = new Set([collapsedLink]);
-  var connectedNodes = new Set([collapsedLink.from, collapsedLink.via, collapsedLink.to]);
-  getAllConnectedNodesAndLinks(collapsedLink.to, connectedNodes, connectedLinks);
-  connectedNodes.delete(collapsedLink.from);
-  return connectedNodes;
-}
 
 function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
   connectedNodes = connectedNodes || new Set();
@@ -441,7 +474,11 @@ body.addEventListener('mousedown', event => {
     if (!event.shiftKey) {
       Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
     }
-    event.target.classList.add('selected');
+    if (event.shiftKey) {
+      event.target.classList.toggle('selected');
+    } else {
+      event.target.classList.add('selected');
+    }
   } else if (event.button === 1) {
     event.preventDefault();
     var lastMousePosition = {x: event.screenX, y: event.screenY};
