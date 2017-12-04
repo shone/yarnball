@@ -271,6 +271,7 @@ document.addEventListener('keypress', event => {
     var affectedLinks = new Set();
     Array.from(document.getElementsByClassName('selected')).forEach(element => {
       if (element.classList.contains('node')) {
+        element.instances.delete(element);
         element.links.forEach(link => affectedLinks.add(link));
         element.remove();
       } else if (element.classList.contains('link')) {
