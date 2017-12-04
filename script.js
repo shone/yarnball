@@ -2,8 +2,7 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-var body = document.getElementsByTagName('body')[0];
-var linksSvg = document.getElementById('links-svg');
+var graph = document.getElementById('graph');
 
 var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
@@ -68,7 +67,7 @@ function createNode(position, text) {
   node.style.top  = String(position.y) + 'px';
   node.instances = new Set([node]);
   node.links = new Set();
-  body.appendChild(node);
+  graph.appendChild(node);
   return node;
 }
 
@@ -76,7 +75,7 @@ function createLink(options) {
   var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   link.classList.add('link');
   link.setAttribute('marker-end', 'url(#Triangle)');
-  linksSvg.appendChild(link);
+  document.getElementById('links-svg').appendChild(link);
   if (options) {
     if (options.from) {
       link.from = options.from;
@@ -144,7 +143,7 @@ function handleNodeMousemove(event) {
   });
 }
 
-body.addEventListener('dblclick', (event) => {
+graph.addEventListener('dblclick', (event) => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => {
       if (!node.classList.contains('hidden')) {
@@ -189,7 +188,7 @@ function updateSelectionBox() {
 }
 var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
-  if (event.target.tagName !== 'BODY') return;
+  if (event.target !== graph) return;
   event.preventDefault();
   if (!event.shiftKey) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -239,7 +238,7 @@ function handleBackgroundMousemove(event) {
 
 // Node renaming
 var renameInput = null;
-body.addEventListener('keydown', event => {
+document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
     if (!renameInput) {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -424,7 +423,7 @@ function layoutLink(link, lastPosition) {
 }
 
 document.addEventListener('contextmenu', event => event.preventDefault());
-body.addEventListener('mousedown', event => {
+graph.addEventListener('mousedown', event => {
   if (event.button === 0 && event.ctrlKey && event.shiftKey) {
     event.preventDefault();
     var node = createNode({x: event.pageX, y: event.pageY});
@@ -498,13 +497,13 @@ body.addEventListener('mousedown', event => {
   }
 });
 
-body.addEventListener('mouseover', event => {
+graph.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('highlighted'));
   }
 });
 
-body.addEventListener('mouseout', event => {
+graph.addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.remove('highlighted'));
   }
@@ -529,27 +528,34 @@ function saveState() {
     }).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
   });
-  localStorage.saved_state = document.getElementsByTagName('body')[0].innerHTML;
+  localStorage.saved_state = document.getElementById('graph').innerHTML;
 }
 
 function restoreState() {
-  document.getElementsByTagName('body')[0].innerHTML = localStorage.saved_state;
+  document.getElementById('graph').innerHTML = localStorage.saved_state;
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
+    link.removeAttribute('data-from');
+    link.removeAttribute('data-via');
+    link.removeAttribute('data-to');
   });
   Array.from(document.getElementsByClassName('node')).forEach(node => {
     if (node.getAttribute('data-links')) {
       node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+      node.removeAttribute('data-links');
     } else {
       node.links = new Set();
     }
     if (node.getAttribute('data-instances')) {
       node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+      node.removeAttribute('data-instances')
     } else {
       node.instances = new Set([node]);
     }
     node.setAttribute('tabindex', '-1');
   });
+  Array.from(document.getElementsByClassName('node')).forEach(node => node.removeAttribute('id'));
+  Array.from(document.getElementsByClassName('link')).forEach(link => link.removeAttribute('id'));
 }
