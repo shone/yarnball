@@ -9,7 +9,7 @@ var lastCursorPosition = {x: 0, y: 0};
 
 function findLinkVia(node, via) {
   for (var instance of node.instances) {
-    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && link.via.textContent === via);
+    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && (link.via.textContent === via || link.via.instances.has(via)));
     if (link) return link;
   }
   return null;
@@ -288,26 +288,34 @@ function duplicateNodes(nodes) {
 document.addEventListener('keypress', event => {
   if (renameInput) return;
   if (event.key === 'd') {
-    event.preventDefault();
-    duplicateNodes(Array.from(document.getElementsByClassName('selected')));
-    return false;
+    var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
+    if (selectedNodes.length > 0) {
+      event.preventDefault();
+      duplicateNodes(selectedNodes);
+      return false;
+    }
   } else if (event.key === 'Delete') {
-    var affectedLinks = new Set();
-    Array.from(document.getElementsByClassName('selected')).forEach(element => {
-      if (element.classList.contains('node')) {
-        element.instances.delete(element);
-        element.links.forEach(link => affectedLinks.add(link));
-        element.remove();
-      } else if (element.classList.contains('link')) {
-        affectedLinks.add(element);
-      }
-    });
-    affectedLinks.forEach(link => {
-      link.from.links.delete(link);
-      link.via.links.delete(link);
-      link.to.links.delete(link);
-      link.remove()
-    });
+    var selectedElements = Array.from(document.getElementsByClassName('selected'));
+    if (selectedElements.length > 0) {
+      event.preventDefault();
+      var affectedLinks = new Set();
+      selectedElements.forEach(element => {
+        if (element.classList.contains('node')) {
+          element.instances.delete(element);
+          element.links.forEach(link => affectedLinks.add(link));
+          element.remove();
+        } else if (element.classList.contains('link')) {
+          affectedLinks.add(element);
+        }
+      });
+      affectedLinks.forEach(link => {
+        link.from.links.delete(link);
+        link.via.links.delete(link);
+        link.to.links.delete(link);
+        link.remove()
+      });
+      return false;
+    }
   } else if (event.key === 'g') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
@@ -374,6 +382,24 @@ document.addEventListener('keypress', event => {
           document.activeElement.collapsedLinks = null;
         }
         document.activeElement.classList.remove('collapsed');
+      }
+    }
+  } else if (event.key === 't') {
+    var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
+    if (selectedNodes.length === 2) {
+      var baseNode = document.activeElement;
+      var forwardNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
+      var table = document.createElement('table');
+      table.style.left = baseNode.style.left;
+      table.style.top  = baseNode.style.top;
+      graph.appendChild(table);
+      for (var node of followListNodes(baseNode, forwardNode)) {
+        var tr = document.createElement('tr');
+        table.appendChild(tr);
+        var td = document.createElement('td');
+        tr.appendChild(td);
+        node.style.left = (table.offsetLeft + td.offsetLeft) + 'px';
+        node.style.top  = (table.offsetTop  + td.offsetTop)  + 'px';
       }
     }
   }

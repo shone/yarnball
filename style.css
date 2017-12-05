@@ -83,3 +83,14 @@ iframe {
   top: 0;
   background-color: #fff;
 }
+
+table {
+  position: absolute;
+  min-width: 20rem;
+  min-height: 20rem;
+  border: 1px solid grey;
+}
+
+td {
+  border: 1px solid blue;
+}
