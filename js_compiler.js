@@ -32,6 +32,12 @@ function compileStatement(node) {
     }
   }
 
+  var lvalue = findNodeVia(node, 'lvalue');
+  var equals = findNodeVia(node, '=');
+  if (lvalue && equals) {
+    return compileStatement(lvalue) + ' = ' + compileStatement(equals);
+  }
+
   var awaitTo = findNodeVia(node, 'await');
   if (awaitTo) {
     return 'await ' + compileStatement(awaitTo);
