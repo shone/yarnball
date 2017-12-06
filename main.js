@@ -304,30 +304,26 @@ document.body.addEventListener('keydown', event => {
         renameInput.select();
         document.activeElement.appendChild(renameInput);
         renameInput.focus();
-      }node.links.forEach(link => affectedLinks.add(link));
+      }
     } else {
       renameInput.parentElement.focus();
       renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
       renameInput.remove();
       renameInput = null;
     }
-  } else if (event.ctrlKey && event.shiftKey && event.key === 'ArrowDown') {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var td = document.activeElement.attachedTableCell;
-      if (td && td.parentElement.nextElementSibling) {
-        var tr = td.parentElement;
-        var affectedLinks = new Set();
-        td.attachedNodes.forEach(node => {
-          node.style.top = (parseFloat(node.style.top) + tr.nextElementSibling.offsetHeight) + 'px';
-          node.links.forEach(link => affectedLinks.add(link));
-        });
-        tr.nextElementSibling.getElementsByTagName('TD')[0].attachedNodes.forEach(node => {
-          node.style.top = (parseFloat(node.style.top) - tr.offsetHeight) + 'px';
-          node.links.forEach(link => affectedLinks.add(link));
-        });
-        tr.nextElementSibling.insertAdjacentElement('afterend', tr);
-        affectedLinks.forEach(layoutLink);
+  } else if (event.ctrlKey && event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && isTableElementNode(document.activeElement)) {
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var index = tableNodes.indexOf(document.activeElement);
+      if (event.key === 'ArrowDown' && index < tableNodes.length) {
+        tableNodes.splice(index, 1);
+        tableNodes.splice(index + 1, 0, document.activeElement);
+      } else if (event.key === 'ArrowUp' && index > 0) {
+        tableNodes.splice(index, 1);
+        tableNodes.splice(index - 1, 0, document.activeElement);
       }
+      setTableOrder(table, tableNodes);
     }
   } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {

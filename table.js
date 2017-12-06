@@ -3,6 +3,7 @@ function createTable(baseNode, forwardNode) {
   table.style.left = baseNode.style.left;
   table.style.top  = baseNode.style.top;
   graph.appendChild(table);
+  table.downVia = forwardNode;
   var lastNode = null;
   for (var link of followListLinks(baseNode, forwardNode)) {
     var tr = document.createElement('tr');
@@ -103,4 +104,62 @@ function focusPreviousTableElementNode(node) {
     previousTableNode.focus();
     previousTableNode.classList.add('selected');
   }
+}
+
+function getTableNodes(table) {
+  return Array.from(table.getElementsByTagName('TR')).map(tr => tr.getElementsByTagName('TD')[0].tableElementNode);
+}
+
+function setTableOrder(table, nodes) {
+  var nodePositions = new Map();
+  var trHeights = new Map();
+  var trs = nodes.map(node => node.attachedTableCell.parentElement);
+  trs.forEach(tr => {
+    trHeights.set(tr, tr.offsetHeight);
+    var map = new Map();
+    tr.getElementsByTagName('TD')[0].attachedNodes.forEach(node => {
+      map.set(node, {x: parseFloat(node.style.left), y: parseFloat(node.style.top) - (table.offsetTop + tr.offsetTop)});
+    });
+    nodePositions.set(tr, map);
+  });
+  trs.forEach(tr => tr.remove());
+  var currentY = table.offsetTop;
+  var affectedLinks = new Set();
+  trs.forEach(tr => {
+    table.appendChild(tr)
+    var positions = nodePositions.get(tr);
+    for (var entry of positions) {
+      entry[0].style.top = (currentY + entry[1].y) + 'px';
+      entry[0].links.forEach(link => affectedLinks.add(link));
+    }
+    currentY += tr.offsetHeight;
+  });
+  fitTableCellsToAttachedNodes(table);
+  affectedLinks.forEach(layoutLink);
+
+  var downViaText = table.downVia.textContent;
+  var downViaInstances = table.downVia.instances;
+
+  var previousNode = null;
+  nodes.forEach(node => {
+    Array.from(node.links).forEach(link => {
+      if (link.via.instances.has(table.downVia)) {
+        deleteElements([link, link.via]);
+        if (table.downVia === link.via) {
+          table.downVia = null;
+          downViaInstances.delete(link.via);
+        }
+      }
+    });
+    if (previousNode) {
+      var via = createNode({x: 0, y: 0}, downViaText);
+      via.instances = downViaInstances;
+      via.instances.add(via);
+      if (!table.downVia) table.downVia = via;
+      var link = createLink({from: previousNode, via: via, to: node});
+      via.classList.add('hidden');
+      link.classList.add('hidden');
+    }
+    previousNode = node;
+  });
 }

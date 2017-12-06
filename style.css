@@ -92,6 +92,7 @@ table {
   position: absolute;
   border: 1px solid grey;
   pointer-events: none;
+  border-collapse: collapse;
 }
 
 table:after {
