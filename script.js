@@ -94,13 +94,9 @@ function createLink(options) {
 }
 
 // Node dragging
-var nodePositionOnMousedown = null;
+var currentDragdropTarget = null;
 function handleNodeMousedown(event) {
-  if (event.button === 0 && event.ctrlKey && event.altKey) {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      doArrayLayout(document.activeElement, event.target);
-    }
-  } else if (event.button === 0) {
+  if (event.button === 0) {
     event.preventDefault();
     event.stopPropagation();
     event.target.focus();
@@ -118,15 +114,38 @@ function handleNodeMousedown(event) {
     }
     cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
     lastCursorPosition = cursorOnMousedownPosition;
-    nodePositionOnMousedown = {x: parseFloat(event.target.style.left), y: parseFloat(event.target.style.top)};
+    Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.add('dragging'));
+    Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.add('drag-drop-target'));
     window.addEventListener('mousemove', handleNodeMousemove);
     window.addEventListener('mouseup',   handleNodeMouseup);
+    window.addEventListener('mouseover', handleNodeDragMouseover);
+    window.addEventListener('mouseout',  handleNodeDragMouseout);
     return false;
   }
 }
-function handleNodeMouseup() {
+function handleNodeMouseup(event) {
   window.removeEventListener('mousemove', handleNodeMousemove);
   window.removeEventListener('mouseup',   handleNodeMouseup);
+  window.removeEventListener('mouseover', handleNodeDragMouseover);
+  window.removeEventListener('mouseout',  handleNodeDragMouseout);
+  Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
+
+  Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+    if (node.attachedTableCell) {
+      node.attachedTableCell.attachedNodes.delete(node);
+      node.attachedTableCell = null;
+    }
+  });
+  if (currentDragdropTarget && currentDragdropTarget.tagName === 'TD') {
+    var td = currentDragdropTarget;
+    Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+      td.attachedNodes.add(node);
+      node.attachedTableCell = td;
+    });
+    layoutTable(td.parentElement.parentElement);
+  }
+  Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
+  currentDragdropTarget = null;
 }
 function handleNodeMousemove(event) {
   var deltaX = event.pageX - lastCursorPosition.x;
@@ -141,6 +160,16 @@ function handleNodeMousemove(event) {
   affectedLinks.forEach(link => {
     layoutLink(link);
   });
+}
+function handleNodeDragMouseover(event) {
+  if (event.target.tagName === 'TD') {
+    currentDragdropTarget = event.target;
+  }
+}
+function handleNodeDragMouseout(event) {
+  if (event.target === currentDragdropTarget) {
+    currentDragdropTarget = null;
+  }
 }
 
 graph.addEventListener('dblclick', (event) => {
@@ -248,12 +277,54 @@ document.body.addEventListener('keydown', event => {
         renameInput.select();
         document.activeElement.appendChild(renameInput);
         renameInput.focus();
-      }
+      }node.links.forEach(link => affectedLinks.add(link));
     } else {
       renameInput.parentElement.focus();
       renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
       renameInput.remove();
       renameInput = null;
+    }
+  } else if (event.ctrlKey && event.shiftKey && event.key === 'ArrowDown') {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var td = document.activeElement.attachedTableCell;
+      if (td && td.parentElement.nextElementSibling) {
+        var tr = td.parentElement;
+        var affectedLinks = new Set();
+        td.attachedNodes.forEach(node => {
+          node.style.top = (parseFloat(node.style.top) + tr.nextElementSibling.offsetHeight) + 'px';
+          node.links.forEach(link => affectedLinks.add(link));
+        });
+        tr.nextElementSibling.getElementsByTagName('TD')[0].attachedNodes.forEach(node => {
+          node.style.top = (parseFloat(node.style.top) - tr.offsetHeight) + 'px';
+          node.links.forEach(link => affectedLinks.add(link));
+        });
+        tr.nextElementSibling.insertAdjacentElement('afterend', tr);
+        affectedLinks.forEach(layoutLink);
+      }
+    }
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    if (document.activeElement && document.activeElement.classList.contains('node') &&
+        document.activeElement.attachedTableCell) {
+      if (document.activeElement.attachedTableCell.tableElementNode === document.activeElement) {
+        event.preventDefault();
+        var td = document.activeElement.attachedTableCell;
+        var tableNodeToFocus = null;
+        if (event.key === 'ArrowUp') {
+          if (td.parentElement.previousElementSibling) {
+            tableNodeToFocus = td.parentElement.previousElementSibling.getElementsByTagName('TD')[0].tableElementNode;
+          }
+        } else {
+          if (td.parentElement.nextElementSibling) {
+            tableNodeToFocus = td.parentElement.nextElementSibling.getElementsByTagName('TD')[0].tableElementNode;
+          }
+        }
+        if (tableNodeToFocus) {
+          Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+          tableNodeToFocus.focus();
+          tableNodeToFocus.classList.add('selected');
+        }
+        return false;
+      }
     }
   }
 });
@@ -393,14 +464,36 @@ document.addEventListener('keypress', event => {
       table.style.left = baseNode.style.left;
       table.style.top  = baseNode.style.top;
       graph.appendChild(table);
-      for (var node of followListNodes(baseNode, forwardNode)) {
+      var lastNode = null;
+      for (var link of followListLinks(baseNode, forwardNode)) {
         var tr = document.createElement('tr');
         table.appendChild(tr);
         var td = document.createElement('td');
         tr.appendChild(td);
-        node.style.left = (table.offsetLeft + td.offsetLeft) + 'px';
-        node.style.top  = (table.offsetTop  + td.offsetTop)  + 'px';
+        td.tableElementNode = link.from;
+        td.attachedDownLink = link;
+        td.attachedDownViaNode = link.via;
+        td.attachedNodes = new Set([link.from]);
+        lastNode = link.to;
       }
+      var tr = document.createElement('tr');
+      table.appendChild(tr);
+      var td = document.createElement('td');
+      tr.appendChild(td);
+      td.tableElementNode = lastNode;
+      td.attachedNodes = new Set([lastNode]);
+
+      var affectedLinks = new Set();
+      Array.from(table.getElementsByTagName('TD')).forEach(td => {
+        td.tableElementNode.style.top  = (table.offsetTop  + td.offsetTop  + 50) + 'px';
+        td.tableElementNode.style.left = (table.offsetLeft + td.offsetLeft + 50) + 'px';
+        td.tableElementNode.links.forEach(link => affectedLinks.add(link));
+        if (td.attachedDownLink) {
+          td.attachedDownLink.classList.add('hidden');
+          td.attachedDownLink.via.classList.add('hidden');
+        }
+      });
+      affectedLinks.forEach(layoutLink);
     }
   }
 });
@@ -496,6 +589,7 @@ graph.addEventListener('mousedown', event => {
   } else if (event.button === 0 && event.target.classList.contains('node')) {
     handleNodeMousedown(event);
   } else if (event.button === 0 && event.target.classList.contains('link')) {
+    event.preventDefault();
     if (!event.shiftKey) {
       Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
     }
@@ -504,6 +598,35 @@ graph.addEventListener('mousedown', event => {
     } else {
       event.target.classList.add('selected');
     }
+    return false;
+  } else if (event.button === 0 && event.target.tagName === 'TABLE') {
+    event.preventDefault();
+    var table = event.target;
+    cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
+    lastCursorPosition = cursorOnMousedownPosition;
+    function handleMousemove(event) {
+      var deltaX = event.pageX - lastCursorPosition.x;
+      var deltaY = event.pageY - lastCursorPosition.y;
+      table.style.left = (parseFloat(table.style.left) + deltaX) + 'px';
+      table.style.top  = (parseFloat(table.style.top)  + deltaY) + 'px';
+      var affectedLinks = new Set();
+      Array.from(table.getElementsByTagName('TD')).forEach(td => {
+        td.attachedNodes.forEach(node => {
+          node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
+          node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
+          node.links.forEach(link => affectedLinks.add(link));
+        });
+      });
+      affectedLinks.forEach(layoutLink);
+      lastCursorPosition = {x: event.pageX, y: event.pageY};
+    }
+    function handleMouseup(event) {
+      window.removeEventListener('mousemove', handleMousemove);
+      window.removeEventListener('mouseup', handleMouseup);
+    }
+    window.addEventListener('mousemove', handleMousemove);
+    window.addEventListener('mouseup', handleMouseup);
+    return false;
   } else if (event.button === 1) {
     event.preventDefault();
     var lastMousePosition = {x: event.screenX, y: event.screenY};
