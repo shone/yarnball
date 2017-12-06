@@ -101,6 +101,30 @@ function createLink(options) {
   return link;
 }
 
+function deleteElements(elements) {
+  var affectedLinks = new Set();
+  elements.forEach(element => {
+    if (element.classList.contains('node')) {
+      element.instances.delete(element);
+      element.links.forEach(link => affectedLinks.add(link));
+      element.remove();
+      if (element.attachedTableCell) {
+        element.attachedTableCell.attachedNodes.delete(element);
+        fitTableCellsToAttachedNodes(element.attachedTableCell.parentElement.parentElement);
+        element.attachedTableCell = null;
+      }
+    } else if (element.classList.contains('link')) {
+      affectedLinks.add(element);
+    }
+  });
+  affectedLinks.forEach(link => {
+    link.from.links.delete(link);
+    link.via.links.delete(link);
+    link.to.links.delete(link);
+    link.remove()
+  });
+}
+
 // Node dragging
 var currentDragdropTarget = null;
 function handleNodeMousedown(event) {
@@ -141,8 +165,10 @@ function handleNodeMousedown(event) {
         window.removeEventListener('mouseout',  handleNodeDragMouseout);
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
 
+        var affectedTables = new Set();
         Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
           if (node.attachedTableCell) {
+            affectedTables.add(node.attachedTableCell.parentElement.parentElement);
             node.attachedTableCell.attachedNodes.delete(node);
             node.attachedTableCell = null;
           }
@@ -153,9 +179,10 @@ function handleNodeMousedown(event) {
             td.attachedNodes.add(node);
             node.attachedTableCell = td;
           });
-          layoutTable(td.parentElement.parentElement);
+          affectedTables.add(td.parentElement.parentElement);
         }
         Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
+        affectedTables.forEach(fitTableCellsToAttachedNodes);
         currentDragdropTarget = null;
       }
     });
@@ -303,25 +330,13 @@ document.body.addEventListener('keydown', event => {
       }
     }
   } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-    if (document.activeElement && document.activeElement.classList.contains('node') &&
-        document.activeElement.attachedTableCell) {
-      if (document.activeElement.attachedTableCell.tableElementNode === document.activeElement) {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      if (isTableElementNode(document.activeElement)) {
         event.preventDefault();
-        var td = document.activeElement.attachedTableCell;
-        var tableNodeToFocus = null;
-        if (event.key === 'ArrowUp') {
-          if (td.parentElement.previousElementSibling) {
-            tableNodeToFocus = td.parentElement.previousElementSibling.getElementsByTagName('TD')[0].tableElementNode;
-          }
+        if (event.key === 'ArrowDown') {
+          focusNextTableElementNode(document.activeElement);
         } else {
-          if (td.parentElement.nextElementSibling) {
-            tableNodeToFocus = td.parentElement.nextElementSibling.getElementsByTagName('TD')[0].tableElementNode;
-          }
-        }
-        if (tableNodeToFocus) {
-          Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-          tableNodeToFocus.focus();
-          tableNodeToFocus.classList.add('selected');
+          focusPreviousTableElementNode(document.activeElement);
         }
         return false;
       }
@@ -369,22 +384,7 @@ document.addEventListener('keypress', event => {
     var selectedElements = Array.from(document.getElementsByClassName('selected'));
     if (selectedElements.length > 0) {
       event.preventDefault();
-      var affectedLinks = new Set();
-      selectedElements.forEach(element => {
-        if (element.classList.contains('node')) {
-          element.instances.delete(element);
-          element.links.forEach(link => affectedLinks.add(link));
-          element.remove();
-        } else if (element.classList.contains('link')) {
-          affectedLinks.add(element);
-        }
-      });
-      affectedLinks.forEach(link => {
-        link.from.links.delete(link);
-        link.via.links.delete(link);
-        link.to.links.delete(link);
-        link.remove()
-      });
+      deleteElements(selectedElements);
       return false;
     }
   } else if (event.key === 'g') {
@@ -460,40 +460,9 @@ document.addEventListener('keypress', event => {
     if (selectedNodes.length === 2) {
       var baseNode = document.activeElement;
       var forwardNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
-      var table = document.createElement('table');
-      table.style.left = baseNode.style.left;
-      table.style.top  = baseNode.style.top;
-      graph.appendChild(table);
-      var lastNode = null;
-      for (var link of followListLinks(baseNode, forwardNode)) {
-        var tr = document.createElement('tr');
-        table.appendChild(tr);
-        var td = document.createElement('td');
-        tr.appendChild(td);
-        td.tableElementNode = link.from;
-        td.attachedDownLink = link;
-        td.attachedDownViaNode = link.via;
-        td.attachedNodes = new Set([link.from]);
-        lastNode = link.to;
+      if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === forwardNode)) {
+        createTable(baseNode, forwardNode);
       }
-      var tr = document.createElement('tr');
-      table.appendChild(tr);
-      var td = document.createElement('td');
-      tr.appendChild(td);
-      td.tableElementNode = lastNode;
-      td.attachedNodes = new Set([lastNode]);
-
-      var affectedLinks = new Set();
-      Array.from(table.getElementsByTagName('TD')).forEach(td => {
-        td.tableElementNode.style.top  = (table.offsetTop  + td.offsetTop  + 50) + 'px';
-        td.tableElementNode.style.left = (table.offsetLeft + td.offsetLeft + 50) + 'px';
-        td.tableElementNode.links.forEach(link => affectedLinks.add(link));
-        if (td.attachedDownLink) {
-          td.attachedDownLink.classList.add('hidden');
-          td.attachedDownLink.via.classList.add('hidden');
-        }
-      });
-      affectedLinks.forEach(layoutLink);
     }
   }
 });
@@ -596,24 +565,7 @@ graph.addEventListener('mousedown', event => {
     }
     return false;
   } else if (event.button === 0 && event.target.tagName === 'TABLE') {
-    event.preventDefault();
-    var table = event.target;
-    handleMouseDrag(event, {
-      mousemove: function (cursor) {
-        table.style.left = (parseFloat(table.style.left) + cursor.delta.x) + 'px';
-        table.style.top  = (parseFloat(table.style.top)  + cursor.delta.y) + 'px';
-        var affectedLinks = new Set();
-        Array.from(table.getElementsByTagName('TD')).forEach(td => {
-          td.attachedNodes.forEach(node => {
-            node.style.left = (parseFloat(node.style.left) + cursor.delta.x) + 'px';
-            node.style.top  = (parseFloat(node.style.top)  + cursor.delta.y) + 'px';
-            node.links.forEach(link => affectedLinks.add(link));
-          });
-        });
-        affectedLinks.forEach(layoutLink);
-      },
-    });
-    return false;
+    return handleTableMousedown(event);
   } else if (event.button === 1) {
     event.preventDefault();
     handleMouseDrag(event, {
@@ -627,12 +579,12 @@ graph.addEventListener('mousedown', event => {
   }
 });
 
+// Node instance highlighting
 graph.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('highlighted'));
   }
 });
-
 graph.addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.remove('highlighted'));
