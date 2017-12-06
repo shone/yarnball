@@ -7,6 +7,35 @@ var graph = document.getElementById('graph');
 var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
 
+var cursorPositionOnMouseDragStart = null;
+var cursorPositionOnLastDragMousemove = null;
+var cursorScreenPositionOnLastDragMousemove = null;
+function handleMouseDrag(event, options) {
+  function handleMousemove(event) {
+    if (options.mousemove) {
+      var position = {x: event.pageX, y: event.pageY};
+      var positionScreen = {x: event.screenX, y: event.screenY};
+      var delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
+      var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
+      cursorPositionOnLastDragMousemove = position;
+      cursorScreenPositionOnLastDragMousemove = positionScreen;
+      options.mousemove({position: position, delta: delta, deltaScreen: deltaScreen});
+    }
+  }
+  function handleMouseup(event) {
+    window.removeEventListener('mousemove', handleMousemove);
+    window.removeEventListener('mouseup',   handleMouseup);
+    if (options.mouseup) {
+      options.mouseup();
+    }
+  }
+  cursorPositionOnMouseDragStart = {x: event.pageX, y: event.pageY};
+  cursorPositionOnLastDragMousemove = cursorPositionOnMouseDragStart;
+  cursorScreenPositionOnLastDragMousemove = {x: event.screenX, y: event.screenY};
+  window.addEventListener('mousemove', handleMousemove);
+  window.addEventListener('mouseup',   handleMouseup);
+}
+
 function findLinkVia(node, via) {
   for (var instance of node.instances) {
     var link = Array.from(instance.links).find(link => link.from.instances.has(node) && (link.via.textContent === via || link.via.instances.has(via)));
@@ -35,27 +64,6 @@ function* followListNodes(node, forward) {
     yield node;
     node = findNodeVia(node, forward) || null;
   } while(node)
-}
-
-function doArrayLayout(startNode, forwardNode) {
-  var previousNode = startNode;
-  var affectedLinks = new Set();
-  for (let currentLink of followListLinks(startNode, forwardNode)) {
-    currentLink.from.classList.add('selected');
-    currentLink.via.classList.add('selected');
-    currentLink.to.classList.add('selected');
-
-    currentLink.to.style.left = previousNode.style.left;
-    currentLink.to.style.top = (parseFloat(previousNode.style.top) + 200) + 'px';
-    currentLink.to.links.forEach(link => affectedLinks.add(link));
-
-    currentLink.via.style.left = (parseFloat(previousNode.style.left) - 200) + 'px';
-    currentLink.via.style.top  = (parseFloat(previousNode.style.top) + 100) + 'px';
-    currentLink.via.links.forEach(link => affectedLinks.add(link));
-
-    previousNode = currentLink.to;
-  }
-  affectedLinks.forEach(layoutLink);
 }
 
 function createNode(position, text) {
@@ -112,54 +120,47 @@ function handleNodeMousedown(event) {
       }
       clickedNodes.forEach(node => {node.classList.add('selected')});
     }
-    cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
-    lastCursorPosition = cursorOnMousedownPosition;
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.add('dragging'));
     Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.add('drag-drop-target'));
-    window.addEventListener('mousemove', handleNodeMousemove);
-    window.addEventListener('mouseup',   handleNodeMouseup);
     window.addEventListener('mouseover', handleNodeDragMouseover);
     window.addEventListener('mouseout',  handleNodeDragMouseout);
+    handleMouseDrag(event, {
+      mousemove: function(cursor) {
+        var affectedLinks = new Set();
+        document.querySelectorAll('.node.selected').forEach(node => {
+          node.style.left = (parseFloat(node.style.left) + cursor.delta.x) + 'px';
+          node.style.top  = (parseFloat(node.style.top)  + cursor.delta.y) + 'px';
+          node.links.forEach(link => affectedLinks.add(link));
+        });
+        affectedLinks.forEach(link => {
+          layoutLink(link);
+        });
+      },
+      mouseup: function() {
+        window.removeEventListener('mouseover', handleNodeDragMouseover);
+        window.removeEventListener('mouseout',  handleNodeDragMouseout);
+        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
+
+        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+          if (node.attachedTableCell) {
+            node.attachedTableCell.attachedNodes.delete(node);
+            node.attachedTableCell = null;
+          }
+        });
+        if (currentDragdropTarget && currentDragdropTarget.tagName === 'TD') {
+          var td = currentDragdropTarget;
+          Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+            td.attachedNodes.add(node);
+            node.attachedTableCell = td;
+          });
+          layoutTable(td.parentElement.parentElement);
+        }
+        Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
+        currentDragdropTarget = null;
+      }
+    });
     return false;
   }
-}
-function handleNodeMouseup(event) {
-  window.removeEventListener('mousemove', handleNodeMousemove);
-  window.removeEventListener('mouseup',   handleNodeMouseup);
-  window.removeEventListener('mouseover', handleNodeDragMouseover);
-  window.removeEventListener('mouseout',  handleNodeDragMouseout);
-  Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
-
-  Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-    if (node.attachedTableCell) {
-      node.attachedTableCell.attachedNodes.delete(node);
-      node.attachedTableCell = null;
-    }
-  });
-  if (currentDragdropTarget && currentDragdropTarget.tagName === 'TD') {
-    var td = currentDragdropTarget;
-    Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-      td.attachedNodes.add(node);
-      node.attachedTableCell = td;
-    });
-    layoutTable(td.parentElement.parentElement);
-  }
-  Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
-  currentDragdropTarget = null;
-}
-function handleNodeMousemove(event) {
-  var deltaX = event.pageX - lastCursorPosition.x;
-  var deltaY = event.pageY - lastCursorPosition.y;
-  lastCursorPosition = {x: event.pageX, y: event.pageY};
-  var affectedLinks = new Set();
-  document.querySelectorAll('.node.selected').forEach(node => {
-    node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
-    node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
-    node.links.forEach(link => affectedLinks.add(link));
-  });
-  affectedLinks.forEach(link => {
-    layoutLink(link);
-  });
 }
 function handleNodeDragMouseover(event) {
   if (event.target.tagName === 'TD') {
@@ -225,44 +226,43 @@ function handleBackgroundMousedownForSelectionBox(event) {
   } else {
     selectedNodesToPreserve = new Set(Array.from(document.getElementsByClassName('selected')));
   }
-  window.addEventListener('mousemove', handleBackgroundMousemove);
-  window.addEventListener('mouseup',   handleBackgroundMouseup);
-  cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
+  handleMouseDrag(event, {
+    mousemove: function(cursor) {
+      selectionBoxPosition.left   = Math.min(cursorPositionOnMouseDragStart.x, cursor.position.x);
+      selectionBoxPosition.top    = Math.min(cursorPositionOnMouseDragStart.y, cursor.position.y);
+      selectionBoxPosition.right  = Math.max(cursorPositionOnMouseDragStart.x, cursor.position.x);
+      selectionBoxPosition.bottom = Math.max(cursorPositionOnMouseDragStart.y, cursor.position.y);
+      updateSelectionBox();
+      var visibleNodes = Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+      visibleNodes.forEach(node => {
+        if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
+        var inSelectionBox = !(
+          ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
+          ((parseFloat(node.style.left) - 25)                       > selectionBoxPosition.right) ||
+          ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
+          ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
+        );
+        node.classList.toggle('selected', inSelectionBox);
+        if (node.collapsedNodes) {
+          node.collapsedNodes.forEach(node => node.classList.toggle('selected', inSelectionBox));
+        }
+      });
+      var closestNode = getClosestNodeTo({x: event.pageX, y: event.pageY}, Array.from(document.querySelectorAll('.node.selected')));
+      if (closestNode) {
+        closestNode.focus();
+      } else {
+        if (document.activeElement) document.activeElement.blur();
+      }
+    },
+    mouseup: function() {
+      selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
+      updateSelectionBox();
+      selectedNodesToPreserve = null;
+    }
+  });
   selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
   updateSelectionBox();
   return false;
-}
-function handleBackgroundMouseup(event) {
-  window.removeEventListener('mousemove', handleBackgroundMousemove);
-  window.removeEventListener('mouseup',   handleBackgroundMouseup);
-  selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
-  updateSelectionBox();
-  selectedNodesToPreserve = null;
-}
-function handleBackgroundMousemove(event) {
-  selectionBoxPosition.left   = Math.min(cursorOnMousedownPosition.x, event.pageX);
-  selectionBoxPosition.top    = Math.min(cursorOnMousedownPosition.y, event.pageY);
-  selectionBoxPosition.right  = Math.max(cursorOnMousedownPosition.x, event.pageX);
-  selectionBoxPosition.bottom = Math.max(cursorOnMousedownPosition.y, event.pageY);
-  updateSelectionBox();
-  var visibleNodes = Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
-  visibleNodes.forEach(node => {
-    if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
-    var inSelectionBox = !(
-      ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
-      ((parseFloat(node.style.left) - 25)                       > selectionBoxPosition.right) ||
-      ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
-      ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
-    );
-    node.classList.toggle('selected', inSelectionBox);
-    if (node.collapsedNodes) {
-      node.collapsedNodes.forEach(node => node.classList.toggle('selected', inSelectionBox));
-    }
-  });
-  var closestNode = getClosestNodeTo({x: event.pageX, y: event.pageY}, Array.from(document.querySelectorAll('.node.selected')));
-  if (closestNode) {
-    closestNode.focus();
-  }
 }
 
 // Node renaming
@@ -553,19 +553,25 @@ graph.addEventListener('mousedown', event => {
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
     var link = createLink();
-    cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
     link.from = event.target;
-    function handleMousemove(event) {
-      layoutLink(link, {x: event.pageX, y: event.pageY});
-    }
+    handleMouseDrag(event, {
+      mousemove: function(cursor) {
+        layoutLink(link, {x: cursor.position.x, y: cursor.position.y});
+      },
+      mouseup: function(event) {
+        if (!(link.from && link.via && link.to)) {
+          link.remove();
+        }
+        window.removeEventListener('mouseover', handleMouseover);
+      }
+    });
     function handleMouseover(event) {
       if (event.target.classList.contains('node') && !event.target.classList.contains('hidden') &&
         event.target !== link.via && event.target !== link.to && event.target !== link.from) {
         if (!link.via) {
           link.via = event.target;
-        } else {
+        } else if (!link.to) {
           link.to = event.target;
-          window.removeEventListener('mousemove', handleMousemove);
           window.removeEventListener('mouseover', handleMouseover);
           layoutLink(link);
           link.from.links.add(link);
@@ -574,17 +580,7 @@ graph.addEventListener('mousedown', event => {
         }
       }
     }
-    function handleMouseup(event) {
-      if (!(link.from && link.via && link.to)) {
-        link.remove();
-      }
-      window.removeEventListener('mousemove', handleMousemove);
-      window.removeEventListener('mouseover', handleMouseover);
-      window.removeEventListener('mouseup', handleMouseup);
-    }
-    window.addEventListener('mousemove', handleMousemove);
     window.addEventListener('mouseover', handleMouseover);
-    window.addEventListener('mouseup', handleMouseup);
     return false;
   } else if (event.button === 0 && event.target.classList.contains('node')) {
     handleNodeMousedown(event);
@@ -602,44 +598,29 @@ graph.addEventListener('mousedown', event => {
   } else if (event.button === 0 && event.target.tagName === 'TABLE') {
     event.preventDefault();
     var table = event.target;
-    cursorOnMousedownPosition = {x: event.pageX, y: event.pageY};
-    lastCursorPosition = cursorOnMousedownPosition;
-    function handleMousemove(event) {
-      var deltaX = event.pageX - lastCursorPosition.x;
-      var deltaY = event.pageY - lastCursorPosition.y;
-      table.style.left = (parseFloat(table.style.left) + deltaX) + 'px';
-      table.style.top  = (parseFloat(table.style.top)  + deltaY) + 'px';
-      var affectedLinks = new Set();
-      Array.from(table.getElementsByTagName('TD')).forEach(td => {
-        td.attachedNodes.forEach(node => {
-          node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
-          node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
-          node.links.forEach(link => affectedLinks.add(link));
+    handleMouseDrag(event, {
+      mousemove: function (cursor) {
+        table.style.left = (parseFloat(table.style.left) + cursor.delta.x) + 'px';
+        table.style.top  = (parseFloat(table.style.top)  + cursor.delta.y) + 'px';
+        var affectedLinks = new Set();
+        Array.from(table.getElementsByTagName('TD')).forEach(td => {
+          td.attachedNodes.forEach(node => {
+            node.style.left = (parseFloat(node.style.left) + cursor.delta.x) + 'px';
+            node.style.top  = (parseFloat(node.style.top)  + cursor.delta.y) + 'px';
+            node.links.forEach(link => affectedLinks.add(link));
+          });
         });
-      });
-      affectedLinks.forEach(layoutLink);
-      lastCursorPosition = {x: event.pageX, y: event.pageY};
-    }
-    function handleMouseup(event) {
-      window.removeEventListener('mousemove', handleMousemove);
-      window.removeEventListener('mouseup', handleMouseup);
-    }
-    window.addEventListener('mousemove', handleMousemove);
-    window.addEventListener('mouseup', handleMouseup);
+        affectedLinks.forEach(layoutLink);
+      },
+    });
     return false;
   } else if (event.button === 1) {
     event.preventDefault();
-    var lastMousePosition = {x: event.screenX, y: event.screenY};
-    function handlePanMousemove(event) {
-      window.scrollBy(lastMousePosition.x - event.screenX, lastMousePosition.y - event.screenY);
-      lastMousePosition = {x: event.screenX, y: event.screenY};
-    }
-    function handlePanMouseup(event) {
-      window.removeEventListener('mousemove', handlePanMousemove);
-      window.removeEventListener('mouseup', handlePanMouseup);
-    }
-    window.addEventListener('mousemove', handlePanMousemove);
-    window.addEventListener('mouseup', handlePanMouseup);
+    handleMouseDrag(event, {
+      mousemove: function(cursor) {
+        window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
+      }
+    });
     return false;
   } else {
     handleBackgroundMousedownForSelectionBox(event);
