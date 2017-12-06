@@ -49,14 +49,21 @@ function findNodeVia(node, via) {
   return link ? link.to : null;
 }
 
-function* followListLinks(node, forward) {
+function followListLinks(node, forward) {
+  var links = [];
+  var alreadyVisited = new Set();
   do {
+    alreadyVisited.add(node);
     var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
     if (forwardLink) {
-      yield forwardLink;
+      if (alreadyVisited.has(forwardLink.to)) {
+        throw 'Attempting to follow list that forms a loop.';
+      }
+      links.push(forwardLink);
     }
     node = forwardLink ? forwardLink.to : null;
   } while(node)
+  return links;
 }
 
 function* followListNodes(node, forward) {
