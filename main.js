@@ -78,8 +78,13 @@ function createNode(position, text) {
   node.classList.add('node');
   node.textContent = text;
   node.setAttribute('tabindex', '0');
-  node.style.left = String(position.x) + 'px';
-  node.style.top  = String(position.y) + 'px';
+  if (position) {
+    node.style.left = String(position.x) + 'px';
+    node.style.top  = String(position.y) + 'px';
+  } else {
+    node.style.left = '0px';
+    node.style.top  = '0px';
+  }
   node.instances = new Set([node]);
   node.links = new Set();
   graph.appendChild(node);
@@ -281,7 +286,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
           node.collapsedNodes.forEach(node => node.classList.toggle('selected', inSelectionBox));
         }
       });
-      var closestNode = getClosestNodeTo({x: event.pageX, y: event.pageY}, Array.from(document.querySelectorAll('.node.selected')));
+      var closestNode = getClosestNodeTo(cursor.position, Array.from(document.querySelectorAll('.node.selected')));
       if (closestNode) {
         closestNode.focus();
       } else {
@@ -302,7 +307,20 @@ function handleBackgroundMousedownForSelectionBox(event) {
 // Node renaming
 var renameInput = null;
 document.body.addEventListener('keydown', event => {
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && event.ctrlKey) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
+      event.preventDefault();
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var newNode = createNode();
+      tableNodes.splice(tableNodes.indexOf(document.activeElement) + 1, 0, newNode);
+      rebuildTable(table, tableNodes);
+      document.activeElement.classList.remove('selected');
+      newNode.focus();
+      newNode.classList.add('selected');
+      return false;
+    }
+  } else if (event.key === 'Enter') {
     if (!renameInput) {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
         renameInput = document.createElement('input');
@@ -330,7 +348,7 @@ document.body.addEventListener('keydown', event => {
         tableNodes.splice(index, 1);
         tableNodes.splice(index - 1, 0, document.activeElement);
       }
-      setTableOrder(table, tableNodes);
+      rebuildTable(table, tableNodes);
     }
   } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -381,6 +399,28 @@ document.addEventListener('keypress', event => {
     if (selectedNodes.length > 0) {
       event.preventDefault();
       duplicateNodes(selectedNodes);
+      return false;
+    }
+  } else if (event.key === 'Delete' && event.ctrlKey) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
+      event.preventDefault();
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var index = tableNodes.indexOf(document.activeElement);
+      tableNodes.splice(index, 1);
+      rebuildTable(table, tableNodes);
+      document.activeElement.attachedTableCell = null;
+      deleteElements([document.activeElement]);
+      if (tableNodes.length) {
+        var nextNode = null;
+        if (index === tableNodes.length) {
+          nextNode = tableNodes[tableNodes.length-1];
+        } else {
+          nextNode = tableNodes[index];
+        }
+        nextNode.focus();
+        nextNode.classList.add('selected');
+      }
       return false;
     }
   } else if (event.key === 'Delete') {

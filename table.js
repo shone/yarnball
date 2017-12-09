@@ -110,31 +110,36 @@ function getTableNodes(table) {
   return Array.from(table.getElementsByTagName('TR')).map(tr => tr.getElementsByTagName('TD')[0].tableElementNode);
 }
 
-function setTableOrder(table, nodes) {
-  var nodePositions = new Map();
-  var trHeights = new Map();
-  var trs = nodes.map(node => node.attachedTableCell.parentElement);
-  trs.forEach(tr => {
-    trHeights.set(tr, tr.offsetHeight);
-    var map = new Map();
-    tr.getElementsByTagName('TD')[0].attachedNodes.forEach(node => {
-      map.set(node, {x: parseFloat(node.style.left), y: parseFloat(node.style.top) - (table.offsetTop + tr.offsetTop)});
-    });
-    nodePositions.set(tr, map);
-  });
+function rebuildTable(table, nodes) {
+  var trs = Array.from(table.getElementsByTagName('TR'));
+  var oldTrPositions = new Map();
+  trs.forEach(tr => oldTrPositions.set(tr, tr.offsetTop));
   trs.forEach(tr => tr.remove());
-  var currentY = table.offsetTop;
+
   var affectedLinks = new Set();
-  trs.forEach(tr => {
-    table.appendChild(tr)
-    var positions = nodePositions.get(tr);
-    for (var entry of positions) {
-      entry[0].style.top = (currentY + entry[1].y) + 'px';
-      entry[0].links.forEach(link => affectedLinks.add(link));
+  nodes.forEach(node => {
+    if (node.attachedTableCell) {
+      var tr = node.attachedTableCell.parentElement;
+      table.appendChild(tr)
+      var trDeltaY = oldTrPositions.get(tr) - tr.offsetTop;
+      node.attachedTableCell.attachedNodes.forEach(attachedNode => {
+        attachedNode.style.top = (parseFloat(attachedNode.style.top) - trDeltaY) + 'px';
+        attachedNode.links.forEach(link => affectedLinks.add(link));
+      });
+    } else {
+      var tr = document.createElement('tr');
+      var td = document.createElement('td');
+      tr.appendChild(td);
+      node.attachedTableCell = td;
+      td.tableElementNode = node;
+      td.attachedNodes = new Set([node]);
+      tr.style.width  = '90px';
+      tr.style.height = '90px';
+      table.appendChild(tr);
+      node.style.left = (table.offsetLeft + 45) + 'px';
+      node.style.top = (table.offsetTop + tr.offsetTop + 45) + 'px';
     }
-    currentY += tr.offsetHeight;
   });
-  fitTableCellsToAttachedNodes(table);
   affectedLinks.forEach(layoutLink);
 
   var downViaText = table.downVia.textContent;
