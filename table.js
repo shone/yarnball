@@ -168,3 +168,83 @@ function rebuildTable(table, nodes) {
     previousNode = node;
   });
 }
+
+function handleKeydownForTable(event) {
+  if (event.key === 'Enter' && event.ctrlKey) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
+      event.preventDefault();
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var newNode = createNode();
+      tableNodes.splice(tableNodes.indexOf(document.activeElement) + 1, 0, newNode);
+      rebuildTable(table, tableNodes);
+      document.activeElement.classList.remove('selected');
+      newNode.focus();
+      newNode.classList.add('selected');
+      return false;
+    }
+  } else if (event.ctrlKey && event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && isTableElementNode(document.activeElement)) {
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var index = tableNodes.indexOf(document.activeElement);
+      if (event.key === 'ArrowDown' && index < tableNodes.length) {
+        tableNodes.splice(index, 1);
+        tableNodes.splice(index + 1, 0, document.activeElement);
+      } else if (event.key === 'ArrowUp' && index > 0) {
+        tableNodes.splice(index, 1);
+        tableNodes.splice(index - 1, 0, document.activeElement);
+      }
+      rebuildTable(table, tableNodes);
+    }
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      if (isTableElementNode(document.activeElement)) {
+        event.preventDefault();
+        if (event.key === 'ArrowDown') {
+          focusNextTableElementNode(document.activeElement);
+        } else {
+          focusPreviousTableElementNode(document.activeElement);
+        }
+        return false;
+      }
+    }
+  }
+}
+
+function handleKeypressForTable(event) {
+  if (event.key === 't') {
+    var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
+    if (document.activeElement && selectedNodes.length === 2) {
+      event.preventDefault();
+      var baseNode = document.activeElement;
+      var forwardNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
+      if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === forwardNode)) {
+        createTable(baseNode, forwardNode);
+      }
+      return false;
+    }
+  } else if (event.key === 'Delete' && event.ctrlKey) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
+      event.preventDefault();
+      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var tableNodes = getTableNodes(table);
+      var index = tableNodes.indexOf(document.activeElement);
+      tableNodes.splice(index, 1);
+      rebuildTable(table, tableNodes);
+      document.activeElement.attachedTableCell = null;
+      deleteElements([document.activeElement]);
+      if (tableNodes.length) {
+        var nextNode = null;
+        if (index === tableNodes.length) {
+          nextNode = tableNodes[tableNodes.length-1];
+        } else {
+          nextNode = tableNodes[index];
+        }
+        nextNode.focus();
+        nextNode.classList.add('selected');
+      }
+      return false;
+    }
+  }
+}
