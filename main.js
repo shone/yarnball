@@ -304,8 +304,16 @@ function handleBackgroundMousedownForSelectionBox(event) {
   return false;
 }
 
-// Node renaming
 var renameInput = null;
+function renameNode(node) {
+  renameInput = document.createElement('input');
+  renameInput.value = node.textContent;
+  node.textContent = '';
+  renameInput.select();
+  node.appendChild(renameInput);
+  renameInput.focus();
+}
+
 document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
@@ -313,12 +321,7 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
     if (!renameInput) {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
-        renameInput = document.createElement('input');
-        renameInput.value = document.activeElement.textContent;
-        document.activeElement.textContent = '';
-        renameInput.select();
-        document.activeElement.appendChild(renameInput);
-        renameInput.focus();
+        renameNode(document.activeElement);
       }
     } else {
       renameInput.parentElement.focus();
@@ -361,7 +364,41 @@ document.addEventListener('keypress', event => {
 
   if (handleKeypressForTable(event) === false) return false;
 
-  if (event.key === 'd') {
+  if (event.key === ' ') {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      event.preventDefault();
+      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + document.activeElement.offsetWidth + 45, y: parseFloat(document.activeElement.style.top)});
+      newNode.classList.add('selected');
+      Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
+      renameNode(newNode);
+      return false;
+    }
+  } else if (event.key === 'l') {
+    var selectedNodes = document.querySelectorAll('.node.selected');
+    if (selectedNodes.length === 3) {
+      var nonFocusedNodes = new Set(selectedNodes);
+      nonFocusedNodes.delete(document.activeElement);
+      nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
+        var fX = parseFloat(document.activeElement.style.left);
+        var fY = parseFloat(document.activeElement.style.top);
+        var aDeltaX = fX - parseFloat(a.style.left);
+        var aDeltaY = fY - parseFloat(a.style.top);
+        var bDeltaX = fX - parseFloat(b.style.left);
+        var bDeltaY = fY - parseFloat(b.style.top);
+        return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
+      });
+      var from = nonFocusedNodes[0];
+      var via = nonFocusedNodes[1]
+      var to = document.activeElement;
+      var link = Array.from(from.links).find(link => link.from === from && link.via === via && link.to === to);
+      if (link) {
+        deleteElements([link]);
+      } else {
+        link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
+        layoutLink(link);
+      }
+    }
+  } else if (event.key === 'd') {
     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
     if (selectedNodes.length > 0) {
       event.preventDefault();
