@@ -246,6 +246,39 @@ function getClosestNodeTo(position, nodes) {
   return closestNode;
 }
 
+function directionBetweenPoints(a, b) {
+  var delta = {
+    x: b.x - a.x,
+    y: b.y - a.y,
+  }
+  var downLeft  = (-delta.x + delta.y) > 0;
+  var downRight = ( delta.x + delta.y) > 0;
+  if ( downLeft &&  downRight) return 'down';
+  if (!downLeft && !downRight) return 'up';
+  if ( downLeft && !downRight) return 'left';
+  if (!downLeft &&  downRight) return 'right';
+}
+
+function getClosestNodeInDirection(sourceNode, direction) {
+  var sourcePosition = {x: parseFloat(sourceNode.style.left), y: parseFloat(sourceNode.style.top)};
+  var closestNode = null;
+  var distanceToClosestNode = null;
+  Array.from(document.getElementsByClassName('node')).forEach(node => {
+    if (node === sourceNode) return;
+    var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+    if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
+      var deltaX = sourcePosition.x - nodePosition.x;
+      var deltaY = sourcePosition.y - nodePosition.y;
+      var distance = (deltaX * deltaX) + (deltaY * deltaY);
+      if (closestNode === null || distance < distanceToClosestNode) {
+        closestNode = node;
+        distanceToClosestNode = distance;
+      }
+    }
+  });
+  return closestNode;
+}
+
 // Selection box
 var selectionBox = document.getElementById("selection-box");
 var selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
@@ -328,6 +361,27 @@ document.body.addEventListener('keydown', event => {
       renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
       renameInput.remove();
       renameInput = null;
+    }
+  }
+
+  var arrowKeyDirections = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+  }
+  if (event.key in arrowKeyDirections) {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
+      if (node) {
+        event.preventDefault();
+        node.focus();
+        if (!event.shiftKey) {
+          Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+        }
+        node.classList.add('selected');
+        return false;
+      }
     }
   }
 });
