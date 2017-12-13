@@ -54,9 +54,9 @@ function handleTableMousedown(event) {
   var tableElementNodes = getTableNodes(table);
   tableElementNodes.forEach(node => {
     node.links.forEach(link => {
-      if (link.from.attachedTableCell.tableElementNode === link.from &&
+      if (link.from.attachedTableCell && link.from.attachedTableCell.tableElementNode === link.from &&
           link.via.instances.has(table.downVia) &&
-          link.to.attachedTableCell.tableElementNode === link.to) {
+          link.to.attachedTableCell && link.to.attachedTableCell.tableElementNode === link.to) {
         elementsToMove.add(link.via);
         affectedLinks.add(link);
       }

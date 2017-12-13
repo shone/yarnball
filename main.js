@@ -4,6 +4,10 @@ if (localStorage.saved_state) {
 
 var graph = document.getElementById('graph');
 
+function pxToGrid(px) {
+  return Math.round(px / 64) * 64;
+}
+
 var cursorOnMousedownPosition = {x: 0, y: 0};
 var lastCursorPosition = {x: 0, y: 0};
 
@@ -87,6 +91,8 @@ function createNode(position, text) {
     node.style.left = '0px';
     node.style.top  = '0px';
   }
+  node.style.width  = '50px';
+  node.style.height = '50px';
   node.instances = new Set([node]);
   node.links = new Set();
   graph.appendChild(node);
@@ -210,6 +216,14 @@ function handleNodeMousedown(event) {
         window.removeEventListener('mouseover', handleNodeDragMouseover);
         window.removeEventListener('mouseout',  handleNodeDragMouseout);
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
+
+        var affectedLinks = new Set();
+        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+          node.style.left = pxToGrid(parseFloat(node.style.left)) + 'px';
+          node.style.top  = pxToGrid(parseFloat(node.style.top))  + 'px';
+          node.links.forEach(link => affectedLinks.add(link));
+        });
+        affectedLinks.forEach(layoutLink);
 
         var affectedTables = new Set();
         Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
@@ -376,40 +390,66 @@ function renameNode(node) {
   renameInput = document.createElement('input');
   renameInput.value = node.textContent;
   node.textContent = '';
+  renameInput.style.width = node.offsetWidth + 'px';
   renameInput.select();
   node.appendChild(renameInput);
   renameInput.focus();
+  renameInput.addEventListener('blur', event => {
+    var node = renameInput.parentElement;
+    node.focus();
+    node.instances.forEach(instance => {
+      instance.textContent = renameInput.value;
+      instance.style.width = ((Math.ceil(((instance.textContent.length * 9) + 5) / 64) * 64) - 14) + 'px';
+    });
+    if (node.attachedTableCell) {
+      fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
+    }
+    renameInput.remove();
+    renameInput = null;
+  });
 }
 
 document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
 
-  if (event.key === 'Enter') {
+  if (event.key === 'Enter' && event.ctrlKey) {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var newNode = createNode({x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top) + 64});
+      newNode.focus();
+      if (!event.shiftKey) {
+        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+      }
+      newNode.classList.add('selected');
+    }
+  } else if (event.key === 'Enter') {
     if (!renameInput) {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
         renameNode(document.activeElement);
       }
     } else {
-      var node = renameInput.parentElement;
-      node.focus();
-      node.instances.forEach(instance => {instance.textContent = renameInput.value});
-      if (node.attachedTableCell) {
-        fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
-      }
-      renameInput.remove();
-      renameInput = null;
+      renameInput.parentElement.focus();
     }
   }
 
   var arrowKeyDirections = {
-    ArrowLeft: 'left',
+    ArrowLeft:  'left',
     ArrowRight: 'right',
-    ArrowUp: 'up',
-    ArrowDown: 'down',
+    ArrowUp:    'up',
+    ArrowDown:  'down',
   }
   if (event.key in arrowKeyDirections) {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
+    if (event.ctrlKey) {
+      var affectedLinks = new Set();
+      Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+        if (event.key === 'ArrowLeft')  node.style.left = (parseFloat(node.style.left) - 64) + 'px';
+        if (event.key === 'ArrowRight') node.style.left = (parseFloat(node.style.left) + 64) + 'px';
+        if (event.key === 'ArrowUp')    node.style.top  = (parseFloat(node.style.top)  - 64) + 'px';
+        if (event.key === 'ArrowDown')  node.style.top  = (parseFloat(node.style.top)  + 64) + 'px';
+        node.links.forEach(link => affectedLinks.add(link));
+      });
+      affectedLinks.forEach(layoutLink);
+    } else if (document.activeElement && document.activeElement.classList.contains('node')) {
       var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
       if (node) {
         event.preventDefault();
@@ -459,7 +499,7 @@ document.addEventListener('keypress', event => {
   if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
-      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + document.activeElement.offsetWidth + 45, y: parseFloat(document.activeElement.style.top)});
+      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + parseFloat(document.activeElement.style.width) + 14, y: parseFloat(document.activeElement.style.top)});
       if (document.activeElement.attachedTableCell) {
         var td = document.activeElement.attachedTableCell;
         td.attachedNodes.add(newNode);
@@ -628,7 +668,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 graph.addEventListener('mousedown', event => {
   if (event.button === 0 && event.ctrlKey && event.shiftKey) {
     event.preventDefault();
-    var node = createNode({x: event.pageX, y: event.pageY});
+    var node = createNode({x: pxToGrid(event.pageX), y: pxToGrid(event.pageY)});
     Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
     node.classList.add('selected');
     node.focus();
@@ -743,6 +783,10 @@ function restoreState() {
   Array.from(document.getElementsByClassName('node')).forEach(node => {
     if (node.getAttribute('data-links')) {
       node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+      if (node.links.has(null)) {
+        console.error('null link');
+        node.links.delete(null);
+      }
       node.removeAttribute('data-links');
     } else {
       node.links = new Set();

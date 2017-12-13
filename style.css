@@ -22,15 +22,15 @@ body {
 }
 
 .hidden {
-/*   display: none !important; */
-  opacity: 0.4;
+  display: none !important;
+/*   opacity: 0.4; */
 }
 
 .node {
   position: absolute;
   background-color: #fff;
-  min-width:  3rem;
-  height: 3rem;
+  width:  50px;
+  height: 50px;
   margin-left: -1.5rem;
   margin-top:  -1.5rem;
   border: 1px solid grey;
@@ -38,6 +38,8 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-family: monospace;
+  font-size: 14px;
 }
 
 .node.highlighted {
@@ -54,6 +56,19 @@ body {
 
 .node:focus {
   outline: 4px solid red;
+}
+
+.node input {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  text-align: center;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 40px;
+}
+.node input:focus {
+  outline: none;
 }
 
 .link {
