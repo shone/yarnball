@@ -378,8 +378,12 @@ document.body.addEventListener('keydown', event => {
         renameNode(document.activeElement);
       }
     } else {
-      renameInput.parentElement.focus();
-      renameInput.parentElement.instances.forEach(node => {node.textContent = renameInput.value});
+      var node = renameInput.parentElement;
+      node.focus();
+      node.instances.forEach(instance => {instance.textContent = renameInput.value});
+      if (node.attachedTableCell) {
+        fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
+      }
       renameInput.remove();
       renameInput = null;
     }
@@ -443,6 +447,12 @@ document.addEventListener('keypress', event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
       var newNode = createNode({x: parseFloat(document.activeElement.style.left) + document.activeElement.offsetWidth + 45, y: parseFloat(document.activeElement.style.top)});
+      if (document.activeElement.attachedTableCell) {
+        var td = document.activeElement.attachedTableCell;
+        td.attachedNodes.add(newNode);
+        newNode.attachedTableCell = td;
+        fitTableCellsToAttachedNodes(td.closest('table'));
+      }
       newNode.classList.add('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       renameNode(newNode);
