@@ -122,7 +122,7 @@ function deleteElements(elements) {
       element.remove();
       if (element.attachedTableCell) {
         element.attachedTableCell.attachedNodes.delete(element);
-        fitTableCellsToAttachedNodes(element.attachedTableCell.parentElement.parentElement);
+        fitTableCellsToAttachedNodes(element.attachedTableCell.closest('table'));
         element.attachedTableCell = null;
       }
     } else if (element.classList.contains('link')) {
@@ -180,7 +180,7 @@ function handleNodeMousedown(event) {
         var affectedTables = new Set();
         Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
           if (node.attachedTableCell) {
-            affectedTables.add(node.attachedTableCell.parentElement.parentElement);
+            affectedTables.add(node.attachedTableCell.closest('table'));
             node.attachedTableCell.attachedNodes.delete(node);
             node.attachedTableCell = null;
           }
@@ -191,7 +191,7 @@ function handleNodeMousedown(event) {
             td.attachedNodes.add(node);
             node.attachedTableCell = td;
           });
-          affectedTables.add(td.parentElement.parentElement);
+          affectedTables.add(td.closest('table'));
         }
         Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
         affectedTables.forEach(fitTableCellsToAttachedNodes);
@@ -663,22 +663,25 @@ graph.addEventListener('mouseout', event => {
 
 function saveState() {
   var id = 0;
-  Array.from(document.getElementsByClassName('node')).forEach(node => {
-    node.id = id;
-    id = id + 1;
-  });
+  Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
   Array.from(document.getElementsByClassName('link')).forEach(link => {
-    link.id = id;
-    id = id + 1;
     link.setAttribute('data-from', link.from.id);
     link.setAttribute('data-via',  link.via.id);
     link.setAttribute('data-to',   link.to.id);
   });
   Array.from(document.getElementsByClassName('node')).forEach(node => {
-    node.setAttribute('data-links', Array.from(node.links).map(function(link) {
-      return link.id;
-    }).join(','));
+    node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
+    if (node.attachedTableCell) {
+      node.setAttribute('data-attached-table-cell', node.attachedTableCell.id);
+    }
+  });
+  Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
+    table.setAttribute('data-downvia', table.downVia.id);
+  });
+  Array.from(document.getElementsByTagName('TD')).forEach(td => {
+    td.setAttribute('data-table-element-node', td.tableElementNode.id);
+    td.setAttribute('data-attached-nodes', Array.from(td.attachedNodes).map(node => node.id).join(','));
   });
   localStorage.saved_state = document.getElementById('graph').innerHTML;
 }
@@ -706,8 +709,28 @@ function restoreState() {
     } else {
       node.instances = new Set([node]);
     }
+    if (node.getAttribute('data-attached-table-cell')) {
+      node.attachedTableCell = document.getElementById(node.getAttribute('data-attached-table-cell'));
+      node.removeAttribute('data-attached-table-cell');
+    }
     node.setAttribute('tabindex', '-1');
+    node.classList.remove('selected');
   });
-  Array.from(document.getElementsByClassName('node')).forEach(node => node.removeAttribute('id'));
-  Array.from(document.getElementsByClassName('link')).forEach(link => link.removeAttribute('id'));
+  Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
+    if (table.getAttribute('data-downvia')) {
+      table.downVia = document.getElementById(table.getAttribute('data-downvia'));
+      table.removeAttribute('data-downvia')
+    }
+  });
+  Array.from(document.getElementsByTagName('TD')).forEach(td=> {
+    if (td.getAttribute('data-table-element-node')) {
+      td.tableElementNode = document.getElementById(td.getAttribute('data-table-element-node'));
+      td.removeAttribute('data-table-element-node')
+    }
+    if (td.getAttribute('data-attached-nodes')) {
+      td.attachedNodes = new Set(td.getAttribute('data-attached-nodes').split(',').map(id => document.getElementById(id)));
+      td.removeAttribute('data-attached-nodes');
+    }
+  });
+  Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.removeAttribute('id'));
 }

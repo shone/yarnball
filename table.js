@@ -1,13 +1,14 @@
 function createTable(baseNode, forwardNode) {
   var table = document.createElement('table');
+  var tbody = document.createElement('tbody');
+  table.appendChild(tbody);
   table.style.left = baseNode.style.left;
   table.style.top  = baseNode.style.top;
-  graph.appendChild(table);
   table.downVia = forwardNode;
   var lastNode = null;
-  for (var link of followListLinks(baseNode, forwardNode)) {
+  followListLinks(baseNode, forwardNode).forEach(link => {
     var tr = document.createElement('tr');
-    table.appendChild(tr);
+    tbody.appendChild(tr);
     var td = document.createElement('td');
     tr.appendChild(td);
     td.tableElementNode = link.from;
@@ -16,21 +17,26 @@ function createTable(baseNode, forwardNode) {
     td.attachedDownViaNode = link.via;
     td.attachedNodes = new Set([link.from]);
     lastNode = link.to;
-  }
+  });
   var tr = document.createElement('tr');
-  table.appendChild(tr);
+  tbody.appendChild(tr);
   var td = document.createElement('td');
   tr.appendChild(td);
   td.tableElementNode = lastNode;
   lastNode.attachedTableCell = td;
   td.attachedNodes = new Set([lastNode]);
 
+  graph.appendChild(table);
+
   Array.from(table.getElementsByTagName('TD')).forEach(td => {
     td.tableElementNode.style.top  = (table.offsetTop  + td.offsetTop  + 45) + 'px';
     td.tableElementNode.style.left = (table.offsetLeft + td.offsetLeft + 45) + 'px';
     if (td.attachedDownLink) {
       td.attachedDownLink.classList.add('hidden');
+      td.attachedDownLink.classList.remove('selected');
+
       td.attachedDownLink.via.classList.add('hidden');
+      td.attachedDownLink.via.classList.remove('selected');
     }
   });
   fitTableCellsToAttachedNodes(table);
@@ -61,17 +67,17 @@ function handleTableMousedown(event) {
 function fitTableCellsToAttachedNodes(table) {
   var affectedLinks = new Set();
   Array.from(table.getElementsByTagName('TD')).forEach(td => {
-    td.tableElementNode.style.top  = (table.offsetTop  + td.offsetTop  + 45) + 'px';
-    td.tableElementNode.style.left = (table.offsetLeft + td.offsetLeft + 45) + 'px';
+    td.tableElementNode.style.top  = (parseFloat(table.style.top)  + td.offsetTop  + 45) + 'px';
+    td.tableElementNode.style.left = (parseFloat(table.style.left) + td.offsetLeft + 45) + 'px';
     td.tableElementNode.links.forEach(link => affectedLinks.add(link));
     var tdWidth  = 40;
     var tdHeight = 40;
     td.attachedNodes.forEach(node => {
-      var tdWidthRequired = (node.offsetLeft - (table.offsetLeft + td.offsetLeft)) + node.offsetWidth + 20;
+      var tdWidthRequired = (node.offsetLeft - (parseFloat(table.style.left) + td.offsetLeft)) + node.offsetWidth + 20;
       if (tdWidthRequired > tdWidth) {
         tdWidth = tdWidthRequired;
       }
-      var tdHeightRequired = (node.offsetTop - (table.offsetTop + td.offsetTop)) + node.offsetHeight + 20;
+      var tdHeightRequired = (node.offsetTop - (parseFloat(table.style.top) + td.offsetTop)) + node.offsetHeight + 20;
       if (tdHeightRequired > tdHeight) {
         tdHeight = tdHeightRequired;
       }
@@ -90,7 +96,7 @@ function focusNextTableElementNode(node) {
   var tr = node.attachedTableCell.parentElement;
   if (tr.nextElementSibling) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-    var nextTableNode = tr.nextElementSibling.getElementsByTagName('TD')[0].tableElementNode;
+    var nextTableNode = tr.nextElementSibling.cells[0].tableElementNode;
     nextTableNode.focus();
     nextTableNode.classList.add('selected');
   }
@@ -100,18 +106,18 @@ function focusPreviousTableElementNode(node) {
   var tr = node.attachedTableCell.parentElement;
   if (tr.previousElementSibling) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-    var previousTableNode = tr.previousElementSibling.getElementsByTagName('TD')[0].tableElementNode;
+    var previousTableNode = tr.previousElementSibling.cells[0].tableElementNode;
     previousTableNode.focus();
     previousTableNode.classList.add('selected');
   }
 }
 
 function getTableNodes(table) {
-  return Array.from(table.getElementsByTagName('TR')).map(tr => tr.getElementsByTagName('TD')[0].tableElementNode);
+  return Array.from(table.rows).map(tr => tr.cells[0].tableElementNode);
 }
 
 function rebuildTable(table, nodes) {
-  var trs = Array.from(table.getElementsByTagName('TR'));
+  var trs = Array.from(table.rows);
   var oldTrPositions = new Map();
   trs.forEach(tr => oldTrPositions.set(tr, tr.offsetTop));
   trs.forEach(tr => tr.remove());
@@ -120,7 +126,7 @@ function rebuildTable(table, nodes) {
   nodes.forEach(node => {
     if (node.attachedTableCell) {
       var tr = node.attachedTableCell.parentElement;
-      table.appendChild(tr)
+      table.tBodies[0].appendChild(tr)
       var trDeltaY = oldTrPositions.get(tr) - tr.offsetTop;
       node.attachedTableCell.attachedNodes.forEach(attachedNode => {
         attachedNode.style.top = (parseFloat(attachedNode.style.top) - trDeltaY) + 'px';
@@ -135,7 +141,7 @@ function rebuildTable(table, nodes) {
       td.attachedNodes = new Set([node]);
       tr.style.width  = '90px';
       tr.style.height = '90px';
-      table.appendChild(tr);
+      table.tBodies[0].appendChild(tr);
       node.style.left = (table.offsetLeft + 45) + 'px';
       node.style.top = (table.offsetTop + tr.offsetTop + 45) + 'px';
     }
@@ -173,7 +179,7 @@ function handleKeydownForTable(event) {
   if (event.key === 'Enter' && event.ctrlKey) {
     if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
       event.preventDefault();
-      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var table = document.activeElement.attachedTableCell.closest('table');
       var tableNodes = getTableNodes(table);
       var newNode = createNode();
       tableNodes.splice(tableNodes.indexOf(document.activeElement) + 1, 0, newNode);
@@ -185,7 +191,8 @@ function handleKeydownForTable(event) {
     }
   } else if (event.ctrlKey && event.shiftKey && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
     if (document.activeElement && document.activeElement.classList.contains('node') && isTableElementNode(document.activeElement)) {
-      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      event.preventDefault();
+      var table = document.activeElement.attachedTableCell.closest('table');
       var tableNodes = getTableNodes(table);
       var index = tableNodes.indexOf(document.activeElement);
       if (event.key === 'ArrowDown' && index < tableNodes.length) {
@@ -196,6 +203,7 @@ function handleKeydownForTable(event) {
         tableNodes.splice(index - 1, 0, document.activeElement);
       }
       rebuildTable(table, tableNodes);
+      return false;
     }
   } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -227,7 +235,7 @@ function handleKeypressForTable(event) {
   } else if (event.key === 'Delete' && event.ctrlKey) {
     if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
       event.preventDefault();
-      var table = document.activeElement.attachedTableCell.parentElement.parentElement;
+      var table = document.activeElement.attachedTableCell.closest('table');
       var tableNodes = getTableNodes(table);
       var index = tableNodes.indexOf(document.activeElement);
       tableNodes.splice(index, 1);
