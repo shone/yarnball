@@ -49,16 +49,27 @@ function createTable(baseNode, forwardNode) {
 function handleTableMousedown(event) {
   event.preventDefault();
   var table = event.target;
+  var elementsToMove = new Set([table, table.downVia]);
+  var affectedLinks = new Set();
+  var tableElementNodes = getTableNodes(table);
+  tableElementNodes.forEach(node => {
+    node.links.forEach(link => {
+      if (link.from.attachedTableCell.tableElementNode === link.from &&
+          link.via.instances.has(table.downVia) &&
+          link.to.attachedTableCell.tableElementNode === link.to) {
+        elementsToMove.add(link.via);
+        affectedLinks.add(link);
+      }
+    });
+  });
+  Array.from(table.getElementsByTagName('TD')).forEach(td => {
+    td.attachedNodes.forEach(node => {
+      elementsToMove.add(node);
+      node.links.forEach(link => affectedLinks.add(link));
+    });
+  });
   handleMouseDrag(event, {
     mousemove: function (cursor) {
-      var elementsToMove = new Set([table, table.downVia]);
-      var affectedLinks = new Set();
-      Array.from(table.getElementsByTagName('TD')).forEach(td => {
-        td.attachedNodes.forEach(node => {
-          elementsToMove.add(node);
-          node.links.forEach(link => affectedLinks.add(link));
-        });
-      });
       elementsToMove.forEach(element => {
         element.style.left = (parseFloat(element.style.left) + cursor.delta.x) + 'px';
         element.style.top  = (parseFloat(element.style.top)  + cursor.delta.y) + 'px';
