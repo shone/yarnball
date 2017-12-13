@@ -2,29 +2,32 @@ function createTable(baseNode, forwardNode) {
   var table = document.createElement('table');
   var tbody = document.createElement('tbody');
   table.appendChild(tbody);
-  table.style.left = baseNode.style.left;
-  table.style.top  = baseNode.style.top;
-  table.downVia = forwardNode;
-  var lastNode = null;
-  followListLinks(baseNode, forwardNode).forEach(link => {
+  table.style.left = (parseFloat(baseNode.style.left) - 45) + 'px';
+  table.style.top  = (parseFloat(baseNode.style.top)  - 45) + 'px';
+  if (!forwardNode) {
+    forwardNode = createNode({x: parseFloat(baseNode.style.left) - 85, y: parseFloat(baseNode.style.top)});
+    table.downVia = forwardNode;
+  } else {
+    table.downVia = instanceNode(forwardNode, {x: parseFloat(baseNode.style.left) - 85, y: parseFloat(baseNode.style.top)});
+  }
+  var previousNode = null;
+  followListNodes(baseNode, forwardNode).forEach(node => {
     var tr = document.createElement('tr');
     tbody.appendChild(tr);
     var td = document.createElement('td');
     tr.appendChild(td);
-    td.tableElementNode = link.from;
-    link.from.attachedTableCell = td;
-    td.attachedDownLink = link;
-    td.attachedDownViaNode = link.via;
-    td.attachedNodes = new Set([link.from]);
-    lastNode = link.to;
+    td.tableElementNode = node;
+    td.attachedNodes = new Set([node]);
+    node.attachedTableCell = td;
+    if (previousNode) {
+      var link = Array.from(node.links).find(link => link.from === previousNode && link.via.instances.has(forwardNode) && link.to === node);
+      if (link) {
+        td.attachedDownLink = link;
+        td.attachedDownViaNode = link.via;
+      }
+    }
+    previousNode = node;
   });
-  var tr = document.createElement('tr');
-  tbody.appendChild(tr);
-  var td = document.createElement('td');
-  tr.appendChild(td);
-  td.tableElementNode = lastNode;
-  lastNode.attachedTableCell = td;
-  td.attachedNodes = new Set([lastNode]);
 
   graph.appendChild(table);
 
@@ -48,15 +51,17 @@ function handleTableMousedown(event) {
   var table = event.target;
   handleMouseDrag(event, {
     mousemove: function (cursor) {
-      table.style.left = (parseFloat(table.style.left) + cursor.delta.x) + 'px';
-      table.style.top  = (parseFloat(table.style.top)  + cursor.delta.y) + 'px';
+      var elementsToMove = new Set([table, table.downVia]);
       var affectedLinks = new Set();
       Array.from(table.getElementsByTagName('TD')).forEach(td => {
         td.attachedNodes.forEach(node => {
-          node.style.left = (parseFloat(node.style.left) + cursor.delta.x) + 'px';
-          node.style.top  = (parseFloat(node.style.top)  + cursor.delta.y) + 'px';
+          elementsToMove.add(node);
           node.links.forEach(link => affectedLinks.add(link));
         });
+      });
+      elementsToMove.forEach(element => {
+        element.style.left = (parseFloat(element.style.left) + cursor.delta.x) + 'px';
+        element.style.top  = (parseFloat(element.style.top)  + cursor.delta.y) + 'px';
       });
       affectedLinks.forEach(layoutLink);
     },
@@ -223,13 +228,17 @@ function handleKeydownForTable(event) {
 function handleKeypressForTable(event) {
   if (event.key === 't') {
     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
-    if (document.activeElement && selectedNodes.length === 2) {
+    if (document.activeElement) {
       event.preventDefault();
       var baseNode = document.activeElement;
-      var forwardNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
-      if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === forwardNode)) {
-        createTable(baseNode, forwardNode);
+      var forwardNode = null;
+      if (selectedNodes.length === 2) {
+        var otherSelectedNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
+        if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === otherSelectedNode)) {
+          forwardNode = otherSelectedNode;
+        }
       }
+      createTable(baseNode, forwardNode);
       return false;
     }
   } else if (event.key === 'Delete' && event.ctrlKey) {

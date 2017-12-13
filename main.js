@@ -66,11 +66,13 @@ function followListLinks(node, forward) {
   return links;
 }
 
-function* followListNodes(node, forward) {
+function followListNodes(node, forward) {
+  var nodes = [];
   do {
-    yield node;
+    nodes.push(node);
     node = findNodeVia(node, forward) || null;
   } while(node)
+  return nodes;
 }
 
 function createNode(position, text) {
@@ -86,6 +88,25 @@ function createNode(position, text) {
     node.style.top  = '0px';
   }
   node.instances = new Set([node]);
+  node.links = new Set();
+  graph.appendChild(node);
+  return node;
+}
+
+function instanceNode(sourceNode, position) {
+  var node = document.createElement('div');
+  node.classList.add('node');
+  node.textContent = sourceNode.textContent;
+  node.setAttribute('tabindex', '0');
+  if (position) {
+    node.style.left = String(position.x) + 'px';
+    node.style.top  = String(position.y) + 'px';
+  } else {
+    node.style.left = '0px';
+    node.style.top  = '0px';
+  }
+  sourceNode.instances.add(node);
+  node.instances = sourceNode.instances;
   node.links = new Set();
   graph.appendChild(node);
   return node;
@@ -154,7 +175,7 @@ function handleNodeMousedown(event) {
       if (!event.target.classList.contains('selected')) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
-      clickedNodes.forEach(node => {node.classList.add('selected')});
+      clickedNodes.forEach(node => node.classList.add('selected'));
     }
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.add('dragging'));
     Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.add('drag-drop-target'));

@@ -3,7 +3,7 @@ function isJs(node) {
 }
 
 function compileStatements(node) {
-  return Array.from(followListNodes(node, ';')).map(compileStatement).join(';');
+  return followListNodes(node, ';').map(compileStatement).join(';');
 }
 
 function compileStatement(node) {
@@ -50,7 +50,7 @@ function compileStatement(node) {
   }
 
   if (findLinkVia(node, '.')) {
-    return Array.from(followListNodes(node, '.')).map(currentNode => {
+    return followListNodes(node, '.').map(currentNode => {
       var is = findNodeVia(currentNode, 'is');
       return is ? compileStatement(is) : currentNode.textContent;
     }).join('.');
@@ -92,7 +92,7 @@ function compileJson(node) {
   if (!findLinkVia(node, ',') && !findLinkVia(node, ':')) {
     return node.textContent;
   }
-  return '{' + Array.from(followListNodes(node, ',')).map(keyNode => {
+  return '{' + followListNodes(node, ',').map(keyNode => {
     var value = findNodeVia(keyNode, ':');
     if (value) {
       return "'" + keyNode.textContent + "':" + compileJson(value);
