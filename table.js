@@ -97,26 +97,6 @@ function isTableElementNode(node) {
   return node.attachedTableCell && node.attachedTableCell.tableElementNode === node;
 }
 
-function focusNextTableElementNode(node) {
-  var tr = node.attachedTableCell.parentElement;
-  if (tr.nextElementSibling) {
-    Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-    var nextTableNode = tr.nextElementSibling.cells[0].tableElementNode;
-    nextTableNode.focus();
-    nextTableNode.classList.add('selected');
-  }
-}
-
-function focusPreviousTableElementNode(node) {
-  var tr = node.attachedTableCell.parentElement;
-  if (tr.previousElementSibling) {
-    Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-    var previousTableNode = tr.previousElementSibling.cells[0].tableElementNode;
-    previousTableNode.focus();
-    previousTableNode.classList.add('selected');
-  }
-}
-
 function getTableNodes(table) {
   return Array.from(table.rows).map(tr => tr.cells[0].tableElementNode);
 }
@@ -125,6 +105,14 @@ function rebuildTable(table, nodes) {
   var trs = Array.from(table.rows);
   var oldTrPositions = new Map();
   trs.forEach(tr => oldTrPositions.set(tr, tr.offsetTop));
+
+  var deletedTrs = trs.filter(tr => !nodes.find(node => node.attachedTableCell.parentElement === tr));
+  deletedTrs.forEach(tr => {
+    var td = tr.getElementsByTagName('TD')[0];
+    td.attachedNodes.forEach(node => delete node.attachedTableCell);
+    delete td.attachedNodes;
+  });
+
   trs.forEach(tr => tr.remove());
 
   var affectedLinks = new Set();
@@ -214,10 +202,20 @@ function handleKeydownForTable(event) {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       if (isTableElementNode(document.activeElement)) {
         event.preventDefault();
+        var table = document.activeElement.attachedTableCell.closest('table');
+        var tableNodes = getTableNodes(table);
+        var index = tableNodes.indexOf(document.activeElement);
         if (event.key === 'ArrowDown') {
-          focusNextTableElementNode(document.activeElement);
+          index++;
         } else {
-          focusPreviousTableElementNode(document.activeElement);
+          index--;
+        }
+        if (index >= 0 && index < tableNodes.length) {
+          if (!event.shiftKey) {
+            Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+          }
+          tableNodes[index].focus();
+          tableNodes[index].classList.add('selected');
         }
         return false;
       }
@@ -239,28 +237,6 @@ function handleKeypressForTable(event) {
         }
       }
       createTable(baseNode, forwardNode);
-      return false;
-    }
-  } else if (event.key === 'Delete' && event.ctrlKey) {
-    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
-      event.preventDefault();
-      var table = document.activeElement.attachedTableCell.closest('table');
-      var tableNodes = getTableNodes(table);
-      var index = tableNodes.indexOf(document.activeElement);
-      tableNodes.splice(index, 1);
-      rebuildTable(table, tableNodes);
-      document.activeElement.attachedTableCell = null;
-      deleteElements([document.activeElement]);
-      if (tableNodes.length) {
-        var nextNode = null;
-        if (index === tableNodes.length) {
-          nextNode = tableNodes[tableNodes.length-1];
-        } else {
-          nextNode = tableNodes[index];
-        }
-        nextNode.focus();
-        nextNode.classList.add('selected');
-      }
       return false;
     }
   }
