@@ -22,7 +22,8 @@ body {
 }
 
 .hidden {
-  display: none !important;
+/*   display: none !important; */
+  opacity: 0.4;
 }
 
 .node {

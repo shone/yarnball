@@ -106,7 +106,18 @@ function rebuildTable(table, nodes) {
   var oldTrPositions = new Map();
   trs.forEach(tr => oldTrPositions.set(tr, tr.offsetTop));
 
-  var deletedTrs = trs.filter(tr => !nodes.find(node => node.attachedTableCell.parentElement === tr));
+  getTableNodes(table).forEach(node => {
+    node.links.forEach(link => {
+      if (link.from.attachedTableCell && link.from.attachedTableCell.tableElementNode === link.from &&
+          link.via.instances.has(table.downVia) &&
+          link.to.attachedTableCell && link.to.attachedTableCell.tableElementNode === link.to) {
+        link.via.remove();
+        link.remove();
+      }
+    });
+  });
+
+  var deletedTrs = trs.filter(tr => !nodes.find(node => node.attachedTableCell && node.attachedTableCell.parentElement === tr));
   deletedTrs.forEach(tr => {
     var td = tr.getElementsByTagName('TD')[0];
     td.attachedNodes.forEach(node => delete node.attachedTableCell);
@@ -139,33 +150,23 @@ function rebuildTable(table, nodes) {
       node.style.top = (table.offsetTop + tr.offsetTop + 45) + 'px';
     }
   });
-  affectedLinks.forEach(layoutLink);
-
-  var downViaText = table.downVia.textContent;
-  var downViaInstances = table.downVia.instances;
 
   var previousNode = null;
   nodes.forEach(node => {
-    Array.from(node.links).forEach(link => {
-      if (link.via.instances.has(table.downVia)) {
-        deleteElements([link, link.via]);
-        if (table.downVia === link.via) {
-          table.downVia = null;
-          downViaInstances.delete(link.via);
-        }
-      }
-    });
     if (previousNode) {
-      var via = createNode({x: 0, y: 0}, downViaText);
-      via.instances = downViaInstances;
+      var via = createNode({x: parseFloat(table.style.left) - 45, y: parseFloat(node.style.top) - 45}, table.downVia.textContent);
+      via.instances = table.downVia.instances;
       via.instances.add(via);
       if (!table.downVia) table.downVia = via;
       var link = createLink({from: previousNode, via: via, to: node});
       via.classList.add('hidden');
       link.classList.add('hidden');
+      affectedLinks.add(link);
     }
     previousNode = node;
   });
+
+  affectedLinks.forEach(layoutLink);
 }
 
 function handleKeydownForTable(event) {

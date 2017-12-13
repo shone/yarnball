@@ -749,6 +749,10 @@ function restoreState() {
     }
     if (node.getAttribute('data-instances')) {
       node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+      if (node.instances.has(null)) {
+        console.error('null instance');
+        node.instances.delete(null);
+      }
       node.removeAttribute('data-instances')
     } else {
       node.instances = new Set([node]);
