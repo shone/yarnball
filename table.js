@@ -95,6 +95,7 @@ function fitTableCellsToAttachedNodes(table) {
     td.attachedNodes.forEach(node => {
       if (node !== td.tableElementNode && currentOffset !== 0) {
         node.style.top = (parseFloat(node.style.top) + currentOffset) + 'px';
+        node.links.forEach(link => affectedLinks.add(link));
       }
       var tdWidthRequired = ((parseFloat(node.style.left) + parseFloat(node.style.width)) - parseFloat(table.style.left)) - 16;
       if (tdWidthRequired > tdWidth) {
@@ -189,7 +190,7 @@ function rebuildTable(table, nodes) {
   var previousNode = null;
   nodes.forEach(node => {
     if (previousNode) {
-      var via = createNode({x: parseFloat(table.style.left) - 45, y: parseFloat(node.style.top) - 45}, table.downVia.textContent);
+      var via = createNode({x: parseFloat(node.style.left) - 64, y: parseFloat(node.style.top) - 64}, table.downVia.textContent);
       via.instances = table.downVia.instances;
       via.instances.add(via);
       if (!table.downVia) table.downVia = via;
@@ -265,15 +266,31 @@ function handleKeypressForTable(event) {
     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
     if (document.activeElement) {
       event.preventDefault();
-      var baseNode = document.activeElement;
-      var forwardNode = null;
-      if (selectedNodes.length === 2) {
-        var otherSelectedNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
-        if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === otherSelectedNode)) {
-          forwardNode = otherSelectedNode;
+      if (document.activeElement.attachedTableCell) {
+        var table = document.activeElement.attachedTableCell.closest('table');
+        var links = getTableLinks(table);
+        links.forEach(link => {
+          link.classList.remove('hidden');
+          link.from.classList.remove('hidden');
+          link.via.classList.remove('hidden');
+          link.to.classList.remove('hidden');
+        });
+        Array.from(table.getElementsByTagName('TD')).forEach(td => {
+          td.attachedNodes.forEach(node => delete node.attachedTableCell);
+        });
+        table.downVia.remove();
+        table.remove();
+      } else {
+        var baseNode = document.activeElement;
+        var forwardNode = null;
+        if (selectedNodes.length === 2) {
+          var otherSelectedNode = selectedNodes[0] === document.activeElement ? selectedNodes[1] : selectedNodes[0];
+          if (Array.from(baseNode.links).find(link => link.from === baseNode && link.via === otherSelectedNode)) {
+            forwardNode = otherSelectedNode;
+          }
         }
+        createTable(baseNode, forwardNode);
       }
-      createTable(baseNode, forwardNode);
       return false;
     }
   }

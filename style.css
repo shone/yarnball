@@ -28,6 +28,7 @@ body {
 
 .node {
   position: absolute;
+  z-index: 2;
   background-color: #fff;
   width:  50px;
   height: 50px;
@@ -73,7 +74,7 @@ body {
 
 .link {
   stroke: #000;
-  stroke-width: 2rem;
+  stroke-width: 16px;
   fill: none;
   cursor: pointer;
   pointer-events: stroke;
@@ -115,12 +116,11 @@ table:after {
   content: ' ';
   display: block;
   position: absolute;
-  top:  -2.2rem;
-  left: -2.2rem;
-  width:  2rem;
-  height: 2rem;
-  border: 1px solid blue;
-  background-color: #fff;
+  top:   -57px;
+  left:  -57px;
+  width:  50px;
+  height: 50px;
+  background-color: gray;
   pointer-events: auto;
   cursor: pointer;
 }
@@ -129,13 +129,14 @@ table:hover:after {
 }
 
 td {
-  border: 1px solid blue;
+  border: 1px solid #fff;
+  background-color: gray;
+  opacity: 0.3;
   box-sizing: border-box;
   padding: 0;
 }
 td.drag-drop-target {
   pointer-events: auto;
-  border: 2px solid green;
 }
 td.drag-drop-target:hover {
   border: 2px solid orange;

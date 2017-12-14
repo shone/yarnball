@@ -149,14 +149,19 @@ function deleteElements(elements) {
         var table = element.attachedTableCell.closest('table');
         if (element.attachedTableCell.tableElementNode === element) {
           var tableNodes = getTableNodes(table);
-          var index = tableNodes.indexOf(element);
-          tableNodes.splice(index, 1);
-          rebuildTable(table, tableNodes);
-          if (index >= tableNodes.length) {
-            index--;
+          if (tableNodes.length === 1) {
+            table.downVia.remove();
+            table.remove();
+          } else {
+            var index = tableNodes.indexOf(element);
+            tableNodes.splice(index, 1);
+            rebuildTable(table, tableNodes);
+            if (index >= tableNodes.length) {
+              index--;
+            }
+            tableNodes[index].focus();
+            tableNodes[index].classList.add('selected');
           }
-          tableNodes[index].focus();
-          tableNodes[index].classList.add('selected');
         } else {
           element.attachedTableCell.attachedNodes.delete(element);
           fitTableCellsToAttachedNodes(table);
