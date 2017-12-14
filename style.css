@@ -31,8 +31,8 @@ body {
   background-color: #fff;
   width:  50px;
   height: 50px;
-  margin-left: -1.5rem;
-  margin-top:  -1.5rem;
+  margin-left: -25px;
+  margin-top:  -25px;
   border: 1px solid grey;
   display: flex;
   align-items: center;
@@ -106,8 +106,8 @@ iframe {
 
 table {
   position: absolute;
-  border: 1px solid grey;
   pointer-events: none;
+  border: none;
   border-collapse: collapse;
 }
 
@@ -131,6 +131,7 @@ table:hover:after {
 td {
   border: 1px solid blue;
   box-sizing: border-box;
+  padding: 0;
 }
 td.drag-drop-target {
   pointer-events: auto;

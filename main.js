@@ -20,10 +20,11 @@ function handleMouseDrag(event, options) {
       var position = {x: event.pageX, y: event.pageY};
       var positionScreen = {x: event.screenX, y: event.screenY};
       var delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
+      var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
       var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
       cursorPositionOnLastDragMousemove = position;
       cursorScreenPositionOnLastDragMousemove = positionScreen;
-      options.mousemove({position: position, delta: delta, deltaScreen: deltaScreen});
+      options.mousemove({position: position, delta: delta, deltaTotal: deltaTotal, deltaScreen: deltaScreen});
     }
   }
   function handleMouseup(event) {
@@ -200,12 +201,15 @@ function handleNodeMousedown(event) {
     Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.add('drag-drop-target'));
     window.addEventListener('mouseover', handleNodeDragMouseover);
     window.addEventListener('mouseout',  handleNodeDragMouseout);
+    var nodeStartPositions = new Map();
+    Array.from(document.querySelectorAll('.node.selected')).forEach(node => nodeStartPositions.set(node, {x: parseFloat(node.style.left), y: parseFloat(node.style.top)}));
     handleMouseDrag(event, {
       mousemove: function(cursor) {
         var affectedLinks = new Set();
         document.querySelectorAll('.node.selected').forEach(node => {
-          node.style.left = (parseFloat(node.style.left) + cursor.delta.x) + 'px';
-          node.style.top  = (parseFloat(node.style.top)  + cursor.delta.y) + 'px';
+          var startPosition = nodeStartPositions.get(node);
+          node.style.left = (startPosition.x + pxToGrid(cursor.deltaTotal.x)) + 'px';
+          node.style.top  = (startPosition.y + pxToGrid(cursor.deltaTotal.y)) + 'px';
           node.links.forEach(link => affectedLinks.add(link));
         });
         affectedLinks.forEach(link => {
@@ -216,14 +220,6 @@ function handleNodeMousedown(event) {
         window.removeEventListener('mouseover', handleNodeDragMouseover);
         window.removeEventListener('mouseout',  handleNodeDragMouseout);
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
-
-        var affectedLinks = new Set();
-        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-          node.style.left = pxToGrid(parseFloat(node.style.left)) + 'px';
-          node.style.top  = pxToGrid(parseFloat(node.style.top))  + 'px';
-          node.links.forEach(link => affectedLinks.add(link));
-        });
-        affectedLinks.forEach(layoutLink);
 
         var affectedTables = new Set();
         Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
@@ -309,10 +305,14 @@ function directionBetweenPoints(a, b) {
 
 function getClosestNodeInDirection(sourceNode, direction) {
   var sourcePosition = {x: parseFloat(sourceNode.style.left), y: parseFloat(sourceNode.style.top)};
+  if (direction === 'up')    sourcePosition.y += 1;
+  if (direction === 'down')  sourcePosition.y -= 1;
+  if (direction === 'left')  sourcePosition.x += 1;
+  if (direction === 'right') sourcePosition.x -= 1;
   var closestNode = null;
   var distanceToClosestNode = null;
   Array.from(document.getElementsByClassName('node')).forEach(node => {
-    if (node === sourceNode) return;
+    if (node === sourceNode || node.classList.contains('hidden')) return;
     var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
     if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
       var deltaX = sourcePosition.x - nodePosition.x;
@@ -394,16 +394,24 @@ function renameNode(node) {
   renameInput.select();
   node.appendChild(renameInput);
   renameInput.focus();
-  renameInput.addEventListener('blur', event => {
-    var node = renameInput.parentElement;
-    node.focus();
-    node.instances.forEach(instance => {
-      instance.textContent = renameInput.value;
-      instance.style.width = ((Math.ceil(((instance.textContent.length * 9) + 5) / 64) * 64) - 14) + 'px';
-    });
+  renameInput.addEventListener('input', event => {
+    var nodeWidth = (Math.ceil(((renameInput.value.length * 9) + 5) / 64) * 64) - 14;
+    node.style.width = nodeWidth + 'px';
+    renameInput.style.width = nodeWidth + 'px';
     if (node.attachedTableCell) {
       fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
     }
+  });
+  renameInput.addEventListener('blur', event => {
+    var node = renameInput.parentElement;
+    node.instances.forEach(instance => {
+      instance.style.width = ((Math.ceil(((renameInput.value.length * 9) + 5) / 64) * 64) - 14) + 'px';
+      instance.textContent = renameInput.value;
+      if (instance.attachedTableCell) {
+        fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
+      }
+    });
+    node.focus();
     renameInput.remove();
     renameInput = null;
   });
@@ -416,6 +424,12 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter' && event.ctrlKey) {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var newNode = createNode({x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top) + 64});
+      if (document.activeElement.attachedTableCell) {
+        var td = document.activeElement.attachedTableCell;
+        td.attachedNodes.add(newNode);
+        newNode.attachedTableCell = td;
+        fitTableCellsToAttachedNodes(td.closest('table'));
+      }
       newNode.focus();
       if (!event.shiftKey) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -441,14 +455,19 @@ document.body.addEventListener('keydown', event => {
   if (event.key in arrowKeyDirections) {
     if (event.ctrlKey) {
       var affectedLinks = new Set();
+      var affectedTables = new Set();
       Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
         if (event.key === 'ArrowLeft')  node.style.left = (parseFloat(node.style.left) - 64) + 'px';
         if (event.key === 'ArrowRight') node.style.left = (parseFloat(node.style.left) + 64) + 'px';
         if (event.key === 'ArrowUp')    node.style.top  = (parseFloat(node.style.top)  - 64) + 'px';
         if (event.key === 'ArrowDown')  node.style.top  = (parseFloat(node.style.top)  + 64) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
+        if (node.attachedTableCell) {
+          affectedTables.add(node.attachedTableCell.closest('table'));
+        }
       });
       affectedLinks.forEach(layoutLink);
+      affectedTables.forEach(fitTableCellsToAttachedNodes);
     } else if (document.activeElement && document.activeElement.classList.contains('node')) {
       var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
       if (node) {
@@ -470,12 +489,13 @@ function duplicateNodes(nodes) {
   nodes = new Set(nodes);
   nodes.forEach(node => {
     node.links.forEach(link => affectedLinks.add(link));
-    var nodeInstance = createNode({x: parseFloat(node.style.left) + 10, y: parseFloat(node.style.top) + 10});
+    var nodeInstance = createNode({x: parseFloat(node.style.left), y: parseFloat(node.style.top) + 64});
     nodeInstance.textContent = node.textContent;
     node.instances.add(nodeInstance);
     nodeInstance.instances = node.instances;
     node.classList.remove('selected');
     nodeInstance.classList.add('selected');
+    nodeInstance.focus();
     duplicatedNodesMap.set(node, nodeInstance);
   });
   affectedLinks = new Set(Array.from(affectedLinks).filter(link => {
@@ -546,8 +566,19 @@ document.addEventListener('keypress', event => {
   } else if (event.key === 'Delete') {
     var selectedElements = Array.from(document.getElementsByClassName('selected'));
     if (selectedElements.length > 0) {
+      var focusedNodePosition = null;
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
+        focusedNodePosition = {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)};
+      }
       event.preventDefault();
       deleteElements(selectedElements);
+      if (focusedNodePosition) {
+        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
+        if (closestNode) {
+          closestNode.focus();
+          closestNode.classList.add('selected');
+        }
+      }
       return false;
     }
   } else if (event.key === 'g') {

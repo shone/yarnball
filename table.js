@@ -2,13 +2,13 @@ function createTable(baseNode, forwardNode) {
   var table = document.createElement('table');
   var tbody = document.createElement('tbody');
   table.appendChild(tbody);
-  table.style.left = (parseFloat(baseNode.style.left) - 45) + 'px';
-  table.style.top  = (parseFloat(baseNode.style.top)  - 45) + 'px';
+  table.style.left = (parseFloat(baseNode.style.left) - 32) + 'px';
+  table.style.top  = (parseFloat(baseNode.style.top)  - 32) + 'px';
   if (!forwardNode) {
-    forwardNode = createNode({x: parseFloat(baseNode.style.left) - 85, y: parseFloat(baseNode.style.top)});
+    forwardNode = createNode({x: parseFloat(baseNode.style.left) - 64, y: parseFloat(baseNode.style.top)});
     table.downVia = forwardNode;
   } else {
-    table.downVia = instanceNode(forwardNode, {x: parseFloat(baseNode.style.left) - 85, y: parseFloat(baseNode.style.top)});
+    table.downVia = instanceNode(forwardNode, {x: parseFloat(baseNode.style.left) - 64, y: parseFloat(baseNode.style.top)});
   }
   var previousNode = null;
   followListNodes(baseNode, forwardNode).forEach(node => {
@@ -32,8 +32,8 @@ function createTable(baseNode, forwardNode) {
   graph.appendChild(table);
 
   Array.from(table.getElementsByTagName('TD')).forEach(td => {
-    td.tableElementNode.style.top  = (table.offsetTop  + td.offsetTop  + 45) + 'px';
-    td.tableElementNode.style.left = (table.offsetLeft + td.offsetLeft + 45) + 'px';
+//     td.tableElementNode.style.top  = (table.offsetTop  + (td.offsetTop )  + 32) + 'px';
+//     td.tableElementNode.style.left = (table.offsetLeft + (td.offsetLeft ) + 32) + 'px';
     if (td.attachedDownLink) {
       td.attachedDownLink.classList.add('hidden');
       td.attachedDownLink.classList.remove('selected');
@@ -68,11 +68,14 @@ function handleTableMousedown(event) {
       node.links.forEach(link => affectedLinks.add(link));
     });
   });
+  var elementStartPositions = new Map();
+  elementsToMove.forEach(element => elementStartPositions.set(element, {x: parseFloat(element.style.left), y: parseFloat(element.style.top)}));
   handleMouseDrag(event, {
     mousemove: function (cursor) {
       elementsToMove.forEach(element => {
-        element.style.left = (parseFloat(element.style.left) + cursor.delta.x) + 'px';
-        element.style.top  = (parseFloat(element.style.top)  + cursor.delta.y) + 'px';
+        var startPosition = elementStartPositions.get(element);
+        element.style.left = (startPosition.x + pxToGrid(cursor.deltaTotal.x)) + 'px';
+        element.style.top  = (startPosition.y + pxToGrid(cursor.deltaTotal.y)) + 'px';
       });
       affectedLinks.forEach(layoutLink);
     },
@@ -82,22 +85,27 @@ function handleTableMousedown(event) {
 
 function fitTableCellsToAttachedNodes(table) {
   var affectedLinks = new Set();
+  var currentOffset = 0;
   Array.from(table.getElementsByTagName('TD')).forEach(td => {
-    td.tableElementNode.style.top  = (parseFloat(table.style.top)  + td.offsetTop  + 45) + 'px';
-    td.tableElementNode.style.left = (parseFloat(table.style.left) + td.offsetLeft + 45) + 'px';
+    td.tableElementNode.style.top  = (parseFloat(table.style.top)  + (td.offsetTop) + 32) + 'px';
+    td.tableElementNode.style.left = (parseFloat(table.style.left) + 32) + 'px';
     td.tableElementNode.links.forEach(link => affectedLinks.add(link));
-    var tdWidth  = 40;
-    var tdHeight = 40;
+    var tdWidth  = 64;
+    var tdHeight = 64;
     td.attachedNodes.forEach(node => {
-      var tdWidthRequired = (node.offsetLeft - (parseFloat(table.style.left) + td.offsetLeft)) + node.offsetWidth + 20;
+      if (node !== td.tableElementNode && currentOffset !== 0) {
+        node.style.top = (parseFloat(node.style.top) + currentOffset) + 'px';
+      }
+      var tdWidthRequired = ((parseFloat(node.style.left) + parseFloat(node.style.width)) - parseFloat(table.style.left)) - 16;
       if (tdWidthRequired > tdWidth) {
         tdWidth = tdWidthRequired;
       }
-      var tdHeightRequired = (node.offsetTop - (parseFloat(table.style.top) + td.offsetTop)) + node.offsetHeight + 20;
+      var tdHeightRequired = (parseFloat(node.style.top) - (parseFloat(table.style.top) + td.offsetTop)) + 32;
       if (tdHeightRequired > tdHeight) {
         tdHeight = tdHeightRequired;
       }
     });
+    currentOffset += tdHeight - parseFloat(td.style.height);
     td.style.width  = tdWidth + 'px';
     td.style.height = tdHeight + 'px';
   });
@@ -112,22 +120,37 @@ function getTableNodes(table) {
   return Array.from(table.rows).map(tr => tr.cells[0].tableElementNode);
 }
 
+function getTableLinks(table) {
+  var links = [];
+  var previousNode = null;
+  getTableNodes(table).forEach(node => {
+    if (previousNode) {
+      node.links.forEach(link => {
+        if (link.from === previousNode && link.via.instances.has(table.downVia) && link.to === node) {
+          links.push(link);
+        }
+      });
+    }
+    previousNode = node;
+  });
+  return links;
+}
+
 function rebuildTable(table, nodes) {
   var trs = Array.from(table.rows);
   var oldTrPositions = new Map();
   trs.forEach(tr => oldTrPositions.set(tr, tr.offsetTop));
 
-  getTableNodes(table).forEach(node => {
-    node.links.forEach(link => {
-      if (link.from.attachedTableCell && link.from.attachedTableCell.tableElementNode === link.from &&
-          link.via.instances.has(table.downVia) &&
-          link.to.attachedTableCell && link.to.attachedTableCell.tableElementNode === link.to) {
-        link.via.remove();
-        link.remove();
-      }
-    });
+  // Destroy all existing links between table elements
+  getTableLinks(table).forEach(link => {
+    link.via.instances.delete(link.via);
+    link.via.remove();
+    link.from.links.delete(link);
+    link.to.links.delete(link);
+    link.remove();
   });
 
+  // Destroy rows that no longer have an associated node
   var deletedTrs = trs.filter(tr => !nodes.find(node => node.attachedTableCell && node.attachedTableCell.parentElement === tr));
   deletedTrs.forEach(tr => {
     var td = tr.getElementsByTagName('TD')[0];
@@ -135,6 +158,7 @@ function rebuildTable(table, nodes) {
     delete td.attachedNodes;
   });
 
+  // Detach all rows so they can be re-attached in the new order
   trs.forEach(tr => tr.remove());
 
   var affectedLinks = new Set();
@@ -154,11 +178,11 @@ function rebuildTable(table, nodes) {
       node.attachedTableCell = td;
       td.tableElementNode = node;
       td.attachedNodes = new Set([node]);
-      tr.style.width  = '90px';
-      tr.style.height = '90px';
+      td.style.width  = '64px';
+      td.style.height = '64px';
       table.tBodies[0].appendChild(tr);
-      node.style.left = (table.offsetLeft + 45) + 'px';
-      node.style.top = (table.offsetTop + tr.offsetTop + 45) + 'px';
+      node.style.left = (table.offsetLeft + 32) + 'px';
+      node.style.top = (table.offsetTop + tr.offsetTop + 32) + 'px';
     }
   });
 
@@ -182,7 +206,8 @@ function rebuildTable(table, nodes) {
 
 function handleKeydownForTable(event) {
   if (event.key === 'Enter' && event.ctrlKey) {
-    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.attachedTableCell
+      && document.activeElement.attachedTableCell.tableElementNode === document.activeElement) {
       event.preventDefault();
       var table = document.activeElement.attachedTableCell.closest('table');
       var tableNodes = getTableNodes(table);
@@ -210,7 +235,7 @@ function handleKeydownForTable(event) {
       rebuildTable(table, tableNodes);
       return false;
     }
-  } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+  } /*else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       if (isTableElementNode(document.activeElement)) {
         event.preventDefault();
@@ -232,7 +257,7 @@ function handleKeydownForTable(event) {
         return false;
       }
     }
-  }
+  }*/
 }
 
 function handleKeypressForTable(event) {
