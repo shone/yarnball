@@ -592,7 +592,14 @@ document.addEventListener('keypress', event => {
     }
   } else if (event.key === 'f') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var f = new Function([], compileStatements(document.activeElement));
+      var compiledStatements = compileStatements(document.activeElement);
+      var f = null;
+      if (compiledStatements.indexOf('await') !== -1) {
+        var AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+        f = new AsyncFunction([], compiledStatements);
+      } else {
+        f = new Function([], compiledStatements);
+      }
       var returnValue = f();
       if (typeof returnValue !== 'undefined') {
         if (typeof returnValue.then === 'function') {
