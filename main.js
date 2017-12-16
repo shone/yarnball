@@ -226,6 +226,37 @@ function handleNodeMousedown(event) {
         window.removeEventListener('mouseout',  handleNodeDragMouseout);
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
 
+        var newNodesForTables = new Map();
+        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+          if (node.attachedTableCell) {
+            var table = node.attachedTableCell.closest('table');
+            if (node.attachedTableCell.tableElementNode === node && (currentDragdropTarget === null || (currentDragdropTarget.closest('table') !== table))) {
+              var tableNodes = newNodesForTables.get(table);
+              if (tableNodes === undefined) {
+                tableNodes = getTableNodes(table);
+              }
+              delete node.attachedTableCell;
+              tableNodes.splice(tableNodes.indexOf(node), 1);
+              newNodesForTables.set(table, tableNodes);
+            }
+          }
+        });
+        newNodesForTables.forEach((nodes, table) => {
+          if (nodes.length === 0) {
+            var tableLinks = getTableLinks(table);
+            tableLinks.forEach(link => {
+              link.from.links.delete(link);
+              link.via.remove();
+              link.to.links.delete(link);
+              link.remove();
+            });
+            table.downVia.remove();
+            table.remove();
+          } else {
+            rebuildTable(table, nodes);
+          }
+        });
+
         var affectedTables = new Set();
         Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
           if (node.attachedTableCell) {
