@@ -264,7 +264,7 @@ function handleKeydownForTable(event) {
 function handleKeypressForTable(event) {
   if (event.key === 't') {
     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
-    if (document.activeElement) {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
       if (document.activeElement.attachedTableCell) {
         var table = document.activeElement.attachedTableCell.closest('table');

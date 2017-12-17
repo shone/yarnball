@@ -96,7 +96,7 @@ function createNode(position, text) {
   node.style.height = '50px';
   node.instances = new Set([node]);
   node.links = new Set();
-  graph.appendChild(node);
+  document.getElementById('nodes').appendChild(node);
   return node;
 }
 
@@ -115,7 +115,7 @@ function instanceNode(sourceNode, position) {
   sourceNode.instances.add(node);
   node.instances = sourceNode.instances;
   node.links = new Set();
-  graph.appendChild(node);
+  document.getElementById('nodes').appendChild(node);
   return node;
 }
 
@@ -123,7 +123,7 @@ function createLink(options) {
   var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   link.classList.add('link');
   link.setAttribute('marker-end', 'url(#Triangle)');
-  document.getElementById('links-svg').appendChild(link);
+  document.getElementById('links').appendChild(link);
   if (options) {
     if (options.from) {
       link.from = options.from;
@@ -374,7 +374,7 @@ function updateSelectionBox() {
 }
 var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
-  if (event.target !== graph) return;
+//   if (event.target !== graph) return;
   event.preventDefault();
   if (!event.shiftKey) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -740,12 +740,18 @@ function layoutLink(link, lastPosition) {
 
 document.addEventListener('contextmenu', event => event.preventDefault());
 graph.addEventListener('mousedown', event => {
-  if (event.button === 0 && event.ctrlKey && event.shiftKey) {
+  if (event.button === 0 && event.ctrlKey) {
     event.preventDefault();
     var node = createNode({x: pxToGrid(event.pageX), y: pxToGrid(event.pageY)});
-    Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
+    if (!event.shiftKey) {
+      Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
+    }
     node.classList.add('selected');
     node.focus();
+    if (event.target.tagName === 'TD') {
+      event.target.attachedNodes.add(node);
+      node.attachedTableCell = event.target;
+    }
     return false;
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
@@ -808,12 +814,12 @@ graph.addEventListener('mousedown', event => {
 });
 
 // Node instance highlighting
-graph.addEventListener('mouseover', event => {
+document.getElementById('nodes').addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('highlighted'));
   }
 });
-graph.addEventListener('mouseout', event => {
+document.getElementById('nodes').addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.remove('highlighted'));
   }
