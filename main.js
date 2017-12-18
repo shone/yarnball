@@ -122,7 +122,6 @@ function instanceNode(sourceNode, position) {
 function createLink(options) {
   var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   link.classList.add('link');
-  link.setAttribute('marker-end', 'url(#Triangle)');
   document.getElementById('links').appendChild(link);
   if (options) {
     if (options.from) {

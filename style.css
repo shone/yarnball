@@ -77,6 +77,7 @@ body {
   stroke: #000;
   stroke-width: 16px;
   fill: none;
+  marker-end: url(#Triangle);
   cursor: pointer;
   pointer-events: stroke;
 }
@@ -108,7 +109,6 @@ iframe {
 
 table {
   position: absolute;
-/*   pointer-events: none; */
   border: none;
   border-collapse: collapse;
 }
@@ -122,7 +122,6 @@ table:after {
   width:  50px;
   height: 50px;
   background-color: gray;
-/*   pointer-events: auto; */
   cursor: pointer;
 }
 table:hover:after {
@@ -135,9 +134,6 @@ td {
   opacity: 0.3;
   box-sizing: border-box;
   padding: 0;
-}
-td.drag-drop-target {
-/*   pointer-events: auto; */
 }
 td.drag-drop-target:hover {
   border: 2px solid orange;
