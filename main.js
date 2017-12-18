@@ -150,6 +150,7 @@ function deleteElements(elements) {
         if (element.attachedTableCell.tableElementNode === element) {
           var tableNodes = getTableNodes(table);
           if (tableNodes.length === 1) {
+            Array.from(table.getElementsByTagName('TD')).forEach(td => td.attachedNodes.forEach(node => delete node.attachedTableCell));
             table.downVia.remove();
             table.remove();
           } else {
@@ -243,6 +244,10 @@ function handleNodeMousedown(event) {
         });
         newNodesForTables.forEach((nodes, table) => {
           if (nodes.length === 0) {
+            Array.from(table.getElementsByTagName('TD')).forEach(td => {
+              td.attachedNodes.forEach(node => delete node.attachedTableCell);
+              delete td.attachedNodes;
+            });
             var tableLinks = getTableLinks(table);
             tableLinks.forEach(link => {
               link.from.links.delete(link);
