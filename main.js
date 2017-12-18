@@ -498,8 +498,28 @@ document.body.addEventListener('keydown', event => {
         if (event.key === 'ArrowUp')    node.style.top  = (parseFloat(node.style.top)  - 64) + 'px';
         if (event.key === 'ArrowDown')  node.style.top  = (parseFloat(node.style.top)  + 64) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
-        if (node.attachedTableCell) {
+        if (node.attachedTableCell && !event.shiftKey) {
           affectedTables.add(node.attachedTableCell.closest('table'));
+        } else {
+          var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+          var tableCellUnderNode = Array.from(document.getElementsByTagName('TD')).find(td => {
+            var table = td.closest('table');
+            var tdBounds = {left: parseFloat(table.style.left), top: parseFloat(table.style.top) + td.offsetTop};
+            tdBounds.right  = tdBounds.left + td.offsetWidth;
+            tdBounds.bottom = tdBounds.top  + td.offsetHeight;
+            return nodePosition.x > tdBounds.left && nodePosition.x < tdBounds.right &&
+                   nodePosition.y > tdBounds.top  && nodePosition.y < tdBounds.bottom;
+          });
+          if (node.attachedTableCell && node.attachedTableCell !== tableCellUnderNode) {
+            affectedTables.add(node.attachedTableCell.closest('table'));
+            node.attachedTableCell.attachedNodes.delete(node);
+            delete node.attachedTableCell;
+          }
+          if (tableCellUnderNode) {
+            tableCellUnderNode.attachedNodes.add(node);
+            node.attachedTableCell = tableCellUnderNode;
+            affectedTables.add(tableCellUnderNode.closest('table'));
+          }
         }
       });
       affectedLinks.forEach(layoutLink);
