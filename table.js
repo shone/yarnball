@@ -29,7 +29,7 @@ function createTable(baseNode, forwardNode) {
     previousNode = node;
   });
 
-  graph.appendChild(table);
+  document.getElementById('nodes').appendChild(table);
 
   Array.from(table.getElementsByTagName('TD')).forEach(td => {
 //     td.tableElementNode.style.top  = (table.offsetTop  + (td.offsetTop )  + 32) + 'px';
