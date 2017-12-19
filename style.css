@@ -13,6 +13,7 @@ body {
 #graph {
   width:  500rem;
   height: 500rem;
+  position: relative;
 }
 
 #links {
