@@ -73,8 +73,11 @@ function followListLinks(node, forward) {
 
 function followListNodes(node, forward) {
   var nodes = [];
+  var alreadyVisited = new Set();
   do {
+    if (alreadyVisited.has(node)) break;
     nodes.push(node);
+    alreadyVisited.add(node);
     node = findNodeVia(node, forward) || null;
   } while(node)
   return nodes;
