@@ -11,13 +11,14 @@ function compileStatement(node) {
     return compileFunctionCall(node);
   }
 
-  var evalTo = findNodeVia(node, 'eval');
-  if (evalTo) {
-    return evalTo.textContent;
-  }
-
   if (findLinkVia(node, ':')) {
     return compileJson(node);
+  }
+
+  var if_ = findNodeVia(node, 'if');
+  var then = findNodeVia(node, 'then');
+  if (if_ && then) {
+    return "if(" + compileStatement(if_) + "){" + compileStatements(then) + "}";
   }
 
   if (findLinkVia(node, 'for')) {
