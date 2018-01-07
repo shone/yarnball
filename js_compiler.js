@@ -1,5 +1,5 @@
 function isJs(node) {
-  return Array.from(node.links).find(link => link.from === node && link.via.textContent in {'calls': true, 'eval': true}) !== null;
+  return Array.from(node.links).find(link => link.from === node && link.via.value in {'calls': true, 'eval': true}) !== null;
 }
 
 function compileStatements(node) {
@@ -29,7 +29,7 @@ function compileStatement(node) {
   if (varLink) {
     var equalsLink = findLinkVia(node, '=');
     if (equalsLink) {
-      return 'var ' + varLink.to.textContent + ' = ' + compileStatement(equalsLink.to);
+      return 'var ' + varLink.to.value + ' = ' + compileStatement(equalsLink.to);
     }
   }
 
@@ -47,13 +47,13 @@ function compileStatement(node) {
   var asyncFunctionName = findNodeVia(node, 'declare async function');
   var asyncFunctionBody = findNodeVia(node, 'body');
   if (asyncFunctionName && asyncFunctionBody) {
-    return 'async function ' + asyncFunctionName.textContent + '() {' + compileStatements(asyncFunctionBody) + '}';
+    return 'async function ' + asyncFunctionName.value + '() {' + compileStatements(asyncFunctionBody) + '}';
   }
 
   if (findLinkVia(node, '.')) {
     return followListNodes(node, '.').map(currentNode => {
       var is = findNodeVia(currentNode, 'is');
-      return is ? compileStatement(is) : currentNode.textContent;
+      return is ? compileStatement(is) : currentNode.value;
     }).join('.');
   }
 
@@ -62,7 +62,7 @@ function compileStatement(node) {
     return compileStatement(is);
   }
 
-  return node.textContent;
+  return node.value;
 }
 
 function compileFunctionCall(node) {
@@ -85,20 +85,20 @@ function compileForLoop(node) {
   var of_ = findNodeVia(node, 'of');
   var do_ = findNodeVia(node, 'do');
   if (for_ && of_ && do_) {
-    return 'for (var ' + for_.textContent + ' of ' + compileStatement(of_) + ') {' + compileStatements(do_) + '}';
+    return 'for (var ' + for_.value + ' of ' + compileStatement(of_) + ') {' + compileStatements(do_) + '}';
   }
 }
 
 function compileJson(node) {
   if (!findLinkVia(node, ',') && !findLinkVia(node, ':')) {
-    return node.textContent;
+    return node.value;
   }
   return '{' + followListNodes(node, ',').map(keyNode => {
     var value = findNodeVia(keyNode, ':');
     if (value) {
-      return "'" + keyNode.textContent + "':" + compileJson(value);
+      return "'" + keyNode.value + "':" + compileJson(value);
     } else {
-      return "'" + keyNode.textContent + "':undefined";
+      return "'" + keyNode.value + "':undefined";
     }
   }).join(',') + '}';
 }

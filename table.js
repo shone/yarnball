@@ -262,7 +262,7 @@ function handleKeydownForTable(event) {
 }
 
 function handleKeypressForTable(event) {
-  if (event.key === 't') {
+  if (event.key === 't' && event.ctrlKey) {
     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();

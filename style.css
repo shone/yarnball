@@ -37,12 +37,10 @@ body {
   margin-left: -25px;
   margin-top:  -25px;
   border: 1px solid grey;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   font-family: monospace;
   font-size: 14px;
+  text-align: center;
 }
 
 .node.highlighted {

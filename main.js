@@ -43,7 +43,7 @@ function handleMouseDrag(event, options) {
 
 function findLinkVia(node, via) {
   for (var instance of node.instances) {
-    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && (link.via.textContent === via || link.via.instances.has(via)));
+    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && (link.via.value === via || link.via.instances.has(via)));
     if (link) return link;
   }
   return null;
@@ -59,7 +59,7 @@ function followListLinks(node, forward) {
   var alreadyVisited = new Set();
   do {
     alreadyVisited.add(node);
-    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.textContent === forward || link.via.instances.has(forward)));
+    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.value === forward || link.via.instances.has(forward)));
     if (forwardLink) {
       if (alreadyVisited.has(forwardLink.to)) {
         throw 'Attempting to follow list that forms a loop.';
@@ -84,10 +84,11 @@ function followListNodes(node, forward) {
 }
 
 function createNode(position, text) {
-  var node = document.createElement('div');
+  var node = document.createElement('input');
   node.classList.add('node');
-  node.textContent = text;
-  node.setAttribute('tabindex', '0');
+  if (text) {
+    node.value = text;
+  }
   if (position) {
     node.style.left = String(position.x) + 'px';
     node.style.top  = String(position.y) + 'px';
@@ -104,10 +105,9 @@ function createNode(position, text) {
 }
 
 function instanceNode(sourceNode, position) {
-  var node = document.createElement('div');
+  var node = document.createElement('input');
   node.classList.add('node');
-  node.textContent = sourceNode.textContent;
-  node.setAttribute('tabindex', '0');
+  node.value = sourceNode.value;
   if (position) {
     node.style.left = String(position.x) + 'px';
     node.style.top  = String(position.y) + 'px';
@@ -428,43 +428,26 @@ function handleBackgroundMousedownForSelectionBox(event) {
   return false;
 }
 
-var renameInput = null;
-function renameNode(node) {
-  renameInput = document.createElement('input');
-  renameInput.value = node.textContent;
-  node.textContent = '';
-  renameInput.style.width = node.offsetWidth + 'px';
-  renameInput.select();
-  node.appendChild(renameInput);
-  renameInput.focus();
-  renameInput.addEventListener('input', event => {
-    var nodeWidth = (Math.ceil(((renameInput.value.length * 9) + 5) / 64) * 64) - 14;
+document.addEventListener('input', event => {
+  if (event.target.classList.contains('node')) {
+    var node = event.target;
+    var nodeWidth = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
     node.style.width = nodeWidth + 'px';
-    renameInput.style.width = nodeWidth + 'px';
     if (node.attachedTableCell) {
       fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
     }
-  });
-  renameInput.addEventListener('blur', event => {
-    var node = renameInput.parentElement;
-    node.instances.forEach(instance => {
-      instance.style.width = ((Math.ceil(((renameInput.value.length * 9) + 5) / 64) * 64) - 14) + 'px';
-      instance.textContent = renameInput.value;
-      if (instance.attachedTableCell) {
-        fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
-      }
-    });
-    node.focus();
-    renameInput.remove();
-    renameInput = null;
-  });
-}
+  }
+});
 
 document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
 
-  if (event.key === 'Enter' && event.ctrlKey) {
+  if (event.key === 'x' && event.ctrlKey) {
+    debugger;
+  }
+
+  if (event.key === 'Enter') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var newNode = createNode({x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top) + 64});
       if (document.activeElement.attachedTableCell) {
@@ -479,13 +462,50 @@ document.body.addEventListener('keydown', event => {
       }
       newNode.classList.add('selected');
     }
-  } else if (event.key === 'Enter') {
-    if (!renameInput) {
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        renameNode(document.activeElement);
+  } else if (event.key === 'Tab') {
+    var selectedNodes = document.querySelectorAll('.node.selected');
+    if (selectedNodes.length === 3) {
+      event.preventDefault();
+      var nonFocusedNodes = new Set(selectedNodes);
+      nonFocusedNodes.delete(document.activeElement);
+      nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
+        var fX = parseFloat(document.activeElement.style.left);
+        var fY = parseFloat(document.activeElement.style.top);
+        var aDeltaX = fX - parseFloat(a.style.left);
+        var aDeltaY = fY - parseFloat(a.style.top);
+        var bDeltaX = fX - parseFloat(b.style.left);
+        var bDeltaY = fY - parseFloat(b.style.top);
+        return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
+      });
+      var from = nonFocusedNodes[0];
+      var via = nonFocusedNodes[1]
+      var to = document.activeElement;
+      var link = Array.from(from.links).find(link => link.from === from && link.via === via && link.to === to);
+      if (link) {
+        deleteElements([link]);
+      } else {
+        link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
+        layoutLink(link);
       }
-    } else {
-      renameInput.parentElement.focus();
+      return false;
+    }
+  } else if (event.key === 'Delete') {
+    var selectedElements = Array.from(document.getElementsByClassName('selected'));
+    if (selectedElements.length > 0) {
+      var focusedNodePosition = null;
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
+        focusedNodePosition = {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)};
+      }
+      event.preventDefault();
+      deleteElements(selectedElements);
+      if (focusedNodePosition) {
+        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
+        if (closestNode) {
+          closestNode.focus();
+          closestNode.classList.add('selected');
+        }
+      }
+      return false;
     }
   }
 
@@ -544,111 +564,12 @@ document.body.addEventListener('keydown', event => {
       }
     }
   }
-});
 
-function duplicateNodes(nodes) {
-  var affectedLinks = new Set();
-  var duplicatedNodesMap = new Map();
-  nodes = new Set(nodes);
-  nodes.forEach(node => {
-    node.links.forEach(link => affectedLinks.add(link));
-    var nodeInstance = createNode({x: parseFloat(node.style.left), y: parseFloat(node.style.top) + 64});
-    nodeInstance.textContent = node.textContent;
-    node.instances.add(nodeInstance);
-    nodeInstance.instances = node.instances;
-    node.classList.remove('selected');
-    nodeInstance.classList.add('selected');
-    nodeInstance.focus();
-    duplicatedNodesMap.set(node, nodeInstance);
-  });
-  affectedLinks = new Set(Array.from(affectedLinks).filter(link => {
-    return nodes.has(link.from) && nodes.has(link.via) && nodes.has(link.to);
-  }));
-  affectedLinks.forEach(link => {
-    var duplicatedLink = createLink({
-      from: duplicatedNodesMap.get(link.from),
-      via:  duplicatedNodesMap.get(link.via),
-      to:   duplicatedNodesMap.get(link.to),
-    });
-    layoutLink(duplicatedLink);
-  });
-}
-
-document.addEventListener('keypress', event => {
-  if (renameInput) return;
-
-  if (handleKeypressForTable(event) === false) return false;
-
-  if (event.key === ' ') {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      event.preventDefault();
-      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + parseFloat(document.activeElement.style.width) + 14, y: parseFloat(document.activeElement.style.top)});
-      if (document.activeElement.attachedTableCell) {
-        var td = document.activeElement.attachedTableCell;
-        td.attachedNodes.add(newNode);
-        newNode.attachedTableCell = td;
-        fitTableCellsToAttachedNodes(td.closest('table'));
-      }
-      newNode.classList.add('selected');
-      Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
-      renameNode(newNode);
-      return false;
-    }
-  } else if (event.key === 'l') {
-    var selectedNodes = document.querySelectorAll('.node.selected');
-    if (selectedNodes.length === 3) {
-      var nonFocusedNodes = new Set(selectedNodes);
-      nonFocusedNodes.delete(document.activeElement);
-      nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
-        var fX = parseFloat(document.activeElement.style.left);
-        var fY = parseFloat(document.activeElement.style.top);
-        var aDeltaX = fX - parseFloat(a.style.left);
-        var aDeltaY = fY - parseFloat(a.style.top);
-        var bDeltaX = fX - parseFloat(b.style.left);
-        var bDeltaY = fY - parseFloat(b.style.top);
-        return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
-      });
-      var from = nonFocusedNodes[0];
-      var via = nonFocusedNodes[1]
-      var to = document.activeElement;
-      var link = Array.from(from.links).find(link => link.from === from && link.via === via && link.to === to);
-      if (link) {
-        deleteElements([link]);
-      } else {
-        link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
-        layoutLink(link);
-      }
-    }
-  } else if (event.key === 'd') {
-    var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
-    if (selectedNodes.length > 0) {
-      event.preventDefault();
-      duplicateNodes(selectedNodes);
-      return false;
-    }
-  } else if (event.key === 'Delete') {
-    var selectedElements = Array.from(document.getElementsByClassName('selected'));
-    if (selectedElements.length > 0) {
-      var focusedNodePosition = null;
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        focusedNodePosition = {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)};
-      }
-      event.preventDefault();
-      deleteElements(selectedElements);
-      if (focusedNodePosition) {
-        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
-        if (closestNode) {
-          closestNode.focus();
-          closestNode.classList.add('selected');
-        }
-      }
-      return false;
-    }
-  } else if (event.key === 'g') {
+  if (event.key === 'F8' && event.shiftKey) {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
     }
-  } else if (event.key === 'f') {
+  } else if (event.key === 'F9') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var compiledStatements = compileStatements(document.activeElement);
       var f = null;
@@ -673,23 +594,81 @@ document.addEventListener('keypress', event => {
         }
       }
     }
-  } else if (event.key === 'j') {
+  }
+});
+
+function duplicateNodes(nodes) {
+  var affectedLinks = new Set();
+  var duplicatedNodesMap = new Map();
+  nodes = new Set(nodes);
+  nodes.forEach(node => {
+    node.links.forEach(link => affectedLinks.add(link));
+    var nodeInstance = createNode({x: parseFloat(node.style.left), y: parseFloat(node.style.top) + 64});
+    nodeInstance.value = node.value;
+    node.instances.add(nodeInstance);
+    nodeInstance.instances = node.instances;
+    node.classList.remove('selected');
+    nodeInstance.classList.add('selected');
+    nodeInstance.focus();
+    duplicatedNodesMap.set(node, nodeInstance);
+  });
+  affectedLinks = new Set(Array.from(affectedLinks).filter(link => {
+    return nodes.has(link.from) && nodes.has(link.via) && nodes.has(link.to);
+  }));
+  affectedLinks.forEach(link => {
+    var duplicatedLink = createLink({
+      from: duplicatedNodesMap.get(link.from),
+      via:  duplicatedNodesMap.get(link.via),
+      to:   duplicatedNodesMap.get(link.to),
+    });
+    layoutLink(duplicatedLink);
+  });
+}
+
+document.addEventListener('keypress', event => {
+  if (handleKeypressForTable(event) === false) return false;
+
+  if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      console.log(compileHtml(document.activeElement));
+      event.preventDefault();
+      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + parseFloat(document.activeElement.style.width) + 14, y: parseFloat(document.activeElement.style.top)});
+      if (document.activeElement.attachedTableCell) {
+        var td = document.activeElement.attachedTableCell;
+        td.attachedNodes.add(newNode);
+        newNode.attachedTableCell = td;
+        fitTableCellsToAttachedNodes(td.closest('table'));
+      }
+      document.activeElement.classList.remove('selected');
+      newNode.classList.add('selected');
+      Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
+      newNode.focus();
+      return false;
     }
-  } else if (event.key === 'h') {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      Array.from(document.getElementsByTagName('iframe')).forEach(iframe => iframe.remove());
-      var html = compileHtml(document.activeElement);
-      var iFrame = document.createElement('iframe');
-      iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
-      document.body.appendChild(iFrame);
-    }
+//   } else if (event.key === 'd') {
+//     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
+//     if (selectedNodes.length > 0) {
+//       event.preventDefault();
+//       duplicateNodes(selectedNodes);
+//       return false;
+//     }
+
+//   } else if (event.key === 'j') {
+//     if (document.activeElement && document.activeElement.classList.contains('node')) {
+//       console.log(compileHtml(document.activeElement));
+//     }
+//   } else if (event.key === 'h') {
+//     if (document.activeElement && document.activeElement.classList.contains('node')) {
+//       Array.from(document.getElementsByTagName('iframe')).forEach(iframe => iframe.remove());
+//       var html = compileHtml(document.activeElement);
+//       var iFrame = document.createElement('iframe');
+//       iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
+//       document.body.appendChild(iFrame);
+//     }
   } else if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
     saveState();
   } else if (event.key === 'F' && event.shiftKey && event.ctrlKey) {
     restoreState();
-  } else if (event.key === '-' || event.key === '+' || event.key === '=') {
+  } else if ((event.key === '-' || event.key === '+' || event.key === '=') && event.shiftKey) {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       if (event.key === '-') {
         if (document.querySelectorAll('.node.selected').length > 1) {
@@ -854,6 +833,7 @@ document.getElementById('nodes').addEventListener('mouseout', event => {
 
 function saveState() {
   var id = 0;
+  Array.from(document.getElementsByClassName('node')).forEach(node => node.setAttribute('value', node.value));
   Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.setAttribute('data-from', link.from.id);
@@ -912,7 +892,6 @@ function restoreState() {
       node.attachedTableCell = document.getElementById(node.getAttribute('data-attached-table-cell'));
       node.removeAttribute('data-attached-table-cell');
     }
-    node.setAttribute('tabindex', '-1');
     node.classList.remove('selected');
   });
   Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
