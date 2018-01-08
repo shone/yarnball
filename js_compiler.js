@@ -45,6 +45,7 @@ function compileStatement(node) {
     if (leftIs) {
       left = leftIs;
     }
+    var right = equals;
     var rightIs = findNodeVia(equals, 'is');
     if (rightIs) {
       right = rightIs;
