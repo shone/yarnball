@@ -15,6 +15,11 @@ function compileStatement(node) {
     return compileJson(node);
   }
 
+  var array = findNodeVia(node, '[]');
+  if (array) {
+    return '[' + followListNodes(array, ',').map(a => a.value).join(',') + ']';
+  }
+
   var if_ = findNodeVia(node, 'if');
   var then = findNodeVia(node, 'then');
   if (if_ && then) {

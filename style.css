@@ -43,6 +43,7 @@ body {
   cursor: pointer;
   font-family: monospace;
   font-size: 14px;
+  line-height: 50px;
   text-align: center;
 }
 
@@ -152,6 +153,7 @@ input[value=';'],
 input[value='.'],
 input[value=','],
 input[value=':'],
+input[value='[]'],
 input[value='for'],
 input[value='of'],
 input[value='do'],
