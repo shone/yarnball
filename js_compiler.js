@@ -18,7 +18,12 @@ function compileStatement(node) {
   var if_ = findNodeVia(node, 'if');
   var then = findNodeVia(node, 'then');
   if (if_ && then) {
-    return "if(" + compileStatement(if_) + "){" + compileStatements(then) + "}";
+    var block = "if(" + compileStatement(if_) + "){" + compileStatements(then) + "}";
+    var else_ = findNodeVia(node, 'else');
+    if (else_) {
+      block += 'else{' + compileStatements(else_) + '}';
+    }
+    return block;
   }
 
   if (findLinkVia(node, 'for')) {
@@ -33,10 +38,18 @@ function compileStatement(node) {
     }
   }
 
-  var lvalue = findNodeVia(node, 'lvalue');
   var equals = findNodeVia(node, '=');
-  if (lvalue && equals) {
-    return compileStatement(lvalue) + ' = ' + compileStatement(equals);
+  if (equals) {
+    var left = node;
+    var leftIs = findNodeVia(node, 'is');
+    if (leftIs) {
+      left = leftIs;
+    }
+    var rightIs = findNodeVia(equals, 'is');
+    if (rightIs) {
+      right = rightIs;
+    }
+    return compileStatement(left) + ' = ' + compileStatement(right);
   }
 
   var awaitTo = findNodeVia(node, 'await');
