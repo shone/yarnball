@@ -14,6 +14,7 @@ body {
   width:  500rem;
   height: 500rem;
   position: relative;
+  background-color: #b5b5b5;
 }
 
 #links {
@@ -36,7 +37,9 @@ body {
   height: 50px;
   margin-left: -25px;
   margin-top:  -25px;
-  border: 1px solid grey;
+  background-color: #fff;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
   font-family: monospace;
   font-size: 14px;
@@ -136,4 +139,27 @@ td {
 }
 td.drag-drop-target:hover {
   border: 2px solid orange;
+}
+
+input[value='var'],
+input[value='='],
+input[value='calls'],
+input[value='arg0'],
+input[value='arg1'],
+input[value='arg2'],
+input[value='await'],
+input[value=';'],
+input[value='.'],
+input[value=','],
+input[value=':'],
+input[value='for'],
+input[value='of'],
+input[value='do'],
+input[value='if'],
+input[value='then'],
+input[value='else'],
+input[value='is']
+{
+  color: blue;
+  font-weight: bold;
 }
