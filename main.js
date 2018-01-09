@@ -431,6 +431,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
 document.addEventListener('input', event => {
   if (event.target.classList.contains('node')) {
     var node = event.target;
+    node.setAttribute('value', node.value);
     var nodeWidth = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
     node.style.width = nodeWidth + 'px';
     if (node.attachedTableCell) {
@@ -833,7 +834,6 @@ document.getElementById('nodes').addEventListener('mouseout', event => {
 
 function saveState() {
   var id = 0;
-  Array.from(document.getElementsByClassName('node')).forEach(node => node.setAttribute('value', node.value));
   Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.setAttribute('data-from', link.from.id);
