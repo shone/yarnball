@@ -2,7 +2,36 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-var graph = document.getElementById('graph');
+var layers = document.getElementById('layers');
+var currentLayer = document.getElementsByClassName('layer')[0];
+var layerSelector = document.getElementById('layer-selector');
+
+document.getElementById('new-layer-button').addEventListener('click', event => {
+  var layerTab = document.createElement('input');
+  layerTab.classList.add('layer-tab');
+  layerSelector.insertBefore(layerTab, event.target);
+  var layer = document.createElement('div');
+  layer.classList.add('layer');
+  layer.innerHTML = '<div class="nodes"></div><svg class="links"></svg>';
+  layers.appendChild(layer);
+  currentLayer = layer;
+  setCurrentLayer(layers.children.length-1);
+  layerTab.focus();
+});
+
+layerSelector.addEventListener('click', event => {
+  if (event.target.classList.contains('layer-tab')) {
+    var layerIndex = Array.from(layerSelector.getElementsByClassName('layer-tab')).indexOf(event.target);
+    setCurrentLayer(layerIndex);
+  }
+});
+
+function setCurrentLayer(index) {
+  Array.from(document.getElementsByClassName('current-layer')).forEach(element => element.classList.remove('current-layer'));
+  layerSelector.children[index].classList.add('current-layer');
+  layers.children[index].classList.add('current-layer');
+  currentLayer = layers.children[index];
+}
 
 function pxToGrid(px) {
   return Math.round(px / 64) * 64;
@@ -31,7 +60,7 @@ function handleMouseDrag(event, options) {
     window.removeEventListener('mousemove', handleMousemove);
     window.removeEventListener('mouseup',   handleMouseup);
     if (options.mouseup) {
-      options.mouseup();
+      options.mouseup(event);
     }
   }
   cursorPositionOnMouseDragStart = {x: event.pageX, y: event.pageY};
@@ -100,7 +129,7 @@ function createNode(position, text) {
   node.style.height = '50px';
   node.instances = new Set([node]);
   node.links = new Set();
-  document.getElementById('nodes').appendChild(node);
+  currentLayer.getElementsByClassName('nodes')[0].appendChild(node);
   return node;
 }
 
@@ -118,14 +147,14 @@ function instanceNode(sourceNode, position) {
   sourceNode.instances.add(node);
   node.instances = sourceNode.instances;
   node.links = new Set();
-  document.getElementById('nodes').appendChild(node);
+  currentLayer.getElementsByClassName('nodes')[0].appendChild(node);
   return node;
 }
 
 function createLink(options) {
   var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   link.classList.add('link');
-  document.getElementById('links').appendChild(link);
+  currentLayer.getElementsByClassName('links')[0].appendChild(link);
   if (options) {
     if (options.from) {
       link.from = options.from;
@@ -299,7 +328,7 @@ function handleNodeDragMouseout(event) {
   }
 }
 
-graph.addEventListener('dblclick', (event) => {
+layers.addEventListener('dblclick', (event) => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => {
       if (!node.classList.contains('hidden')) {
@@ -318,7 +347,7 @@ graph.addEventListener('dblclick', (event) => {
 });
 
 function getClosestNodeTo(position, nodes) {
-  nodes = nodes || Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+  nodes = nodes || Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
   var closestNode = null;
   var closestNodeDistance = null;
   for (var node of nodes) {
@@ -354,7 +383,7 @@ function getClosestNodeInDirection(sourceNode, direction) {
   if (direction === 'right') sourcePosition.x -= 1;
   var closestNode = null;
   var distanceToClosestNode = null;
-  Array.from(document.getElementsByClassName('node')).forEach(node => {
+  Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
     if (node === sourceNode || node.classList.contains('hidden')) return;
     var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
     if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
@@ -381,7 +410,6 @@ function updateSelectionBox() {
 }
 var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
-//   if (event.target !== graph) return;
   event.preventDefault();
   if (!event.shiftKey) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -396,7 +424,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
       selectionBoxPosition.right  = Math.max(cursorPositionOnMouseDragStart.x, cursor.position.x);
       selectionBoxPosition.bottom = Math.max(cursorPositionOnMouseDragStart.y, cursor.position.y);
       updateSelectionBox();
-      var visibleNodes = Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+      var visibleNodes = Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
       visibleNodes.forEach(node => {
         if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
         var inSelectionBox = !(
@@ -444,8 +472,26 @@ document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
 
-  if (event.key === 'x' && event.ctrlKey) {
-    debugger;
+  if (event.key === 'PageUp' || event.key === 'PageDown') {
+    event.preventDefault();
+    var otherLayer = (event.key  === 'PageUp') ? currentLayer.nextElementSibling : currentLayer.previousElementSibling;
+    if (otherLayer) {
+      var otherLayerNodes = otherLayer.getElementsByClassName('nodes')[0];
+      var otherLayerLinks = otherLayer.getElementsByClassName('links')[0];
+      var selectedNodes = Array.from(currentLayer.querySelectorAll('.node.selected'));
+      var affectedLinks = new Set();
+      selectedNodes.forEach(node => {
+        node.links.forEach(link => affectedLinks.add(link));
+        node.remove();
+        otherLayerNodes.appendChild(node);
+      });
+      affectedLinks.forEach(link => {
+        link.remove();
+        otherLayerLinks.appendChild(link);
+      });
+      setCurrentLayer(Array.from(layers.children).indexOf(otherLayer));
+    }
+    return false;
   }
 
   if (event.key === 'Enter') {
@@ -500,7 +546,7 @@ document.body.addEventListener('keydown', event => {
       event.preventDefault();
       deleteElements(selectedElements);
       if (focusedNodePosition) {
-        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(document.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
+        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
         if (closestNode) {
           closestNode.focus();
           closestNode.classList.add('selected');
@@ -746,7 +792,7 @@ function layoutLink(link, lastPosition) {
 }
 
 document.addEventListener('contextmenu', event => event.preventDefault());
-graph.addEventListener('mousedown', event => {
+layers.addEventListener('mousedown', event => {
   if (event.button === 0 && event.ctrlKey) {
     event.preventDefault();
     var node = createNode({x: pxToGrid(event.pageX), y: pxToGrid(event.pageY)});
@@ -810,8 +856,12 @@ graph.addEventListener('mousedown', event => {
   } else if (event.button === 1) {
     event.preventDefault();
     handleMouseDrag(event, {
-      mousemove: function(cursor) {
+      mousemove: cursor => {
         window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
+      },
+      mouseup: event => {
+        event.preventDefault();
+        return false;
       }
     });
     return false;
@@ -821,12 +871,12 @@ graph.addEventListener('mousedown', event => {
 });
 
 // Node instance highlighting
-document.getElementById('nodes').addEventListener('mouseover', event => {
+layers.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('highlighted'));
   }
 });
-document.getElementById('nodes').addEventListener('mouseout', event => {
+layers.addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.remove('highlighted'));
   }
@@ -854,11 +904,11 @@ function saveState() {
     td.setAttribute('data-table-element-node', td.tableElementNode.id);
     td.setAttribute('data-attached-nodes', Array.from(td.attachedNodes).map(node => node.id).join(','));
   });
-  localStorage.saved_state = document.getElementById('graph').innerHTML;
+  localStorage.saved_state = document.getElementById('layers').innerHTML;
 }
 
 function restoreState() {
-  document.getElementById('graph').innerHTML = localStorage.saved_state;
+  document.getElementById('layers').innerHTML = localStorage.saved_state;
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
