@@ -5,18 +5,23 @@ if (localStorage.saved_state) {
 var layers = document.getElementById('layers');
 var currentLayer = document.getElementsByClassName('layer')[0];
 var layerSelector = document.getElementById('layer-selector');
+var newLayerButton = document.getElementById('new-layer-button');
 
-document.getElementById('new-layer-button').addEventListener('click', event => {
+function createLayer() {
   var layerTab = document.createElement('input');
   layerTab.classList.add('layer-tab');
-  layerSelector.insertBefore(layerTab, event.target);
+  layerSelector.insertBefore(layerTab, newLayerButton);
   var layer = document.createElement('div');
   layer.classList.add('layer');
   layer.innerHTML = '<div class="nodes"></div><svg class="links"></svg>';
   layers.appendChild(layer);
-  currentLayer = layer;
-  setCurrentLayer(layers.children.length-1);
   layerTab.focus();
+  return layer;
+}
+
+newLayerButton.addEventListener('click', event => {
+  var layer = createLayer();
+  setCurrentLayer(layers.children.length - 1);
 });
 
 layerSelector.addEventListener('click', event => {
@@ -475,6 +480,9 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
     var otherLayer = (event.key  === 'PageUp') ? currentLayer.nextElementSibling : currentLayer.previousElementSibling;
+    if (!otherLayer && event.key === 'PageUp') {
+      otherLayer = createLayer();
+    }
     if (otherLayer) {
       var otherLayerNodes = otherLayer.getElementsByClassName('nodes')[0];
       var otherLayerLinks = otherLayer.getElementsByClassName('links')[0];
