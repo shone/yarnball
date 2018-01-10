@@ -473,9 +473,44 @@ document.addEventListener('input', event => {
   }
 });
 
+document.addEventListener('paste', event => {
+  if (event.clipboardData.items.length === 1) {
+    var item = event.clipboardData.items[0];
+    if (item.kind === 'string') {
+      item.getAsString(string => {
+        var fragment = document.createRange().createContextualFragment(string);
+        currentLayer.appendChild(fragment);
+      });
+    }
+  }
+});
+
 document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
+
+  if (event.key === 'c' && event.ctrlKey) {
+    event.preventDefault();
+    var selectedNodes = Array.from(currentLayer.querySelectorAll('.node.selected'));
+    prepareForSerialization(selectedNodes, []);
+    var html = selectedNodes.map(node => node.outerHTML).join('');
+    var temporaryInput = document.createElement('input');
+    temporaryInput.value = html;
+    document.body.appendChild(temporaryInput);
+    temporaryInput.select();
+    document.execCommand('copy');
+    temporaryInput.remove();
+    return false;
+  }/* else if (event.key === 'v' && event.ctrlKey) {
+    event.preventDefault();
+    var temporaryInput = document.createElement('textarea');
+    document.body.appendChild(temporaryInput);
+    temporaryInput.focus();
+    document.execCommand('paste');
+    console.log(temporaryInput.value);
+    temporaryInput.remove();
+    return false;
+  }*/
 
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
@@ -890,28 +925,44 @@ layers.addEventListener('mouseout', event => {
   }
 });
 
-function saveState() {
+function prepareForSerialization(nodes, links) {
   var id = 0;
-  Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
-  Array.from(document.getElementsByClassName('link')).forEach(link => {
+  nodes.forEach(node => node.id = id++);
+  links.forEach(link => link.id = id++);
+  links.forEach(link => {
     link.setAttribute('data-from', link.from.id);
     link.setAttribute('data-via',  link.via.id);
     link.setAttribute('data-to',   link.to.id);
   });
-  Array.from(document.getElementsByClassName('node')).forEach(node => {
+  nodes.forEach(node => {
     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
-    if (node.attachedTableCell) {
-      node.setAttribute('data-attached-table-cell', node.attachedTableCell.id);
-    }
   });
-  Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
-    table.setAttribute('data-downvia', table.downVia.id);
-  });
-  Array.from(document.getElementsByTagName('TD')).forEach(td => {
-    td.setAttribute('data-table-element-node', td.tableElementNode.id);
-    td.setAttribute('data-attached-nodes', Array.from(td.attachedNodes).map(node => node.id).join(','));
-  });
+}
+
+function saveState() {
+  prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
+//   var id = 0;
+//   Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
+//   Array.from(document.getElementsByClassName('link')).forEach(link => {
+//     link.setAttribute('data-from', link.from.id);
+//     link.setAttribute('data-via',  link.via.id);
+//     link.setAttribute('data-to',   link.to.id);
+//   });
+//   Array.from(document.getElementsByClassName('node')).forEach(node => {
+//     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
+//     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
+//     if (node.attachedTableCell) {
+//       node.setAttribute('data-attached-table-cell', node.attachedTableCell.id);
+//     }
+//   });
+//   Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
+//     table.setAttribute('data-downvia', table.downVia.id);
+//   });
+//   Array.from(document.getElementsByTagName('TD')).forEach(td => {
+//     td.setAttribute('data-table-element-node', td.tableElementNode.id);
+//     td.setAttribute('data-attached-nodes', Array.from(td.attachedNodes).map(node => node.id).join(','));
+//   });
   localStorage.saved_state = document.getElementById('layers').innerHTML;
 }
 
