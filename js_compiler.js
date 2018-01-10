@@ -20,6 +20,25 @@ function compileStatement(node) {
     return '[' + followListNodes(array, ',').map(a => a.value).join(',') + ']';
   }
 
+  var return_ = findNodeVia(node, 'return');
+  if (return_) {
+    return 'return ' + compileStatement(return_);
+  }
+
+  var arrowFunction = findNodeVia(node, '=>');
+  if (arrowFunction) {
+    var args = [];
+    var argIndex = 0;
+    do {
+      var arg = findNodeVia(node, 'arg' + argIndex);
+      if (arg) {
+        args.push(arg.value);
+      }
+      argIndex++;
+    } while (arg)
+    return '(' + args.join(',') + ') => {' + compileStatements(arrowFunction) + '}';
+  }
+
   var if_ = findNodeVia(node, 'if');
   var then = findNodeVia(node, 'then');
   if (if_ && then) {

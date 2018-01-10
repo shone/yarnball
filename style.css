@@ -178,6 +178,8 @@ td.drag-drop-target:hover {
 input[value='var'],
 input[value='='],
 input[value='calls'],
+input[value='=>'],
+input[value='return'],
 input[value='arg0'],
 input[value='arg1'],
 input[value='arg2'],
