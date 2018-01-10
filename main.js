@@ -6,6 +6,7 @@ var layers = document.getElementById('layers');
 var currentLayer = document.getElementsByClassName('layer')[0];
 var layerSelector = document.getElementById('layer-selector');
 var newLayerButton = document.getElementById('new-layer-button');
+var cursor = document.getElementById('cursor');
 
 function createLayer() {
   var layerTab = document.createElement('input');
@@ -461,6 +462,13 @@ function handleBackgroundMousedownForSelectionBox(event) {
   return false;
 }
 
+layers.addEventListener('mousedown', event => {
+  if (event.target.classList.contains('layer')) {
+    cursor.style.left = (pxToGrid(event.pageX) - 32) + 'px';
+    cursor.style.top  = (pxToGrid(event.pageY) - 32) + 'px';
+  }
+});
+
 document.addEventListener('input', event => {
   if (event.target.classList.contains('node')) {
     var node = event.target;
@@ -479,7 +487,33 @@ document.addEventListener('paste', event => {
     if (item.kind === 'string') {
       item.getAsString(string => {
         var fragment = document.createRange().createContextualFragment(string);
-        currentLayer.appendChild(fragment);
+        var nodes = Array.from(fragment.querySelectorAll('.node'));
+        var links = Array.from(fragment.querySelectorAll('.link'));
+        nodes.forEach(node => currentLayer.getElementsByClassName('nodes')[0].appendChild(node));
+        links = links.map(link => {
+          var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+          copiedLink.setAttribute('id', link.getAttribute('id'));
+          copiedLink.setAttribute('class', link.getAttribute('class'));
+          copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
+          copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
+          copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
+          currentLayer.getElementsByClassName('links')[0].appendChild(copiedLink)
+          return copiedLink;
+        });
+        deserialize(nodes, links);
+        var leftmost = null;
+        var topmost  = null;
+        nodes.forEach(node => {
+          if (leftmost === null || parseFloat(node.style.left) < leftmost) leftmost = parseFloat(node.style.left);
+          if (topmost  === null || parseFloat(node.style.top)  < topmost)  topmost  = parseFloat(node.style.top);
+        });
+        var deltaX = pxToGrid(parseFloat(cursor.style.left)) - leftmost;
+        var deltaY = pxToGrid(parseFloat(cursor.style.top))  - topmost;
+        nodes.forEach(node => {
+          node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
+          node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
+        });
+        links.forEach(layoutLink);
       });
     }
   }
@@ -489,28 +523,38 @@ document.body.addEventListener('keydown', event => {
 
   if (handleKeydownForTable(event) === false) return false;
 
-  if (event.key === 'c' && event.ctrlKey) {
-    event.preventDefault();
+  if (event.ctrlKey && (event.key === 'c' || event.key === 'x')) {
     var selectedNodes = Array.from(currentLayer.querySelectorAll('.node.selected'));
-    prepareForSerialization(selectedNodes, []);
-    var html = selectedNodes.map(node => node.outerHTML).join('');
-    var temporaryInput = document.createElement('input');
-    temporaryInput.value = html;
-    document.body.appendChild(temporaryInput);
-    temporaryInput.select();
-    document.execCommand('copy');
-    temporaryInput.remove();
-    return false;
-  }/* else if (event.key === 'v' && event.ctrlKey) {
-    event.preventDefault();
-    var temporaryInput = document.createElement('textarea');
-    document.body.appendChild(temporaryInput);
-    temporaryInput.focus();
-    document.execCommand('paste');
-    console.log(temporaryInput.value);
-    temporaryInput.remove();
-    return false;
-  }*/
+    var selectedNodesSet = new Set(selectedNodes);
+    var affectedLinks = new Set();
+    selectedNodes.forEach(node => {
+      node.links.forEach(link => {
+        if (selectedNodesSet.has(link.from) && selectedNodesSet.has(link.via) && selectedNodesSet.has(link.to)) {
+          affectedLinks.add(link);
+        }
+      });
+    });
+    if (selectedNodes.length > 0) {
+      event.preventDefault();
+      prepareForSerialization(selectedNodes, affectedLinks);
+      var html = selectedNodes.map(node => node.outerHTML).join('');
+      html += Array.from(affectedLinks).map(link => link.outerHTML).join('');
+      clearSerialization(selectedNodes, affectedLinks);
+      var previouslyFocusedElement = document.activeElement;
+      var temporaryInput = document.createElement('input');
+      temporaryInput.value = html;
+      document.body.appendChild(temporaryInput);
+      temporaryInput.select();
+      document.execCommand('copy');
+      temporaryInput.remove();
+      if (event.key === 'x') {
+        deleteElements(selectedNodes);
+      } else if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+      }
+      return false;
+    }
+  }
 
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
@@ -641,15 +685,24 @@ document.body.addEventListener('keydown', event => {
       });
       affectedLinks.forEach(layoutLink);
       affectedTables.forEach(fitTableCellsToAttachedNodes);
-    } else if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
-      if (node) {
-        event.preventDefault();
-        node.focus();
-        if (!event.shiftKey) {
-          Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+    } else {
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
+        var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
+        if (node) {
+          event.preventDefault();
+          node.focus();
+          if (!event.shiftKey) {
+            Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+          }
+          node.classList.add('selected');
+          return false;
         }
-        node.classList.add('selected');
+      } else {
+        event.preventDefault();
+        if (event.key === 'ArrowRight') cursor.style.left = (parseFloat(cursor.style.left) + 64) + 'px';
+        if (event.key === 'ArrowLeft')  cursor.style.left = (parseFloat(cursor.style.left) - 64) + 'px';
+        if (event.key === 'ArrowDown')  cursor.style.top  = (parseFloat(cursor.style.top)  + 64) + 'px';
+        if (event.key === 'ArrowUp')    cursor.style.top  = (parseFloat(cursor.style.top)  - 64) + 'px';
         return false;
       }
     }
@@ -659,6 +712,7 @@ document.body.addEventListener('keydown', event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
     }
+    return false;
   } else if (event.key === 'F9') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var compiledStatements = compileStatements(document.activeElement);
@@ -684,10 +738,12 @@ document.body.addEventListener('keydown', event => {
         }
       }
     }
+    return false;
   } else if (event.key === 'F10') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileHtml(document.activeElement));
     }
+    return false;
   }
 });
 
@@ -788,6 +844,12 @@ document.addEventListener('keypress', event => {
         document.activeElement.classList.remove('collapsed');
       }
     }
+  }
+
+  if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+    var newNode = createNode({x: pxToGrid(parseFloat(cursor.style.left)), y: pxToGrid(parseFloat(cursor.style.top))});
+    newNode.classList.add('selected');
+    newNode.focus();
   }
 });
 
@@ -938,6 +1000,56 @@ function prepareForSerialization(nodes, links) {
     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
   });
+}
+
+function clearSerialization(nodes, links) {
+  links.forEach(link => {
+    link.removeAttribute('id');
+    link.removeAttribute('data-from');
+    link.removeAttribute('data-via');
+    link.removeAttribute('data-to');
+  });
+  nodes.forEach(node => {
+    node.removeAttribute('id');
+    node.removeAttribute('data-links');
+    node.removeAttribute('data-instances')
+  });
+}
+
+function deserialize(nodes, links) {
+  links.forEach(link => {
+    link.from = document.getElementById(link.getAttribute('data-from'));
+    link.via  = document.getElementById(link.getAttribute('data-via'));
+    link.to   = document.getElementById(link.getAttribute('data-to'));
+    link.removeAttribute('data-from');
+    link.removeAttribute('data-via');
+    link.removeAttribute('data-to');
+  });
+  nodes.forEach(node => {
+    if (node.getAttribute('data-links')) {
+      node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
+      if (node.links.has(null)) {
+        console.error('null link');
+        node.links.delete(null);
+      }
+      node.removeAttribute('data-links');
+    } else {
+      node.links = new Set();
+    }
+    if (node.getAttribute('data-instances')) {
+      node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
+      if (node.instances.has(null)) {
+        console.error('null instance');
+        node.instances.delete(null);
+      }
+      node.removeAttribute('data-instances')
+    } else {
+      node.instances = new Set([node]);
+    }
+    node.removeAttribute('id');
+    node.classList.remove('selected');
+  });
+  links.forEach(link => link.removeAttribute('id'));
 }
 
 function saveState() {
