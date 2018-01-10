@@ -1,20 +1,20 @@
 function compileHtml(node) {
-  return Array.from(followListNodes(node, 'sibling')).map(currentNode => {
+  return followListNodes(node, 'next').map(currentNode => {
     var tag = findNodeVia(currentNode, 'tag');
     if (tag) {
       var child = findNodeVia(currentNode, 'child');
       if (child) {
-        return '<' + tag.textContent + '>' + compileHtml(child) + '</' + tag.textContent + '>';
+        return '<' + tag.value + '>' + compileHtml(child) + '</' + tag.value + '>';
       }
-      var content = findNodeVia(currentNode, 'content');
+      var content = findNodeVia(currentNode, 'text');
       if (content) {
         if (isJs(content)) {
-          return '<' + tag.textContent + '>' + compileStatements(content) + '</' + tag.textContent + '>';
+          return '<' + tag.value + '>' + compileStatements(content) + '</' + tag.value + '>';
         } else {
-          return '<' + tag.textContent + '>' + content.textContent + '</' + tag.textContent + '>';
+          return '<' + tag.value + '>' + content.value + '</' + tag.value + '>';
         }
       }
-      return '<' + tag.textContent + '></' + tag.textContent + '>';
+      return '<' + tag.value + '></' + tag.value + '>';
     }
   }).join('');
 }

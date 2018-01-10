@@ -620,7 +620,7 @@ document.body.addEventListener('keydown', event => {
     }
   }
 
-  if (event.key === 'F8' && event.shiftKey) {
+  if (event.key === 'F8') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
     }
@@ -648,6 +648,10 @@ document.body.addEventListener('keydown', event => {
           makeJsonGraph(returnValue, {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)});
         }
       }
+    }
+  } else if (event.key === 'F10') {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      console.log(compileHtml(document.activeElement));
     }
   }
 });
@@ -707,10 +711,6 @@ document.addEventListener('keypress', event => {
 //       return false;
 //     }
 
-//   } else if (event.key === 'j') {
-//     if (document.activeElement && document.activeElement.classList.contains('node')) {
-//       console.log(compileHtml(document.activeElement));
-//     }
 //   } else if (event.key === 'h') {
 //     if (document.activeElement && document.activeElement.classList.contains('node')) {
 //       Array.from(document.getElementsByTagName('iframe')).forEach(iframe => iframe.remove());

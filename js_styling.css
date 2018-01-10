@@ -1,0 +1,25 @@
+input[value='var'],
+input[value='='],
+input[value='calls'],
+input[value='=>'],
+input[value='return'],
+input[value='arg0'],
+input[value='arg1'],
+input[value='arg2'],
+input[value='await'],
+input[value=';'],
+input[value='.'],
+input[value=','],
+input[value=':'],
+input[value='[]'],
+input[value='for'],
+input[value='of'],
+input[value='do'],
+input[value='if'],
+input[value='then'],
+input[value='else'],
+input[value='is']
+{
+  color: blue;
+  font-weight: bold;
+}
