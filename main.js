@@ -39,18 +39,17 @@ layerSelector.addEventListener('click', event => {
 });
 
 function setCurrentLayer(index) {
-  Array.from(document.getElementsByClassName('current-layer')).forEach(element => element.classList.remove('current-layer'));
-  layerSelector.children[index].classList.add('current-layer');
-  layers.children[index].classList.add('current-layer');
-  currentLayer = layers.children[index];
+  if (Array.from(layers).indexOf(currentLayer) !== index) {
+    Array.from(currentLayer.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+    Array.from(layerSelector.children).forEach((layer, i) => layer.classList.toggle('current-layer', i === index));
+    Array.from(layers.children).forEach(       (layer, i) => layer.classList.toggle('current-layer', i === index));
+    currentLayer = layers.children[index];
+  }
 }
 
 function pxToGrid(px) {
   return Math.round(px / 64) * 64;
 }
-
-var cursorOnMousedownPosition = {x: 0, y: 0};
-var lastCursorPosition = {x: 0, y: 0};
 
 var cursorPositionOnMouseDragStart = null;
 var cursorPositionOnLastDragMousemove = null;
@@ -127,9 +126,7 @@ function followListNodes(node, forward) {
 function createNode(position, text) {
   var node = document.createElement('input');
   node.classList.add('node');
-  if (text) {
-    node.value = text;
-  }
+  if (text) node.value = text;
   if (position) {
     node.style.left = String(position.x) + 'px';
     node.style.top  = String(position.y) + 'px';
@@ -137,8 +134,6 @@ function createNode(position, text) {
     node.style.left = '0px';
     node.style.top  = '0px';
   }
-  node.style.width  = '50px';
-  node.style.height = '50px';
   node.instances = new Set([node]);
   node.links = new Set();
   currentLayer.getElementsByClassName('nodes')[0].appendChild(node);
@@ -228,11 +223,11 @@ function deleteElements(elements) {
 }
 
 // Node dragging
+var isDraggingNodes = false;
 var currentDragdropTarget = null;
 function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
-    event.stopPropagation();
     event.target.focus();
     var clickedNodes = new Set([event.target]);
     if (event.target.collapsedNodes) {
@@ -251,7 +246,8 @@ function handleNodeMousedown(event) {
     window.addEventListener('mouseover', handleNodeDragMouseover);
     window.addEventListener('mouseout',  handleNodeDragMouseout);
     var nodeStartPositions = new Map();
-    Array.from(document.querySelectorAll('.node.selected')).forEach(node => nodeStartPositions.set(node, {x: parseFloat(node.style.left), y: parseFloat(node.style.top)}));
+    Array.from(currentLayer.querySelectorAll('.node.selected')).forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
+    isDraggingNodes = true;
     handleMouseDrag(event, {
       mousemove: function(cursor) {
         var affectedLinks = new Set();
@@ -324,6 +320,8 @@ function handleNodeMousedown(event) {
         Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
         affectedTables.forEach(fitTableCellsToAttachedNodes);
         currentDragdropTarget = null;
+
+        isDraggingNodes = false;
       }
     });
     return false;
@@ -363,7 +361,7 @@ function getClosestNodeTo(position, nodes) {
   var closestNode = null;
   var closestNodeDistance = null;
   for (var node of nodes) {
-    var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+    var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
     var delta = {x: position.x - nodePosition.x, y: position.y - nodePosition.y};
     var distance = (delta.x * delta.x) + (delta.y * delta.y);
     if (!closestNode || distance < closestNodeDistance) {
@@ -388,7 +386,7 @@ function directionBetweenPoints(a, b) {
 }
 
 function getClosestNodeInDirection(sourceNode, direction) {
-  var sourcePosition = {x: parseFloat(sourceNode.style.left), y: parseFloat(sourceNode.style.top)};
+  var sourcePosition = {x: parseInt(sourceNode.style.left), y: parseInt(sourceNode.style.top)};
   if (direction === 'up')    sourcePosition.y += 1;
   if (direction === 'down')  sourcePosition.y -= 1;
   if (direction === 'left')  sourcePosition.x += 1;
@@ -397,7 +395,7 @@ function getClosestNodeInDirection(sourceNode, direction) {
   var distanceToClosestNode = null;
   Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
     if (node === sourceNode || node.classList.contains('hidden')) return;
-    var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+    var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
     if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
       var deltaX = sourcePosition.x - nodePosition.x;
       var deltaY = sourcePosition.y - nodePosition.y;
@@ -440,10 +438,10 @@ function handleBackgroundMousedownForSelectionBox(event) {
       visibleNodes.forEach(node => {
         if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
         var inSelectionBox = !(
-          ((parseFloat(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
-          ((parseFloat(node.style.left) - 25)                       > selectionBoxPosition.right) ||
-          ((parseFloat(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
-          ((parseFloat(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
+          ((parseInt(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
+          ((parseInt(node.style.left) - 25)                       > selectionBoxPosition.right) ||
+          ((parseInt(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
+          ((parseInt(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
         );
         node.classList.toggle('selected', inSelectionBox);
         if (node.collapsedNodes) {
@@ -511,14 +509,14 @@ document.addEventListener('paste', event => {
         var leftmost = null;
         var topmost  = null;
         nodes.forEach(node => {
-          if (leftmost === null || parseFloat(node.style.left) < leftmost) leftmost = parseFloat(node.style.left);
-          if (topmost  === null || parseFloat(node.style.top)  < topmost)  topmost  = parseFloat(node.style.top);
+          if (leftmost === null || parseInt(node.style.left) < leftmost) leftmost = parseInt(node.style.left);
+          if (topmost  === null || parseInt(node.style.top)  < topmost)  topmost  = parseInt(node.style.top);
         });
-        var deltaX = pxToGrid(parseFloat(cursor.style.left)) - leftmost;
-        var deltaY = pxToGrid(parseFloat(cursor.style.top))  - topmost;
+        var deltaX = pxToGrid(parseInt(cursor.style.left)) - leftmost;
+        var deltaY = pxToGrid(parseInt(cursor.style.top))  - topmost;
         nodes.forEach(node => {
-          node.style.left = (parseFloat(node.style.left) + deltaX) + 'px';
-          node.style.top  = (parseFloat(node.style.top)  + deltaY) + 'px';
+          node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+          node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
         });
         links.forEach(layoutLink);
       });
@@ -589,8 +587,9 @@ document.body.addEventListener('keydown', event => {
   }
 
   if (event.key === 'Enter') {
+    if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var newNode = createNode({x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top) + 64});
+      var newNode = createNode({x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + 64});
       if (document.activeElement.attachedTableCell) {
         var td = document.activeElement.attachedTableCell;
         td.attachedNodes.add(newNode);
@@ -602,8 +601,8 @@ document.body.addEventListener('keydown', event => {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
       newNode.classList.add('selected');
-      cursor.style.left = (pxToGrid(parseFloat(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGrid(parseFloat(newNode.style.top))  - 32) + 'px';
+      cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
+      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
     }
   } else if (event.key === 'Tab') {
@@ -613,12 +612,12 @@ document.body.addEventListener('keydown', event => {
       var nonFocusedNodes = new Set(selectedNodes);
       nonFocusedNodes.delete(document.activeElement);
       nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
-        var fX = parseFloat(document.activeElement.style.left);
-        var fY = parseFloat(document.activeElement.style.top);
-        var aDeltaX = fX - parseFloat(a.style.left);
-        var aDeltaY = fY - parseFloat(a.style.top);
-        var bDeltaX = fX - parseFloat(b.style.left);
-        var bDeltaY = fY - parseFloat(b.style.top);
+        var fX = parseInt(document.activeElement.style.left);
+        var fY = parseInt(document.activeElement.style.top);
+        var aDeltaX = fX - parseInt(a.style.left);
+        var aDeltaY = fY - parseInt(a.style.top);
+        var bDeltaX = fX - parseInt(b.style.left);
+        var bDeltaY = fY - parseInt(b.style.top);
         return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
       });
       var from = nonFocusedNodes[0];
@@ -634,11 +633,12 @@ document.body.addEventListener('keydown', event => {
       return false;
     }
   } else if (event.key === 'Delete') {
+    if (isDraggingNodes) return false;
     var selectedElements = Array.from(document.getElementsByClassName('selected'));
     if (selectedElements.length > 0) {
       var focusedNodePosition = null;
       if (document.activeElement && document.activeElement.classList.contains('node')) {
-        focusedNodePosition = {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)};
+        focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
       }
       event.preventDefault();
       deleteElements(selectedElements);
@@ -660,22 +660,23 @@ document.body.addEventListener('keydown', event => {
     ArrowDown:  'down',
   }
   if (event.key in arrowKeyDirections) {
+    if (isDraggingNodes) return false;
     if (event.ctrlKey) {
       var affectedLinks = new Set();
       var affectedTables = new Set();
       Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-        if (event.key === 'ArrowLeft')  node.style.left = (parseFloat(node.style.left) - 64) + 'px';
-        if (event.key === 'ArrowRight') node.style.left = (parseFloat(node.style.left) + 64) + 'px';
-        if (event.key === 'ArrowUp')    node.style.top  = (parseFloat(node.style.top)  - 64) + 'px';
-        if (event.key === 'ArrowDown')  node.style.top  = (parseFloat(node.style.top)  + 64) + 'px';
+        if (event.key === 'ArrowLeft')  node.style.left = (parseInt(node.style.left) - 64) + 'px';
+        if (event.key === 'ArrowRight') node.style.left = (parseInt(node.style.left) + 64) + 'px';
+        if (event.key === 'ArrowUp')    node.style.top  = (parseInt(node.style.top)  - 64) + 'px';
+        if (event.key === 'ArrowDown')  node.style.top  = (parseInt(node.style.top)  + 64) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
         if (node.attachedTableCell && !event.shiftKey) {
           affectedTables.add(node.attachedTableCell.closest('table'));
         } else {
-          var nodePosition = {x: parseFloat(node.style.left), y: parseFloat(node.style.top)};
+          var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
           var tableCellUnderNode = Array.from(document.getElementsByTagName('TD')).find(td => {
             var table = td.closest('table');
-            var tdBounds = {left: parseFloat(table.style.left), top: parseFloat(table.style.top) + td.offsetTop};
+            var tdBounds = {left: parseInt(table.style.left), top: parseInt(table.style.top) + td.offsetTop};
             tdBounds.right  = tdBounds.left + td.offsetWidth;
             tdBounds.bottom = tdBounds.top  + td.offsetHeight;
             return nodePosition.x > tdBounds.left && nodePosition.x < tdBounds.right &&
@@ -709,8 +710,8 @@ document.body.addEventListener('keydown', event => {
 //         }
 //       } else {
         event.preventDefault();
-        var cursorX = parseFloat(cursor.style.left);
-        var cursorY = parseFloat(cursor.style.top);
+        var cursorX = parseInt(cursor.style.left);
+        var cursorY = parseInt(cursor.style.top);
         if (event.key === 'ArrowRight') cursorX += 64;
         if (event.key === 'ArrowLeft')  cursorX -= 64;
         if (event.key === 'ArrowDown')  cursorY += 64;
@@ -719,8 +720,8 @@ document.body.addEventListener('keydown', event => {
         cursor.style.top  = cursorY + 'px';
         resetCursorBlink();
         var nodeUnderCursor = Array.from(currentLayer.getElementsByClassName('node')).find(node => {
-          var nodeX = parseFloat(node.style.left);
-          var nodeY = parseFloat(node.style.top);
+          var nodeX = parseInt(node.style.left);
+          var nodeY = parseInt(node.style.top);
           return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
                  (nodeY >= cursorY) && (nodeY < (cursorY + 64));
         });
@@ -756,12 +757,12 @@ document.body.addEventListener('keydown', event => {
           returnValue.then(promisedValue => {
             if (typeof promisedValue === 'object') {
               document.activeElement.classList.remove('selected');
-              makeJsonGraph(promisedValue, {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)});
+              makeJsonGraph(promisedValue, {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)});
             }
           });
         } else if (typeof returnValue === 'object') {
           document.activeElement.classList.remove('selected');
-          makeJsonGraph(returnValue, {x: parseFloat(document.activeElement.style.left), y: parseFloat(document.activeElement.style.top)});
+          makeJsonGraph(returnValue, {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)});
         }
       }
     }
@@ -780,7 +781,7 @@ function duplicateNodes(nodes) {
   nodes = new Set(nodes);
   nodes.forEach(node => {
     node.links.forEach(link => affectedLinks.add(link));
-    var nodeInstance = createNode({x: parseFloat(node.style.left), y: parseFloat(node.style.top) + 64});
+    var nodeInstance = createNode({x: parseInt(node.style.left), y: parseInt(node.style.top) + 64});
     nodeInstance.value = node.value;
     node.instances.add(nodeInstance);
     nodeInstance.instances = node.instances;
@@ -808,7 +809,7 @@ document.addEventListener('keypress', event => {
   if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
-      var newNode = createNode({x: parseFloat(document.activeElement.style.left) + parseFloat(document.activeElement.style.width) + 14, y: parseFloat(document.activeElement.style.top)});
+      var newNode = createNode({x: parseInt(document.activeElement.style.left) + parseInt(document.activeElement.offsetWidth) + 14, y: parseInt(document.activeElement.style.top)});
       if (document.activeElement.attachedTableCell) {
         var td = document.activeElement.attachedTableCell;
         td.attachedNodes.add(newNode);
@@ -819,8 +820,8 @@ document.addEventListener('keypress', event => {
       newNode.classList.add('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       newNode.focus();
-      cursor.style.left = (pxToGrid(parseFloat(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGrid(parseFloat(newNode.style.top))  - 32) + 'px';
+      cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
+      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
       return false;
     }
@@ -881,10 +882,10 @@ document.addEventListener('keypress', event => {
   }
 
   if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
-    var newNode = createNode({x: pxToGrid(parseFloat(cursor.style.left)), y: pxToGrid(parseFloat(cursor.style.top))});
+    var newNode = createNode({x: pxToGrid(parseInt(cursor.style.left)), y: pxToGrid(parseInt(cursor.style.top))});
     if (event.key === ' ') {
       event.preventDefault();
-      cursor.style.left = (parseFloat(cursor.style.left) + 64) + 'px';
+      cursor.style.left = (parseInt(cursor.style.left) + 64) + 'px';
       resetCursorBlink();
     } else {
       newNode.focus();
@@ -921,7 +922,7 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
 
 function layoutLink(link, lastPosition) {
   function pos(node) {
-    return parseFloat(node.style.left) + ',' + parseFloat(node.style.top);
+    return parseInt(node.style.left) + ',' + parseInt(node.style.top);
   }
   if (link.to) {
     if (link.classList.contains('collapsed')) {
@@ -937,12 +938,13 @@ function layoutLink(link, lastPosition) {
 }
 
 document.addEventListener('contextmenu', event => event.preventDefault());
+
 layers.addEventListener('mousedown', event => {
-  if (event.button === 0 && event.ctrlKey) {
+  if (event.button === 0 && event.ctrlKey && event.target.classList.contains('layer')) {
     event.preventDefault();
     var node = createNode({x: pxToGrid(event.pageX), y: pxToGrid(event.pageY)});
     if (!event.shiftKey) {
-      Array.from(document.getElementsByClassName('selected')).forEach(node => {node.classList.remove('selected')});
+      Array.from(currentLayer.getElementsByClassName('selected')).forEach(node => node.classList.remove('selected'));
     }
     node.classList.add('selected');
     node.focus();
