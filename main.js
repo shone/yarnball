@@ -183,30 +183,6 @@ function deleteElements(elements) {
   var affectedLinks = new Set();
   elements.forEach(element => {
     if (element.classList.contains('node')) {
-      if (element.attachedTableCell) {
-        var table = element.attachedTableCell.closest('table');
-        if (element.attachedTableCell.tableElementNode === element) {
-          var tableNodes = getTableNodes(table);
-          if (tableNodes.length === 1) {
-            Array.from(table.getElementsByTagName('TD')).forEach(td => td.attachedNodes.forEach(node => delete node.attachedTableCell));
-            table.downVia.remove();
-            table.remove();
-          } else {
-            var index = tableNodes.indexOf(element);
-            tableNodes.splice(index, 1);
-            rebuildTable(table, tableNodes);
-            if (index >= tableNodes.length) {
-              index--;
-            }
-            tableNodes[index].focus();
-            tableNodes[index].classList.add('selected');
-          }
-        } else {
-          element.attachedTableCell.attachedNodes.delete(element);
-          fitTableCellsToAttachedNodes(table);
-          element.attachedTableCell = null;
-        }
-      }
       element.instances.delete(element);
       element.links.forEach(link => affectedLinks.add(link));
       element.remove();
@@ -224,27 +200,19 @@ function deleteElements(elements) {
 
 // Node dragging
 var isDraggingNodes = false;
-var currentDragdropTarget = null;
 function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
     event.target.focus();
-    var clickedNodes = new Set([event.target]);
-    if (event.target.collapsedNodes) {
-      event.target.collapsedNodes.forEach(node => clickedNodes.add(node));
-    }
     if (event.shiftKey) {
-      clickedNodes.forEach(node => {node.classList.toggle('selected')});
+      event.target.classList.toggle('selected');
     } else {
       if (!event.target.classList.contains('selected')) {
-        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+        Array.from(currentLayer.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
-      clickedNodes.forEach(node => node.classList.add('selected'));
+      event.target.classList.add('selected');
     }
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.add('dragging'));
-    Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.add('drag-drop-target'));
-    window.addEventListener('mouseover', handleNodeDragMouseover);
-    window.addEventListener('mouseout',  handleNodeDragMouseout);
     var nodeStartPositions = new Map();
     Array.from(currentLayer.querySelectorAll('.node.selected')).forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
     isDraggingNodes = true;
@@ -262,102 +230,28 @@ function handleNodeMousedown(event) {
         });
       },
       mouseup: function() {
-        window.removeEventListener('mouseover', handleNodeDragMouseover);
-        window.removeEventListener('mouseout',  handleNodeDragMouseout);
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('dragging'));
-
-        var newNodesForTables = new Map();
-        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-          if (node.attachedTableCell) {
-            var table = node.attachedTableCell.closest('table');
-            if (node.attachedTableCell.tableElementNode === node && (currentDragdropTarget === null || (currentDragdropTarget.closest('table') !== table))) {
-              var tableNodes = newNodesForTables.get(table);
-              if (tableNodes === undefined) {
-                tableNodes = getTableNodes(table);
-              }
-              delete node.attachedTableCell;
-              tableNodes.splice(tableNodes.indexOf(node), 1);
-              newNodesForTables.set(table, tableNodes);
-            }
-          }
-        });
-        newNodesForTables.forEach((nodes, table) => {
-          if (nodes.length === 0) {
-            Array.from(table.getElementsByTagName('TD')).forEach(td => {
-              td.attachedNodes.forEach(node => delete node.attachedTableCell);
-              delete td.attachedNodes;
-            });
-            var tableLinks = getTableLinks(table);
-            tableLinks.forEach(link => {
-              link.from.links.delete(link);
-              link.via.remove();
-              link.to.links.delete(link);
-              link.remove();
-            });
-            table.downVia.remove();
-            table.remove();
-          } else {
-            rebuildTable(table, nodes);
-          }
-        });
-
-        var affectedTables = new Set();
-        Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-          if (node.attachedTableCell) {
-            affectedTables.add(node.attachedTableCell.closest('table'));
-            node.attachedTableCell.attachedNodes.delete(node);
-            node.attachedTableCell = null;
-          }
-        });
-        if (currentDragdropTarget && currentDragdropTarget.tagName === 'TD') {
-          var td = currentDragdropTarget;
-          Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
-            td.attachedNodes.add(node);
-            node.attachedTableCell = td;
-          });
-          affectedTables.add(td.closest('table'));
-        }
-        Array.from(document.getElementsByTagName('TD')).forEach(td => td.classList.remove('drag-drop-target'));
-        affectedTables.forEach(fitTableCellsToAttachedNodes);
-        currentDragdropTarget = null;
-
         isDraggingNodes = false;
       }
     });
     return false;
   }
 }
-function handleNodeDragMouseover(event) {
-  if (event.target.tagName === 'TD') {
-    currentDragdropTarget = event.target;
-  }
-}
-function handleNodeDragMouseout(event) {
-  if (event.target === currentDragdropTarget) {
-    currentDragdropTarget = null;
-  }
-}
 
 layers.addEventListener('dblclick', (event) => {
   if (event.target.classList.contains('node')) {
-    event.target.instances.forEach(node => {
-      if (!node.classList.contains('hidden')) {
-        node.classList.add('selected')
-      }
-    });
+    event.target.instances.forEach(node => node.classList.add('selected'));
   } else if (event.target.classList.contains('link')) {
-    if (!event.target.classList.contains('collapsed')) {
-      var connectedLinks = new Set([event.target]);
-      var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
-      getAllConnectedNodesAndLinks(event.target.to, connectedNodes, connectedLinks);
-      connectedNodes.delete(event.target.from);
-      connectedNodes.forEach(node => {node.classList.add('selected')});
-    }
+    var connectedLinks = new Set([event.target]);
+    var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
+    getAllConnectedNodesAndLinks(event.target.to, connectedNodes, connectedLinks);
+    connectedNodes.delete(event.target.from);
+    connectedNodes.forEach(node => node.classList.add('selected'));
   }
 });
 
 function getClosestNodeTo(position, nodes) {
-  nodes = nodes || Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
+  nodes = nodes || Array.from(currentLayer.getElementsByClassName('node'));
   var closestNode = null;
   var closestNodeDistance = null;
   for (var node of nodes) {
@@ -394,7 +288,7 @@ function getClosestNodeInDirection(sourceNode, direction) {
   var closestNode = null;
   var distanceToClosestNode = null;
   Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
-    if (node === sourceNode || node.classList.contains('hidden')) return;
+    if (node === sourceNode) return;
     var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
     if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
       var deltaX = sourcePosition.x - nodePosition.x;
@@ -434,8 +328,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
       selectionBoxPosition.right  = Math.max(cursorPositionOnMouseDragStart.x, cursor.position.x);
       selectionBoxPosition.bottom = Math.max(cursorPositionOnMouseDragStart.y, cursor.position.y);
       updateSelectionBox();
-      var visibleNodes = Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden'));
-      visibleNodes.forEach(node => {
+      Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
         if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
         var inSelectionBox = !(
           ((parseInt(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
@@ -444,9 +337,6 @@ function handleBackgroundMousedownForSelectionBox(event) {
           ((parseInt(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
         );
         node.classList.toggle('selected', inSelectionBox);
-        if (node.collapsedNodes) {
-          node.collapsedNodes.forEach(node => node.classList.toggle('selected', inSelectionBox));
-        }
       });
       var closestNode = getClosestNodeTo(cursor.position, Array.from(document.querySelectorAll('.node.selected')));
       if (closestNode) {
@@ -480,9 +370,6 @@ document.addEventListener('input', event => {
     node.setAttribute('value', node.value);
     var nodeWidth = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
     node.style.width = nodeWidth + 'px';
-    if (node.attachedTableCell) {
-      fitTableCellsToAttachedNodes(node.attachedTableCell.closest('table'));
-    }
   }
 });
 
@@ -506,6 +393,7 @@ document.addEventListener('paste', event => {
           return copiedLink;
         });
         deserialize(nodes, links);
+        clearSerialization(nodes, links);
         var leftmost = null;
         var topmost  = null;
         nodes.forEach(node => {
@@ -525,8 +413,6 @@ document.addEventListener('paste', event => {
 });
 
 document.body.addEventListener('keydown', event => {
-
-  if (handleKeydownForTable(event) === false) return false;
 
   if (event.ctrlKey && (event.key === 'c' || event.key === 'x')) {
     var selectedNodes = Array.from(currentLayer.querySelectorAll('.node.selected'));
@@ -590,12 +476,6 @@ document.body.addEventListener('keydown', event => {
     if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var newNode = createNode({x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + 64});
-      if (document.activeElement.attachedTableCell) {
-        var td = document.activeElement.attachedTableCell;
-        td.attachedNodes.add(newNode);
-        newNode.attachedTableCell = td;
-        fitTableCellsToAttachedNodes(td.closest('table'));
-      }
       newNode.focus();
       if (!event.shiftKey) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -643,7 +523,7 @@ document.body.addEventListener('keydown', event => {
       event.preventDefault();
       deleteElements(selectedElements);
       if (focusedNodePosition) {
-        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentLayer.getElementsByClassName('node')).filter(node => !node.classList.contains('hidden')));
+        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentLayer.getElementsByClassName('node')));
         if (closestNode) {
           closestNode.focus();
           closestNode.classList.add('selected');
@@ -663,39 +543,14 @@ document.body.addEventListener('keydown', event => {
     if (isDraggingNodes) return false;
     if (event.ctrlKey) {
       var affectedLinks = new Set();
-      var affectedTables = new Set();
-      Array.from(document.querySelectorAll('.node.selected')).forEach(node => {
+      Array.from(currentLayer.querySelectorAll('.node.selected')).forEach(node => {
         if (event.key === 'ArrowLeft')  node.style.left = (parseInt(node.style.left) - 64) + 'px';
         if (event.key === 'ArrowRight') node.style.left = (parseInt(node.style.left) + 64) + 'px';
         if (event.key === 'ArrowUp')    node.style.top  = (parseInt(node.style.top)  - 64) + 'px';
         if (event.key === 'ArrowDown')  node.style.top  = (parseInt(node.style.top)  + 64) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
-        if (node.attachedTableCell && !event.shiftKey) {
-          affectedTables.add(node.attachedTableCell.closest('table'));
-        } else {
-          var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
-          var tableCellUnderNode = Array.from(document.getElementsByTagName('TD')).find(td => {
-            var table = td.closest('table');
-            var tdBounds = {left: parseInt(table.style.left), top: parseInt(table.style.top) + td.offsetTop};
-            tdBounds.right  = tdBounds.left + td.offsetWidth;
-            tdBounds.bottom = tdBounds.top  + td.offsetHeight;
-            return nodePosition.x > tdBounds.left && nodePosition.x < tdBounds.right &&
-                   nodePosition.y > tdBounds.top  && nodePosition.y < tdBounds.bottom;
-          });
-          if (node.attachedTableCell && node.attachedTableCell !== tableCellUnderNode) {
-            affectedTables.add(node.attachedTableCell.closest('table'));
-            node.attachedTableCell.attachedNodes.delete(node);
-            delete node.attachedTableCell;
-          }
-          if (tableCellUnderNode) {
-            tableCellUnderNode.attachedNodes.add(node);
-            node.attachedTableCell = tableCellUnderNode;
-            affectedTables.add(tableCellUnderNode.closest('table'));
-          }
-        }
       });
       affectedLinks.forEach(layoutLink);
-      affectedTables.forEach(fitTableCellsToAttachedNodes);
     } else {
 //       if (document.activeElement && document.activeElement.classList.contains('node')) {
 //         var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
@@ -708,7 +563,7 @@ document.body.addEventListener('keydown', event => {
 //           node.classList.add('selected');
 //           return false;
 //         }
-//       } else {
+//       }
         event.preventDefault();
         var cursorX = parseInt(cursor.style.left);
         var cursorY = parseInt(cursor.style.top);
@@ -732,7 +587,6 @@ document.body.addEventListener('keydown', event => {
           document.activeElement.blur();
         }
         return false;
-//       }
     }
   }
 
@@ -804,18 +658,10 @@ function duplicateNodes(nodes) {
 }
 
 document.addEventListener('keypress', event => {
-  if (handleKeypressForTable(event) === false) return false;
-
   if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
       var newNode = createNode({x: parseInt(document.activeElement.style.left) + parseInt(document.activeElement.offsetWidth) + 14, y: parseInt(document.activeElement.style.top)});
-      if (document.activeElement.attachedTableCell) {
-        var td = document.activeElement.attachedTableCell;
-        td.attachedNodes.add(newNode);
-        newNode.attachedTableCell = td;
-        fitTableCellsToAttachedNodes(td.closest('table'));
-      }
       document.activeElement.classList.remove('selected');
       newNode.classList.add('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
@@ -849,36 +695,6 @@ document.addEventListener('keypress', event => {
     event.preventDefault();
     restoreState();
     return false;
-  } else if ((event.key === '-' || event.key === '+' || event.key === '=') && event.shiftKey) {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      if (event.key === '-') {
-        if (document.querySelectorAll('.node.selected').length > 1) {
-          var collapsedNodes = new Set(document.querySelectorAll('.node.selected'));
-          var collapsedLinks = new Set();
-          collapsedNodes.delete(document.activeElement);
-          collapsedNodes.forEach(node => {
-            node.classList.add('hidden');
-            node.links.forEach(link => collapsedLinks.add(link));
-          });
-          collapsedLinks.forEach(link => {
-            link.classList.add('hidden');
-          });
-          document.activeElement.collapsedNodes = collapsedNodes;
-          document.activeElement.collapsedLinks = collapsedLinks;
-          document.activeElement.classList.add('collapsed');
-        }
-      } else {
-        if (document.activeElement.collapsedNodes) {
-          document.activeElement.collapsedNodes.forEach(node => node.classList.remove('hidden'));
-          document.activeElement.collapsedNodes = null;
-        }
-        if (document.activeElement.collapsedLinks) {
-          document.activeElement.collapsedLinks.forEach(link => link.classList.remove('hidden'));
-          document.activeElement.collapsedLinks = null;
-        }
-        document.activeElement.classList.remove('collapsed');
-      }
-    }
   }
 
   if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
@@ -925,11 +741,7 @@ function layoutLink(link, lastPosition) {
     return parseInt(node.style.left) + ',' + parseInt(node.style.top);
   }
   if (link.to) {
-    if (link.classList.contains('collapsed')) {
-      link.setAttribute('points', [pos(link.from), pos(link.via)].join(' '));
-    } else {
-      link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
-    }
+    link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
   } else if (link.via) {
     link.setAttribute('points', [pos(link.from), pos(link.via), lastPosition.x + ',' + lastPosition.y].join(' '));
   } else {
@@ -948,10 +760,6 @@ layers.addEventListener('mousedown', event => {
     }
     node.classList.add('selected');
     node.focus();
-    if (event.target.tagName === 'TD') {
-      event.target.attachedNodes.add(node);
-      node.attachedTableCell = event.target;
-    }
     return false;
   } else if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
@@ -969,7 +777,7 @@ layers.addEventListener('mousedown', event => {
       }
     });
     function handleMouseover(event) {
-      if (event.target.classList.contains('node') && !event.target.classList.contains('hidden') &&
+      if (event.target.classList.contains('node') &&
         event.target !== link.via && event.target !== link.to && event.target !== link.from) {
         if (!link.via) {
           link.via = event.target;
@@ -998,8 +806,6 @@ layers.addEventListener('mousedown', event => {
       event.target.classList.add('selected');
     }
     return false;
-  } else if (event.button === 0 && event.target.tagName === 'TABLE') {
-    return handleTableMousedown(event);
   } else if (event.button === 1) {
     event.preventDefault();
     handleMouseDrag(event, {
@@ -1063,9 +869,6 @@ function deserialize(nodes, links) {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
-    link.removeAttribute('data-from');
-    link.removeAttribute('data-via');
-    link.removeAttribute('data-to');
   });
   nodes.forEach(node => {
     if (node.getAttribute('data-links')) {
@@ -1074,7 +877,6 @@ function deserialize(nodes, links) {
         console.error('null link');
         node.links.delete(null);
       }
-      node.removeAttribute('data-links');
     } else {
       node.links = new Set();
     }
@@ -1084,20 +886,17 @@ function deserialize(nodes, links) {
         console.error('null instance');
         node.instances.delete(null);
       }
-      node.removeAttribute('data-instances')
     } else {
       node.instances = new Set([node]);
     }
-    node.removeAttribute('id');
     node.classList.remove('selected');
   });
-  links.forEach(link => link.removeAttribute('id'));
 }
 
 function saveState() {
   prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
 //   var id = 0;
-//   Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.id = id++);
+//   Array.from(document.querySelectorAll('.node,.link')).forEach(element => element.id = id++);
 //   Array.from(document.getElementsByClassName('link')).forEach(link => {
 //     link.setAttribute('data-from', link.from.id);
 //     link.setAttribute('data-via',  link.via.id);
@@ -1106,16 +905,6 @@ function saveState() {
 //   Array.from(document.getElementsByClassName('node')).forEach(node => {
 //     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
 //     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
-//     if (node.attachedTableCell) {
-//       node.setAttribute('data-attached-table-cell', node.attachedTableCell.id);
-//     }
-//   });
-//   Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
-//     table.setAttribute('data-downvia', table.downVia.id);
-//   });
-//   Array.from(document.getElementsByTagName('TD')).forEach(td => {
-//     td.setAttribute('data-table-element-node', td.tableElementNode.id);
-//     td.setAttribute('data-attached-nodes', Array.from(td.attachedNodes).map(node => node.id).join(','));
 //   });
   localStorage.saved_state = document.getElementById('layers').innerHTML;
 }
@@ -1151,27 +940,7 @@ function restoreState() {
     } else {
       node.instances = new Set([node]);
     }
-    if (node.getAttribute('data-attached-table-cell')) {
-      node.attachedTableCell = document.getElementById(node.getAttribute('data-attached-table-cell'));
-      node.removeAttribute('data-attached-table-cell');
-    }
     node.classList.remove('selected');
   });
-  Array.from(document.getElementsByTagName('TABLE')).forEach(table => {
-    if (table.getAttribute('data-downvia')) {
-      table.downVia = document.getElementById(table.getAttribute('data-downvia'));
-      table.removeAttribute('data-downvia')
-    }
-  });
-  Array.from(document.getElementsByTagName('TD')).forEach(td=> {
-    if (td.getAttribute('data-table-element-node')) {
-      td.tableElementNode = document.getElementById(td.getAttribute('data-table-element-node'));
-      td.removeAttribute('data-table-element-node')
-    }
-    if (td.getAttribute('data-attached-nodes')) {
-      td.attachedNodes = new Set(td.getAttribute('data-attached-nodes').split(',').map(id => document.getElementById(id)));
-      td.removeAttribute('data-attached-nodes');
-    }
-  });
-  Array.from(document.querySelectorAll('.node,.link,td')).forEach(element => element.removeAttribute('id'));
+  Array.from(document.querySelectorAll('.node,.link')).forEach(element => element.removeAttribute('id'));
 }

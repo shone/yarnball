@@ -57,11 +57,6 @@ body {
   pointer-events: none;
 }
 
-.hidden {
-  display: none !important;
-/*   opacity: 0.4; */
-}
-
 #cursor {
   display: block;
   position: absolute;
@@ -114,10 +109,6 @@ body {
   background-color: orange;
 }
 
-.node.collapsed {
-  outline: 4px solid green;
-}
-
 .node:focus {
   outline: 4px solid red;
 }
@@ -167,36 +158,4 @@ iframe {
   right: 0;
   top: 0;
   background-color: #fff;
-}
-
-table {
-  position: absolute;
-  border: none;
-  border-collapse: collapse;
-}
-
-table:after {
-  content: ' ';
-  display: block;
-  position: absolute;
-  top:   -57px;
-  left:  -57px;
-  width:  50px;
-  height: 50px;
-  background-color: gray;
-  cursor: pointer;
-}
-table:hover:after {
-  background-color: #4e4e4e;
-}
-
-td {
-  border: 1px solid #fff;
-  background-color: gray;
-  opacity: 0.3;
-  box-sizing: border-box;
-  padding: 0;
-}
-td.drag-drop-target:hover {
-  border: 2px solid orange;
 }
