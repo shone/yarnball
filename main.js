@@ -1,8 +1,9 @@
+var layers = document.getElementById('layers');
+
 if (localStorage.saved_state) {
   restoreState();
 }
 
-var layers = document.getElementById('layers');
 var currentLayer = document.getElementsByClassName('layer')[0];
 var layerSelector = document.getElementById('layer-selector');
 var newLayerButton = document.getElementById('new-layer-button');
@@ -837,6 +838,8 @@ layers.addEventListener('mouseout', event => {
 
 function prepareForSerialization(nodes, links) {
   var id = 0;
+  var nodesSet = new Set(nodes);
+  var linksSet = new Set(links);
   nodes.forEach(node => node.id = id++);
   links.forEach(link => link.id = id++);
   links.forEach(link => {
@@ -845,22 +848,8 @@ function prepareForSerialization(nodes, links) {
     link.setAttribute('data-to',   link.to.id);
   });
   nodes.forEach(node => {
-    node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
-    node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
-  });
-}
-
-function clearSerialization(nodes, links) {
-  links.forEach(link => {
-    link.removeAttribute('id');
-    link.removeAttribute('data-from');
-    link.removeAttribute('data-via');
-    link.removeAttribute('data-to');
-  });
-  nodes.forEach(node => {
-    node.removeAttribute('id');
-    node.removeAttribute('data-links');
-    node.removeAttribute('data-instances')
+    node.setAttribute('data-links', Array.from(node.links).filter(link => linksSet.has(link)).map(link => link.id).join(','));
+    node.setAttribute('data-instances', Array.from(node.instances).filter(node => nodesSet.has(node)).map(node => node.id).join(','));
   });
 }
 
@@ -893,31 +882,31 @@ function deserialize(nodes, links) {
   });
 }
 
+function clearSerialization(nodes, links) {
+  links.forEach(link => {
+    link.removeAttribute('id');
+    link.removeAttribute('data-from');
+    link.removeAttribute('data-via');
+    link.removeAttribute('data-to');
+  });
+  nodes.forEach(node => {
+    node.removeAttribute('id');
+    node.removeAttribute('data-links');
+    node.removeAttribute('data-instances')
+  });
+}
+
 function saveState() {
   prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
-//   var id = 0;
-//   Array.from(document.querySelectorAll('.node,.link')).forEach(element => element.id = id++);
-//   Array.from(document.getElementsByClassName('link')).forEach(link => {
-//     link.setAttribute('data-from', link.from.id);
-//     link.setAttribute('data-via',  link.via.id);
-//     link.setAttribute('data-to',   link.to.id);
-//   });
-//   Array.from(document.getElementsByClassName('node')).forEach(node => {
-//     node.setAttribute('data-links', Array.from(node.links).map(link => link.id).join(','));
-//     node.setAttribute('data-instances', Array.from(node.instances).map(node => node.id).join(','));
-//   });
-  localStorage.saved_state = document.getElementById('layers').innerHTML;
+  localStorage.saved_state = layers.innerHTML;
 }
 
 function restoreState() {
-  document.getElementById('layers').innerHTML = localStorage.saved_state;
+  layers.innerHTML = localStorage.saved_state;
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
-    link.removeAttribute('data-from');
-    link.removeAttribute('data-via');
-    link.removeAttribute('data-to');
   });
   Array.from(document.getElementsByClassName('node')).forEach(node => {
     if (node.getAttribute('data-links')) {
@@ -926,7 +915,6 @@ function restoreState() {
         console.error('null link');
         node.links.delete(null);
       }
-      node.removeAttribute('data-links');
     } else {
       node.links = new Set();
     }
@@ -936,11 +924,10 @@ function restoreState() {
         console.error('null instance');
         node.instances.delete(null);
       }
-      node.removeAttribute('data-instances')
     } else {
       node.instances = new Set([node]);
     }
     node.classList.remove('selected');
   });
-  Array.from(document.querySelectorAll('.node,.link')).forEach(element => element.removeAttribute('id'));
+  clearSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
 }
