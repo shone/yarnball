@@ -481,7 +481,6 @@ document.body.addEventListener('keydown', event => {
       if (!event.shiftKey) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
-      newNode.classList.add('selected');
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
       cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
@@ -515,19 +514,23 @@ document.body.addEventListener('keydown', event => {
     }
   } else if (event.key === 'Delete') {
     if (isDraggingNodes) return false;
-    var selectedElements = Array.from(document.getElementsByClassName('selected'));
-    if (selectedElements.length > 0) {
+    var elementsToDelete = new Set(document.getElementsByClassName('selected'));
+    if (document.activeElement) {
+      elementsToDelete.add(document.activeElement);
+    }
+    if (elementsToDelete.size > 0) {
       var focusedNodePosition = null;
       if (document.activeElement && document.activeElement.classList.contains('node')) {
         focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
       }
       event.preventDefault();
-      deleteElements(selectedElements);
+      deleteElements(elementsToDelete);
       if (focusedNodePosition) {
         var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentLayer.getElementsByClassName('node')));
         if (closestNode) {
           closestNode.focus();
-          closestNode.classList.add('selected');
+          cursor.style.left = (pxToGrid(parseInt(closestNode.style.left)) - 32) + 'px';
+          cursor.style.top  = (pxToGrid(parseInt(closestNode.style.top))  - 32) + 'px';
         }
       }
       return false;
@@ -753,16 +756,7 @@ function layoutLink(link, lastPosition) {
 document.addEventListener('contextmenu', event => event.preventDefault());
 
 layers.addEventListener('mousedown', event => {
-  if (event.button === 0 && event.ctrlKey && event.target.classList.contains('layer')) {
-    event.preventDefault();
-    var node = createNode({x: pxToGrid(event.pageX), y: pxToGrid(event.pageY)});
-    if (!event.shiftKey) {
-      Array.from(currentLayer.getElementsByClassName('selected')).forEach(node => node.classList.remove('selected'));
-    }
-    node.classList.add('selected');
-    node.focus();
-    return false;
-  } else if (event.button === 2 && event.target.classList.contains('node')) {
+  if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
     var link = createLink();
     link.from = event.target;
