@@ -4,10 +4,13 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-var currentLayer = document.getElementsByClassName('layer')[0];
+var mainPanel = document.getElementById('main-panel');
+var findPanel = document.getElementById('find-panel');
+var currentPanel = mainPanel;
+var cursor = document.getElementById('cursor');
+var currentLayer = mainPanel.getElementsByClassName('layer')[0];
 var layerSelector = document.getElementById('layer-selector');
 var newLayerButton = document.getElementById('new-layer-button');
-var cursor = document.getElementById('cursor');
 
 function resetCursorBlink() {
   cursor.classList.remove('blinking');
@@ -59,6 +62,7 @@ function handleMouseDrag(event, options) {
   function handleMousemove(event) {
     if (options.mousemove) {
       var position = {x: event.pageX, y: event.pageY};
+//       var positionPanel = {x: event.screenX
       var positionScreen = {x: event.screenX, y: event.screenY};
       var delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
       var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
@@ -124,20 +128,24 @@ function followListNodes(node, forward) {
   return nodes;
 }
 
-function createNode(position, text) {
+function createNode(options) {
   var node = document.createElement('input');
   node.classList.add('node');
-  if (text) node.value = text;
-  if (position) {
-    node.style.left = String(position.x) + 'px';
-    node.style.top  = String(position.y) + 'px';
+  if (options && options.text) node.value = text;
+  if (options && options.position) {
+    node.style.left = String(options.position.x) + 'px';
+    node.style.top  = String(options.position.y) + 'px';
   } else {
     node.style.left = '0px';
     node.style.top  = '0px';
   }
   node.instances = new Set([node]);
   node.links = new Set();
-  currentLayer.getElementsByClassName('nodes')[0].appendChild(node);
+  if (options && options.parent) {
+    options.parent.appendChild(node);
+  } else {
+    currentLayer.getElementsByClassName('nodes')[0].appendChild(node);
+  }
   return node;
 }
 
@@ -357,11 +365,14 @@ function handleBackgroundMousedownForSelectionBox(event) {
   return false;
 }
 
-layers.addEventListener('mousedown', event => {
+document.body.addEventListener('mousedown', event => {
   if (event.target.classList.contains('layer')) {
     cursor.style.left = (pxToGrid(event.pageX) - 32) + 'px';
     cursor.style.top  = (pxToGrid(event.pageY) - 32) + 'px';
     resetCursorBlink();
+    if (cursor.parentElement !== event.target) {
+      event.target.appendChild(cursor);
+    }
   }
 });
 
@@ -371,6 +382,10 @@ document.addEventListener('input', event => {
     node.setAttribute('value', node.value);
     var nodeWidth = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
     node.style.width = nodeWidth + 'px';
+    if (event.target.closest('#find-panel')) {
+//       currentLayer.querySelectorAll('.node[value="' + node.value + '"]');
+      Array.from(currentLayer.getElementsByClassName('node')).forEach(n => n.classList.toggle('selected', node.value && (n.value === node.value)));
+    }
   }
 });
 
@@ -476,7 +491,7 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
     if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var newNode = createNode({x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + 64});
+      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + 64}});
       newNode.focus();
       if (!event.shiftKey) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -594,6 +609,32 @@ document.body.addEventListener('keydown', event => {
     }
   }
 
+  if (event.key === 'f' && event.ctrlKey) {
+    event.preventDefault();
+    findPanel.classList.remove('hidden');
+    findPanel.appendChild(cursor);
+    currentLayer = findPanel;
+    var findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
+    if (findPanelNodes.getElementsByClassName('node').length === 0) {
+      var node = createNode({position: {x: 64, y: 64}, parent: findPanelNodes});
+      node.focus();
+      cursor.style.left = pxToGrid(parseInt(node.style.left)) + 'px';
+      cursor.style.top  = pxToGrid(parseInt(node.style.top)) + 'px';
+      resetCursorBlink();
+    } else {
+      findPanelNodes.getElementsByClassName('node')[0].focus();
+    }
+    return false;
+  }
+
+  if (event.key === 'Escape') {
+    if (!findPanel.classList.contains('hidden')) {
+      event.preventDefault();
+      findPanel.classList.add('hidden');
+      return false;
+    }
+  }
+
   if (event.key === 'F8') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
@@ -639,7 +680,7 @@ function duplicateNodes(nodes) {
   nodes = new Set(nodes);
   nodes.forEach(node => {
     node.links.forEach(link => affectedLinks.add(link));
-    var nodeInstance = createNode({x: parseInt(node.style.left), y: parseInt(node.style.top) + 64});
+    var nodeInstance = createNode({position: {x: parseInt(node.style.left), y: parseInt(node.style.top) + 64}});
     nodeInstance.value = node.value;
     node.instances.add(nodeInstance);
     nodeInstance.instances = node.instances;
@@ -665,9 +706,8 @@ document.addEventListener('keypress', event => {
   if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
-      var newNode = createNode({x: parseInt(document.activeElement.style.left) + parseInt(document.activeElement.offsetWidth) + 14, y: parseInt(document.activeElement.style.top)});
+      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left) + parseInt(document.activeElement.offsetWidth) + 14, y: parseInt(document.activeElement.style.top)}});
       document.activeElement.classList.remove('selected');
-      newNode.classList.add('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       newNode.focus();
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
@@ -695,14 +735,10 @@ document.addEventListener('keypress', event => {
     event.preventDefault();
     saveState();
     return false;
-  } else if (event.key === 'F' && event.shiftKey && event.ctrlKey) {
-    event.preventDefault();
-    restoreState();
-    return false;
   }
 
   if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
-    var newNode = createNode({x: pxToGrid(parseInt(cursor.style.left)), y: pxToGrid(parseInt(cursor.style.top))});
+    var newNode = createNode({position: {x: pxToGrid(parseInt(cursor.style.left)), y: pxToGrid(parseInt(cursor.style.top))}});
     if (event.key === ' ') {
       event.preventDefault();
       cursor.style.left = (parseInt(cursor.style.left) + 64) + 'px';
@@ -755,11 +791,12 @@ function layoutLink(link, lastPosition) {
 
 document.addEventListener('contextmenu', event => event.preventDefault());
 
-layers.addEventListener('mousedown', event => {
+document.addEventListener('mousedown', event => {
   if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
     var link = createLink();
     link.from = event.target;
+    var panel = event.target.closest('panel');
     handleMouseDrag(event, {
       mousemove: function(cursor) {
         layoutLink(link, {x: cursor.position.x, y: cursor.position.y});
@@ -805,7 +842,7 @@ layers.addEventListener('mousedown', event => {
     event.preventDefault();
     handleMouseDrag(event, {
       mousemove: cursor => {
-        window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
+        mainPanel.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
       },
       mouseup: event => {
         event.preventDefault();
