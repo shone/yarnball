@@ -17,24 +17,22 @@
     </svg>
 
     <div id="layer-selector">
-      <input class="layer-tab current-layer"><button id="new-layer-button">+</button>
+      <input class="layer-tab current"><button id="new-layer-button">+</button>
     </div>
     <div id="main-panel" class="panel"> 
       <div id="layers">
-        <div class="layer current-layer">
+        <div class="surface layer current">
           <div class="nodes"></div>
           <svg class="links"></svg>
+          <div id="cursor" class="blinking"></div>
         </div>
       </div>
     </div>
 
-    <div id="find-panel" class="panel hidden">
+    <div id="find-panel" class="panel surface hidden">
       <div class="nodes"></div>
       <svg class="links"></svg>
     </div>
-
-    <div id="selection-box"></div>
-    <div id="cursor" class="blinking"></div>
 
     <script src="main.js"></script>
     <script src="html_compiler.js"></script>

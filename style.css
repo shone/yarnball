@@ -38,21 +38,21 @@ body {
   padding: 0;
 }
 
-.layer-tab.current-layer {
+.layer-tab.current {
   outline: 2px solid orange;
   outline-offset: -2px;
 }
 
 .layer {
+  position: relative;
+  background-color: #b5b5b5;
+  width:  500rem;
+  height: 500rem;
   display: none;
 }
 
-.layer.current-layer {
+.layer.current {
   display: block;
-  width:  500rem;
-  height: 500rem;
-  position: relative;
-  background-color: #b5b5b5;
 }
 
 .links {
@@ -109,7 +109,7 @@ body {
 }
 
 .node.highlighted {
-  background-color: #4e4e4e;
+  background-color: #ffff98;
 }
 
 .node.selected {
@@ -152,12 +152,20 @@ body {
 
 #svg-defs {
   position: fixed;
+  width:  0;
+  height: 0;
 }
 
 #selection-box {
   position: absolute;
   background-color: grey;
   opacity: 0.5;
+  pointer-events: none;
+}
+
+.surface.dragging-selection-box .node,
+.surface.dragging-selection-box .link {
+  pointer-events: none;
 }
 
 .dragging {
@@ -172,7 +180,7 @@ iframe {
 }
 
 #find-panel {
-  height: 150px;
+  height: 350px;
   position: relative;
   background-color: #b5b5b5;
   border-top: 1px solid grey;
