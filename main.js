@@ -585,11 +585,17 @@ document.body.addEventListener('keydown', event => {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
         nodesToMove.add(document.activeElement);
       }
+      var moveDelta = null;
+      if (event.key === 'ArrowLeft')  moveDelta = {x: -64, y:   0};
+      if (event.key === 'ArrowRight') moveDelta = {x:  64, y:   0};
+      if (event.key === 'ArrowUp')    moveDelta = {x:   0, y: -64};
+      if (event.key === 'ArrowDown')  moveDelta = {x:   0, y:  64};
+      cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
+      cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
+      resetCursorBlink();
       nodesToMove.forEach(node => {
-        if (event.key === 'ArrowLeft')  node.style.left = (parseInt(node.style.left) - 64) + 'px';
-        if (event.key === 'ArrowRight') node.style.left = (parseInt(node.style.left) + 64) + 'px';
-        if (event.key === 'ArrowUp')    node.style.top  = (parseInt(node.style.top)  - 64) + 'px';
-        if (event.key === 'ArrowDown')  node.style.top  = (parseInt(node.style.top)  + 64) + 'px';
+        node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
+        node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
       });
       affectedLinks.forEach(layoutLink);
