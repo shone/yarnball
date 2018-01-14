@@ -229,7 +229,8 @@ function handleNodeMousedown(event) {
         Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
     }
-    var nodesToDrag = Array.from(currentSurface.querySelectorAll('.node.selected'));
+    var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
+    nodesToDrag.add(document.activeElement);
     nodesToDrag.forEach(node => node.classList.add('dragging'));
     var nodeStartPositions = new Map();
     nodesToDrag.forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
