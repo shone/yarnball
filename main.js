@@ -218,13 +218,16 @@ function handleNodeMousedown(event) {
     event.preventDefault();
     event.target.focus();
     currentSurface = event.target.closest('.surface');
+    currentSurface.appendChild(cursor);
+    cursor.style.left = (pxToGrid(parseInt(event.target.style.left)) - 32) + 'px';
+    cursor.style.top  = (pxToGrid(parseInt(event.target.style.top))  - 32) + 'px';
+    resetCursorBlink();
     if (event.shiftKey) {
       event.target.classList.toggle('selected');
     } else {
       if (!event.target.classList.contains('selected')) {
         Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
-      event.target.classList.add('selected');
     }
     var nodesToDrag = Array.from(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.forEach(node => node.classList.add('dragging'));
