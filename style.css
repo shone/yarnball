@@ -111,6 +111,9 @@ body {
 .node.highlighted {
   background-color: #ffff98;
 }
+.node.instance-highlighted {
+  background-color: #888;
+}
 
 .node.selected {
   background-color: orange;

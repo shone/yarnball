@@ -217,8 +217,8 @@ function deleteElements(elements) {
   });
 }
 
-// Node dragging
 var isDraggingNodes = false;
+
 function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
@@ -235,24 +235,29 @@ function handleNodeMousedown(event) {
         Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       }
     }
+    // Node dragging
     var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.add(document.activeElement);
     nodesToDrag.forEach(node => node.classList.add('dragging'));
+    var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     var nodeStartPositions = new Map();
     nodesToDrag.forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
     isDraggingNodes = true;
     handleMouseDrag(event, {
-      mousemove: function(cursor) {
+      mousemove: function(mouse) {
         var affectedLinks = new Set();
         nodesToDrag.forEach(node => {
           var startPosition = nodeStartPositions.get(node);
-          node.style.left = (startPosition.x + pxToGrid(cursor.deltaTotal.x)) + 'px';
-          node.style.top  = (startPosition.y + pxToGrid(cursor.deltaTotal.y)) + 'px';
+          node.style.left = (startPosition.x + pxToGrid(mouse.deltaTotal.x)) + 'px';
+          node.style.top  = (startPosition.y + pxToGrid(mouse.deltaTotal.y)) + 'px';
           node.links.forEach(link => affectedLinks.add(link));
         });
         affectedLinks.forEach(link => {
           layoutLink(link);
         });
+        cursor.style.left = (cursorStartPosition.x + pxToGrid(mouse.deltaTotal.x)) + 'px';
+        cursor.style.top  = (cursorStartPosition.y + pxToGrid(mouse.deltaTotal.y)) + 'px';
+        resetCursorBlink();
       },
       mouseup: function() {
         nodesToDrag.forEach(element => element.classList.remove('dragging'));
@@ -482,6 +487,7 @@ document.body.addEventListener('keydown', event => {
       temporaryInput.remove();
       if (event.key === 'x') {
         deleteElements(selectedNodes);
+        if (currentSurface.id === 'find-panel') doFind();
       } else if (previouslyFocusedElement) {
         previouslyFocusedElement.focus();
       }
@@ -527,7 +533,7 @@ document.body.addEventListener('keydown', event => {
       resetCursorBlink();
     }
   } else if (event.key === 'Tab') {
-    var selectedNodes = document.querySelectorAll('.node.selected');
+    var selectedNodes = currentSurface.querySelectorAll('.node.selected');
     if (selectedNodes.length === 3) {
       event.preventDefault();
       var nonFocusedNodes = new Set(selectedNodes);
@@ -551,11 +557,12 @@ document.body.addEventListener('keydown', event => {
         link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
         layoutLink(link);
       }
+      if (currentSurface.id === 'find-panel') doFind();
       return false;
     }
   } else if (event.key === 'Delete') {
     if (isDraggingNodes) return false;
-    var elementsToDelete = new Set(document.getElementsByClassName('selected'));
+    var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
     if (document.activeElement) {
       elementsToDelete.add(document.activeElement);
     }
@@ -566,6 +573,7 @@ document.body.addEventListener('keydown', event => {
       }
       event.preventDefault();
       deleteElements(elementsToDelete);
+      if (currentSurface.id === 'find-panel') doFind();
       if (focusedNodePosition) {
         var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
         if (closestNode) {
@@ -739,13 +747,11 @@ function doFind() {
         foundNodes = new Set(Array.from(currentFoundNodes).filter(node => foundNodes.has(node)));
       }
     });
-    if (foundNodes !== null) {
-      Array.from(layers.getElementsByClassName('node')).forEach(node => {
-        var found = foundNodes.has(node);
-        node.classList.toggle('selected',    found)
-        node.classList.toggle('highlighted', found)
-      });
-    }
+    Array.from(layers.getElementsByClassName('node')).forEach(node => {
+      var found = foundNodes && foundNodes.has(node);
+      node.classList.toggle('selected',    found)
+      node.classList.toggle('highlighted', found)
+    });
   }
 }
 
@@ -879,6 +885,10 @@ document.addEventListener('mousedown', event => {
       mouseup: function(event) {
         if (!(link.from && link.via && link.to)) {
           link.remove();
+        } else {
+          if (link.closest('#find-panel')) {
+            doFind();
+          }
         }
         window.removeEventListener('mouseover', handleMouseover);
       }
@@ -933,12 +943,12 @@ document.addEventListener('mousedown', event => {
 // Node instance highlighting
 layers.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
-    event.target.instances.forEach(node => node.classList.add('highlighted'));
+    event.target.instances.forEach(node => node.classList.add('instance-highlighted'));
   }
 });
 layers.addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
-    event.target.instances.forEach(node => node.classList.remove('highlighted'));
+    event.target.instances.forEach(node => node.classList.remove('instance-highlighted'));
   }
 });
 
