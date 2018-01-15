@@ -7,11 +7,17 @@ if (localStorage.saved_state) {
 var mainPanel = document.getElementById('main-panel');
 var findPanel = document.getElementById('find-panel');
 var currentPanel = mainPanel;
-var cursor = document.getElementById('cursor');
 var currentLayer = mainPanel.getElementsByClassName('layer')[0];
 var currentSurface = currentLayer;
 var layerSelector = document.getElementById('layer-selector');
 var newLayerButton = document.getElementById('new-layer-button');
+
+var cursor = document.createElement('div');
+cursor.id = 'cursor';
+cursor.style.left = '32px';
+cursor.style.top  = '32px';
+cursor.classList.add('blinking');
+currentSurface.appendChild(cursor);
 
 function resetCursorBlink() {
   cursor.classList.remove('blinking');
@@ -998,7 +1004,9 @@ function clearSerialization(nodes, links) {
 
 function saveState() {
   prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
+  cursor.remove();
   localStorage.saved_state = layers.innerHTML;
+  currentSurface.appendChild(cursor);
 }
 
 function restoreState() {
