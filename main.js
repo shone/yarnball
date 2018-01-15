@@ -25,6 +25,17 @@ function resetCursorBlink() {
   cursor.classList.add('blinking');
 }
 
+function getNodeUnderCursor() {
+  var cursorX = parseInt(cursor.style.left);
+  var cursorY = parseInt(cursor.style.top);
+  return Array.from(currentSurface.getElementsByClassName('node')).find(node => {
+    var nodeX = parseInt(node.style.left);
+    var nodeY = parseInt(node.style.top);
+    return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
+           (nodeY >= cursorY) && (nodeY < (cursorY + 64));
+  });
+}
+
 function createLayer() {
   var layerTab = document.createElement('input');
   layerTab.classList.add('layer-tab');
@@ -533,10 +544,10 @@ document.body.addEventListener('keydown', event => {
       resetCursorBlink();
     }
   } else if (event.key === 'Tab') {
-    var selectedNodes = currentSurface.querySelectorAll('.node.selected');
-    if (selectedNodes.length === 3) {
+    var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
+    if (selectedNodes.size === 3 && selectedNodes.has(document.activeElement)) {
       event.preventDefault();
-      var nonFocusedNodes = new Set(selectedNodes);
+      var nonFocusedNodes = selectedNodes;
       nonFocusedNodes.delete(document.activeElement);
       nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
         var fX = parseInt(document.activeElement.style.left);
@@ -634,15 +645,20 @@ document.body.addEventListener('keydown', event => {
         if (event.key === 'ArrowLeft')  cursorX -= 64;
         if (event.key === 'ArrowDown')  cursorY += 64;
         if (event.key === 'ArrowUp')    cursorY -= 64;
+        resetCursorBlink();
+        if ((cursorX < 0) || (cursorY < 0)) return false;
+        if (event.shiftKey) {
+          var previousNodeUnderCursor = getNodeUnderCursor();
+          if (previousNodeUnderCursor) {
+            previousNodeUnderCursor.classList.add('selected');
+          }
+        }
         cursor.style.left = cursorX + 'px';
         cursor.style.top  = cursorY + 'px';
-        resetCursorBlink();
-        var nodeUnderCursor = Array.from(currentSurface.getElementsByClassName('node')).find(node => {
-          var nodeX = parseInt(node.style.left);
-          var nodeY = parseInt(node.style.top);
-          return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
-                 (nodeY >= cursorY) && (nodeY < (cursorY + 64));
-        });
+        if (!event.shiftKey) {
+          Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+        }
+        var nodeUnderCursor = getNodeUnderCursor();
         if (nodeUnderCursor) {
           nodeUnderCursor.focus();
           nodeUnderCursor.select();
