@@ -506,6 +506,12 @@ document.body.addEventListener('keydown', event => {
     }
   }
 
+  if (event.key === 'a' && event.ctrlKey) {
+    event.preventDefault();
+    Array.from(currentLayer.getElementsByClassName('node')).forEach(node => node.classList.add('selected'));
+    return false;
+  }
+
   if (event.key === 'PageUp' || event.key === 'PageDown') {
     event.preventDefault();
     var otherLayer = (event.key  === 'PageUp') ? currentLayer.nextElementSibling : currentLayer.previousElementSibling;
