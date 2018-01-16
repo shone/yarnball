@@ -580,7 +580,7 @@ document.body.addEventListener('keydown', event => {
   } else if (event.key === 'Delete') {
     if (isDraggingNodes) return false;
     var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
-    if (document.activeElement) {
+    if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
       elementsToDelete.add(document.activeElement);
     }
     if (elementsToDelete.size > 0) {
