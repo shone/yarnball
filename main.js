@@ -209,6 +209,42 @@ function createLink(options) {
   return link;
 }
 
+var linkBeingCreated = null;
+function useNodeForLinkCreationMode(node) {
+  if (linkBeingCreated) {
+    if (!linkBeingCreated.from) {
+      linkBeingCreated.from = node;
+      linkBeingCreated.from.links.add(linkBeingCreated);
+      layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
+    } else if (!linkBeingCreated.via) {
+      if (linkBeingCreated.from === node) return;
+      linkBeingCreated.via = node;
+      linkBeingCreated.via.links.add(linkBeingCreated);
+      layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
+    } else if (!linkBeingCreated.to) {
+      if (linkBeingCreated.from === node || linkBeingCreated.via === node) return;
+      var existingLink = Array.from(currentLayer.getElementsByClassName('link')).find(link => {
+        return link.from === linkBeingCreated.from &&
+               link.via  === linkBeingCreated.via  &&
+               link.to   === node;
+      });
+      if (existingLink) {
+        deleteElements([existingLink]);
+        linkBeingCreated.from.links.delete(linkBeingCreated);
+        linkBeingCreated.via.links.delete(linkBeingCreated);
+        linkBeingCreated.remove();
+      } else {
+        linkBeingCreated.to = node;
+        linkBeingCreated.to.links.add(linkBeingCreated);
+        layoutLink(linkBeingCreated);
+      }
+      linkBeingCreated = null;
+      cursor.classList.remove('insert-mode');
+      resetCursorBlink();
+    }
+  }
+}
+
 function deleteElements(elements) {
   var affectedLinks = new Set();
   elements.forEach(element => {
@@ -548,8 +584,10 @@ document.body.addEventListener('keydown', event => {
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
       cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
+      if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
     }
   } else if (event.key === 'Tab') {
+    event.preventDefault();
     var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
     if (selectedNodes.size === 3 && selectedNodes.has(document.activeElement)) {
       event.preventDefault();
@@ -576,7 +614,29 @@ document.body.addEventListener('keydown', event => {
       }
       if (currentSurface.id === 'find-panel') doFind();
       return false;
+    } else if (selectedNodes.size === 0) {
+      if (!linkBeingCreated) {
+        linkBeingCreated = createLink();
+        if (document.activeElement && document.activeElement.classList.contains('node')) {
+          useNodeForLinkCreationMode(document.activeElement);
+        }
+        cursor.classList.add('insert-mode');
+        resetCursorBlink();
+      } else {
+        if (document.activeElement && document.activeElement.classList.contains('node')) {
+          useNodeForLinkCreationMode(document.activeElement);
+        } else {
+          if (linkBeingCreated.from) linkBeingCreated.from.links.delete(linkBeingCreated);
+          if (linkBeingCreated.via)  linkBeingCreated.via.links.delete(linkBeingCreated);
+          if (linkBeingCreated.to)   linkBeingCreated.to.links.delete(linkBeingCreated);
+          linkBeingCreated.remove();
+          linkBeingCreated = null;
+          cursor.classList.remove('insert-mode');
+          resetCursorBlink();
+        }
+      }
     }
+    return false;
   } else if (event.key === 'Delete') {
     if (isDraggingNodes) return false;
     var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
@@ -661,6 +721,9 @@ document.body.addEventListener('keydown', event => {
         }
         cursor.style.left = cursorX + 'px';
         cursor.style.top  = cursorY + 'px';
+        if (linkBeingCreated) {
+          layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 32});
+        }
         if (!event.shiftKey) {
           Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
         }
@@ -816,6 +879,7 @@ document.addEventListener('keypress', event => {
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
       cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
+      if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
       return false;
     }
 //   } else if (event.key === 'd') {
@@ -849,6 +913,7 @@ document.addEventListener('keypress', event => {
     } else {
       newNode.focus();
     }
+    if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
     return false;
   }
 });
@@ -887,8 +952,10 @@ function layoutLink(link, lastPosition) {
     link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
   } else if (link.via) {
     link.setAttribute('points', [pos(link.from), pos(link.via), lastPosition.x + ',' + lastPosition.y].join(' '));
-  } else {
+  } else if (link.from) {
     link.setAttribute('points', [pos(link.from), lastPosition.x + ',' + lastPosition.y].join(' '));
+  } else {
+    link.setAttribute('points', '');
   }
 }
 

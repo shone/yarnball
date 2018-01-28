@@ -82,6 +82,18 @@ body {
   background-color: #000;
   outline: 1px solid #fff;
 }
+#cursor.insert-mode {
+  width: 64px;
+  height: 64px;
+  margin-left: 0;
+  margin-top:  0;
+  background-color: transparent;
+  outline: 1px solid #000;
+  border: 1px solid #fff;
+}
+#cursor.insert-mode:after {
+  display: none;
+}
 
 @keyframes blink-animation {
   to { visibility: hidden; }
