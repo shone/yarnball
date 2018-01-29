@@ -215,7 +215,6 @@ function useNodeForLinkCreationMode(node) {
     if (!linkBeingCreated.from) {
       linkBeingCreated.from = node;
       linkBeingCreated.from.links.add(linkBeingCreated);
-      layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
     } else if (!linkBeingCreated.via) {
       if (linkBeingCreated.from === node) return;
       linkBeingCreated.via = node;
@@ -691,7 +690,7 @@ document.body.addEventListener('keydown', event => {
         node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
       });
-      affectedLinks.forEach(layoutLink);
+      affectedLinks.forEach(link => layoutLink(link));
     } else {
 //       if (document.activeElement && document.activeElement.classList.contains('node')) {
 //         var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
@@ -1003,14 +1002,15 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
 
 function layoutLink(link, lastPosition) {
   function pos(node) {
-    return parseInt(node.style.left) + ',' + parseInt(node.style.top);
+    return {x: parseInt(node.style.left), y: parseInt(node.style.top)};
   }
-  if (link.to) {
-    link.setAttribute('points', [pos(link.from), pos(link.via), pos(link.to)].join(' '));
-  } else if (link.via) {
-    link.setAttribute('points', [pos(link.from), pos(link.via), lastPosition.x + ',' + lastPosition.y].join(' '));
-  } else if (link.from) {
-    link.setAttribute('points', [pos(link.from), lastPosition.x + ',' + lastPosition.y].join(' '));
+  var points = [];
+  if (link.from) points.push(pos(link.from));
+  if (link.via)  points.push(pos(link.via));
+  if (link.to)   points.push(pos(link.to));
+  if (points.length < 3 && lastPosition) points.push(lastPosition);
+  if (points.length >= 2) {
+    link.setAttribute('points', points.map(point => point.x + ',' + point.y).join(' '));
   } else {
     link.setAttribute('points', '');
   }
