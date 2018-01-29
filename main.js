@@ -576,7 +576,8 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
     if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + 64}});
+      var offset = event.shiftKey ? -64 : 64;
+      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + offset}});
       newNode.focus();
       if (!event.shiftKey) {
         Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -928,7 +929,8 @@ document.addEventListener('keypress', event => {
   if (event.key === ' ') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
-      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left) + parseInt(document.activeElement.offsetWidth) + 14, y: parseInt(document.activeElement.style.top)}});
+      var offset = event.shiftKey ? -64 : parseInt(document.activeElement.offsetWidth) + 14;
+      var newNode = createNode({position: {x: parseInt(document.activeElement.style.left) + offset, y: parseInt(document.activeElement.style.top)}});
       document.activeElement.classList.remove('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       newNode.focus();
@@ -964,7 +966,11 @@ document.addEventListener('keypress', event => {
     var newNode = createNode({position: {x: pxToGrid(parseInt(cursor.style.left)), y: pxToGrid(parseInt(cursor.style.top))}});
     if (event.key === ' ') {
       event.preventDefault();
-      cursor.style.left = (parseInt(cursor.style.left) + 64) + 'px';
+      if (event.shiftKey) {
+        newNode.focus();
+      } else {
+        cursor.style.left = (parseInt(cursor.style.left) + 64) + 'px';
+      }
       resetCursorBlink();
     } else {
       newNode.focus();
