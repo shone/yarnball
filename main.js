@@ -873,9 +873,9 @@ function doFind() {
             var match = ((correspondence.get(link.from) === connectedLink.from) ||
                          (correspondence.get(link.via)  === connectedLink.via)  ||
                          (correspondence.get(link.to)   === connectedLink.to)) &&
-                        (!connectedLink.from || link.from.value === connectedLink.from.value) &&
-                        (!connectedLink.via  || link.via.value  === connectedLink.via.value)  &&
-                        (!connectedLink.to   || link.to.value   === connectedLink.to.value);
+                        (!connectedLink.from.value || link.from.value === connectedLink.from.value) &&
+                        (!connectedLink.via.value  || link.via.value  === connectedLink.via.value)  &&
+                        (!connectedLink.to.value   || link.to.value   === connectedLink.to.value);
             if (match) {
               hasMatchingLink = true;
               correspondence.set(link.from, connectedLink.from);
