@@ -237,6 +237,7 @@ function useNodeForLinkCreationMode(node) {
         linkBeingCreated.to = node;
         linkBeingCreated.to.links.add(linkBeingCreated);
         layoutLink(linkBeingCreated);
+        if (currentSurface.id === 'find-panel') doFind();
       }
       linkBeingCreated = null;
       cursor.classList.remove('insert-mode');
@@ -803,40 +804,96 @@ document.body.addEventListener('keydown', event => {
   }
 });
 
+function getConnectedLinks(link) {
+  var surface = link.closest('.surface');
+  var nodesAlreadySeen = new Set([link.from, link.via, link.to]);
+  var linksAlreadySeen = new Set([link]);
+  var allLinks = Array.from(surface.getElementsByClassName('link')).filter(link => link.from && link.via && link.to);
+  var connectedLinks = [];
+  var connectedLink = null;
+  do {
+    connectedLink = allLinks.find(link => {
+      if (linksAlreadySeen.has(link)) return false;
+      return nodesAlreadySeen.has(link.from) ||
+             nodesAlreadySeen.has(link.via) ||
+             nodesAlreadySeen.has(link.to);
+    });
+    if (connectedLink) {
+      connectedLinks.push(connectedLink);
+      linksAlreadySeen.add(connectedLink);
+      nodesAlreadySeen.add(connectedLink.from);
+      nodesAlreadySeen.add(connectedLink.via);
+      nodesAlreadySeen.add(connectedLink.to);
+    }
+  } while(connectedLink);
+  return connectedLinks;
+}
+
 function doFind() {
   var findPanelNodes = Array.from(findPanel.getElementsByClassName('node'));
-  if (findPanelNodes.length === 1 && findPanelNodes[0].value) {
-    Array.from(layers.getElementsByClassName('node')).forEach(node => {
-      var match = node.value && node.value === findPanelNodes[0].value;
-      node.classList.toggle('selected',    match);
-      node.classList.toggle('highlighted', match);
-    });
+  if (findPanelNodes.length === 1) {
+    if (findPanelNodes[0].value) {
+      Array.from(layers.getElementsByClassName('node')).forEach(node => {
+        var match = node.value && node.value === findPanelNodes[0].value;
+        node.classList.toggle('selected',    match);
+        node.classList.toggle('highlighted', match);
+      });
+    } else {
+      Array.from(layers.getElementsByClassName('node')).forEach(node => {
+        node.classList.remove('selected');
+        node.classList.remove('highlighted');
+      });
+    }
   } else {
-    var findPanelLinks = Array.from(findPanel.getElementsByClassName('link'));
-    var foundNodes = null;
-    findPanelLinks.forEach(findLink => {
-      var currentFoundNodes = new Set();
+    Array.from(layers.getElementsByClassName('node')).forEach(node => {
+      node.classList.remove('selected');
+      node.classList.remove('highlighted');
+    });
+    var findPanelLinks = Array.from(findPanel.getElementsByClassName('link')).filter(link => link.from && link.via && link.to);
+    if (findPanelLinks.length > 0) {
+      var findLink = findPanelLinks[0];
+      var correspondences = [];
       Array.from(layers.getElementsByClassName('link')).forEach(link => {
         var match = (!findLink.from.value || link.from.value === findLink.from.value) &&
                     (!findLink.via.value  || link.via.value  === findLink.via.value)  &&
                     (!findLink.to.value   || link.to.value   === findLink.to.value);
         if (match) {
-          if (!findLink.from.value) currentFoundNodes.add(link.from);
-          if (!findLink.via.value)  currentFoundNodes.add(link.via);
-          if (!findLink.to.value)   currentFoundNodes.add(link.to);
+          var correspondence = new Map();
+          correspondence.set(link.from, findLink.from);
+          correspondence.set(link.via,  findLink.via);
+          correspondence.set(link.to,   findLink.to);
+          correspondences.push(correspondence);
         }
       });
-      if (foundNodes === null) {
-        foundNodes = currentFoundNodes;
-      } else {
-        foundNodes = new Set(Array.from(currentFoundNodes).filter(node => foundNodes.has(node)));
-      }
-    });
-    Array.from(layers.getElementsByClassName('node')).forEach(node => {
-      var found = foundNodes && foundNodes.has(node);
-      node.classList.toggle('selected',    found)
-      node.classList.toggle('highlighted', found)
-    });
+      var connectedLinks = getConnectedLinks(findLink);
+      connectedLinks.forEach(connectedLink => {
+        correspondences = correspondences.filter(correspondence => {
+          var hasMatchingLink = false;
+          Array.from(layers.getElementsByClassName('link')).forEach(link => {
+            var match = ((correspondence.get(link.from) === connectedLink.from) ||
+                         (correspondence.get(link.via)  === connectedLink.via)  ||
+                         (correspondence.get(link.to)   === connectedLink.to)) &&
+                        (!connectedLink.from || link.from.value === connectedLink.from.value) &&
+                        (!connectedLink.via  || link.via.value  === connectedLink.via.value)  &&
+                        (!connectedLink.to   || link.to.value   === connectedLink.to.value);
+            if (match) {
+              hasMatchingLink = true;
+              correspondence.set(link.from, connectedLink.from);
+              correspondence.set(link.via,  connectedLink.via);
+              correspondence.set(link.to,   connectedLink.to);
+            }
+          });
+          return hasMatchingLink;
+        });
+      });
+      correspondences.forEach(correspondence => {
+        correspondence.forEach((queryNode, targetNode) => {
+          if (!queryNode.value) {
+            targetNode.classList.add('highlighted');
+          }
+        });
+      });
+    }
   }
 }
 
