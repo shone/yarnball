@@ -579,12 +579,14 @@ document.body.addEventListener('keydown', event => {
       var offset = event.shiftKey ? -64 : 64;
       var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + offset}});
       newNode.focus();
-      if (!event.shiftKey) {
-        Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-      }
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
       cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
+      Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+      if (selectionBox) {
+        selectionBox.remove();
+        selectionBox = null;
+      }
       if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
     }
   } else if (event.key === 'Tab') {
@@ -660,6 +662,10 @@ document.body.addEventListener('keydown', event => {
           cursor.style.top  = (pxToGrid(parseInt(closestNode.style.top))  - 32) + 'px';
         }
       }
+      if (selectionBox) {
+        selectionBox.remove();
+        selectionBox = null;
+      }
       return false;
     }
   }
@@ -692,19 +698,11 @@ document.body.addEventListener('keydown', event => {
         node.links.forEach(link => affectedLinks.add(link));
       });
       affectedLinks.forEach(link => layoutLink(link));
+      if (selectionBox) {
+        selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
+        selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
+      }
     } else {
-//       if (document.activeElement && document.activeElement.classList.contains('node')) {
-//         var node = getClosestNodeInDirection(document.activeElement, arrowKeyDirections[event.key]);
-//         if (node) {
-//           event.preventDefault();
-//           node.focus();
-//           if (!event.shiftKey) {
-//             Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-//           }
-//           node.classList.add('selected');
-//           return false;
-//         }
-//       }
         event.preventDefault();
         var cursorX = parseInt(cursor.style.left);
         var cursorY = parseInt(cursor.style.top);
@@ -715,10 +713,31 @@ document.body.addEventListener('keydown', event => {
         resetCursorBlink();
         if ((cursorX < 0) || (cursorY < 0)) return false;
         if (event.shiftKey) {
-          var previousNodeUnderCursor = getNodeUnderCursor();
-          if (previousNodeUnderCursor) {
-            previousNodeUnderCursor.classList.add('selected');
+          if (!selectionBox) {
+            selectionBox = document.createElement('div');
+            selectionBox.id = 'selection-box';
+            currentSurface.appendChild(selectionBox);
+            selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
           }
+          var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
+          var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, cursorY);
+          var selectionBoxWidth  = Math.max(64, Math.abs(selectionBox.anchorPosition.x - cursorX));
+          var selectionBoxHeight = Math.max(64, Math.abs(selectionBox.anchorPosition.y - cursorY));
+          var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
+          var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
+          selectionBox.style.left   = selectionBoxLeft   + 'px';
+          selectionBox.style.top    = selectionBoxTop    + 'px';
+          selectionBox.style.width  = selectionBoxWidth  + 'px';
+          selectionBox.style.height = selectionBoxHeight + 'px';
+          Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
+            var nodeX = parseInt(node.style.left);
+            var nodeY = parseInt(node.style.top);
+            node.classList.toggle('selected', nodeX > selectionBoxLeft && nodeX < selectionBoxRight &&
+                                              nodeY > selectionBoxTop  && nodeY < selectionBoxBottom);
+          });
+        } else if (selectionBox) {
+          selectionBox.remove();
+          selectionBox = null;
         }
         cursor.style.left = cursorX + 'px';
         cursor.style.top  = cursorY + 'px';
@@ -758,6 +777,12 @@ document.body.addEventListener('keydown', event => {
   }
 
   if (event.key === 'Escape') {
+    if (selectionBox) {
+      event.preventDefault();
+      selectionBox.remove();
+      selectionBox = null;
+      return false;
+    }
     if (!findPanel.classList.contains('hidden')) {
       event.preventDefault();
       findPanel.classList.add('hidden');
@@ -937,6 +962,10 @@ document.addEventListener('keypress', event => {
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
       cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
       resetCursorBlink();
+      if (selectionBox) {
+        selectionBox.remove();
+        selectionBox = null;
+      }
       if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
       return false;
     }
@@ -974,6 +1003,10 @@ document.addEventListener('keypress', event => {
       resetCursorBlink();
     } else {
       newNode.focus();
+    }
+    if (selectionBox) {
+      selectionBox.remove();
+      selectionBox = null;
     }
     if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
     return false;
