@@ -15,7 +15,7 @@ var newLayerButton = document.getElementById('new-layer-button');
 var cursor = document.createElement('div');
 cursor.id = 'cursor';
 cursor.style.left = '32px';
-cursor.style.top  = '32px';
+cursor.style.top  = '16px';
 cursor.classList.add('blinking');
 currentSurface.appendChild(cursor);
 
@@ -32,7 +32,7 @@ function getNodeUnderCursor() {
     var nodeX = parseInt(node.style.left);
     var nodeY = parseInt(node.style.top);
     return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
-           (nodeY >= cursorY) && (nodeY < (cursorY + 64));
+           (nodeY >= cursorY) && (nodeY < (cursorY + 32));
   });
 }
 
@@ -72,6 +72,12 @@ function setCurrentLayer(index) {
 
 function pxToGrid(px) {
   return Math.round(px / 64) * 64;
+}
+function pxToGridX(px) {
+  return Math.round(px / 64) * 64;
+}
+function pxToGridY(px) {
+  return Math.round(px / 32) * 32;
 }
 
 var cursorPositionOnMouseDragStart = null;
@@ -272,8 +278,8 @@ function handleNodeMousedown(event) {
     event.target.focus();
     currentSurface = event.target.closest('.surface');
     currentSurface.appendChild(cursor);
-    cursor.style.left = (pxToGrid(parseInt(event.target.style.left)) - 32) + 'px';
-    cursor.style.top  = (pxToGrid(parseInt(event.target.style.top))  - 32) + 'px';
+    cursor.style.left = (pxToGridX(parseInt(event.target.style.left)) - 32) + 'px';
+    cursor.style.top  = (pxToGridY(parseInt(event.target.style.top))  - 16) + 'px';
     resetCursorBlink();
     if (event.shiftKey) {
       event.target.classList.toggle('selected');
@@ -295,15 +301,15 @@ function handleNodeMousedown(event) {
         var affectedLinks = new Set();
         nodesToDrag.forEach(node => {
           var startPosition = nodeStartPositions.get(node);
-          node.style.left = (startPosition.x + pxToGrid(mouse.deltaTotal.x)) + 'px';
-          node.style.top  = (startPosition.y + pxToGrid(mouse.deltaTotal.y)) + 'px';
+          node.style.left = (startPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
+          node.style.top  = (startPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
           node.links.forEach(link => affectedLinks.add(link));
         });
         affectedLinks.forEach(link => {
           layoutLink(link);
         });
-        cursor.style.left = (cursorStartPosition.x + pxToGrid(mouse.deltaTotal.x)) + 'px';
-        cursor.style.top  = (cursorStartPosition.y + pxToGrid(mouse.deltaTotal.y)) + 'px';
+        cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
+        cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
         resetCursorBlink();
       },
       mouseup: function() {
@@ -446,8 +452,8 @@ function handleBackgroundMousedownForSelectionBox(event) {
 document.body.addEventListener('mousedown', event => {
   if (event.target.classList.contains('surface')) {
     currentSurface = event.target;
-    cursor.style.left = (pxToGrid(event.offsetX) - 32) + 'px';
-    cursor.style.top  = (pxToGrid(event.offsetY) - 32) + 'px';
+    cursor.style.left = (pxToGridX(event.offsetX) - 32) + 'px';
+    cursor.style.top  = (pxToGridY(event.offsetY) - 16) + 'px';
     resetCursorBlink();
     if (cursor.parentElement !== event.target) {
       event.target.appendChild(cursor);
@@ -576,11 +582,11 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'Enter') {
     if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var offset = event.shiftKey ? -64 : 64;
+      var offset = event.shiftKey ? -32 : 32;
       var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + offset}});
       newNode.focus();
-      cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
+      cursor.style.left = (pxToGridX(parseInt(newNode.style.left)) - 32) + 'px';
+      cursor.style.top  = (pxToGridY(parseInt(newNode.style.top))  - 16) + 'px';
       resetCursorBlink();
       Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       if (selectionBox) {
@@ -658,8 +664,8 @@ document.body.addEventListener('keydown', event => {
         var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
         if (closestNode) {
           closestNode.focus();
-          cursor.style.left = (pxToGrid(parseInt(closestNode.style.left)) - 32) + 'px';
-          cursor.style.top  = (pxToGrid(parseInt(closestNode.style.top))  - 32) + 'px';
+          cursor.style.left = (pxToGridX(parseInt(closestNode.style.left)) - 32) + 'px';
+          cursor.style.top  = (pxToGridY(parseInt(closestNode.style.top))  - 16) + 'px';
         }
       }
       if (selectionBox) {
@@ -687,8 +693,8 @@ document.body.addEventListener('keydown', event => {
       var moveDelta = null;
       if (event.key === 'ArrowLeft')  moveDelta = {x: -64, y:   0};
       if (event.key === 'ArrowRight') moveDelta = {x:  64, y:   0};
-      if (event.key === 'ArrowUp')    moveDelta = {x:   0, y: -64};
-      if (event.key === 'ArrowDown')  moveDelta = {x:   0, y:  64};
+      if (event.key === 'ArrowUp')    moveDelta = {x:   0, y: -32};
+      if (event.key === 'ArrowDown')  moveDelta = {x:   0, y:  32};
       cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
       cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
       resetCursorBlink();
@@ -708,8 +714,8 @@ document.body.addEventListener('keydown', event => {
         var cursorY = parseInt(cursor.style.top);
         if (event.key === 'ArrowRight') cursorX += 64;
         if (event.key === 'ArrowLeft')  cursorX -= 64;
-        if (event.key === 'ArrowDown')  cursorY += 64;
-        if (event.key === 'ArrowUp')    cursorY -= 64;
+        if (event.key === 'ArrowDown')  cursorY += 32;
+        if (event.key === 'ArrowUp')    cursorY -= 32;
         resetCursorBlink();
         if ((cursorX < 0) || (cursorY < 0)) return false;
         if (event.shiftKey) {
@@ -722,7 +728,7 @@ document.body.addEventListener('keydown', event => {
           var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
           var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, cursorY);
           var selectionBoxWidth  = Math.max(64, Math.abs(selectionBox.anchorPosition.x - cursorX));
-          var selectionBoxHeight = Math.max(64, Math.abs(selectionBox.anchorPosition.y - cursorY));
+          var selectionBoxHeight = Math.max(32, Math.abs(selectionBox.anchorPosition.y - cursorY));
           var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
           var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
           selectionBox.style.left   = selectionBoxLeft   + 'px';
@@ -742,7 +748,7 @@ document.body.addEventListener('keydown', event => {
         cursor.style.left = cursorX + 'px';
         cursor.style.top  = cursorY + 'px';
         if (linkBeingCreated) {
-          layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 32});
+          layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
         }
         if (!event.shiftKey) {
           Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -960,7 +966,7 @@ document.addEventListener('keypress', event => {
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       newNode.focus();
       cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 32) + 'px';
+      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 16) + 'px';
       resetCursorBlink();
       if (selectionBox) {
         selectionBox.remove();
@@ -992,7 +998,7 @@ document.addEventListener('keypress', event => {
   }
 
   if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
-    var newNode = createNode({position: {x: pxToGrid(parseInt(cursor.style.left)), y: pxToGrid(parseInt(cursor.style.top))}});
+    var newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
     if (event.key === ' ') {
       event.preventDefault();
       if (event.shiftKey) {
