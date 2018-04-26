@@ -76,7 +76,7 @@ function handleMouseDrag(event, options) {
 
 function findLinkVia(node, via) {
   for (var instance of node.instances) {
-    var link = Array.from(instance.links).find(link => link.from.instances.has(node) && (link.via.value === via || link.via.instances.has(via)));
+    var link = [...instance.links].find(link => link.from.instances.has(node) && (link.via.value === via || link.via.instances.has(via)));
     if (link) return link;
   }
   return null;
@@ -92,7 +92,7 @@ function followListLinks(node, forward) {
   var alreadyVisited = new Set();
   do {
     alreadyVisited.add(node);
-    var forwardLink = Array.from(node.links).find(link => link.from === node && (link.via.value === forward || link.via.instances.has(forward)));
+    var forwardLink = [...node.links].find(link => link.from === node && (link.via.value === forward || link.via.instances.has(forward)));
     if (forwardLink) {
       if (alreadyVisited.has(forwardLink.to)) {
         throw 'Attempting to follow list that forms a loop.';
@@ -1083,26 +1083,26 @@ function prepareForSerialization(nodes, links) {
   var id = 0;
   var nodesSet = new Set(nodes);
   var linksSet = new Set(links);
-  nodes.forEach(node => node.id = id++);
-  links.forEach(link => link.id = id++);
-  links.forEach(link => {
+  for (node of nodes) node.id = id++;
+  for (link of links) {
+    link.id = id++;
     link.setAttribute('data-from', link.from.id);
     link.setAttribute('data-via',  link.via.id);
     link.setAttribute('data-to',   link.to.id);
-  });
-  nodes.forEach(node => {
-    node.setAttribute('data-links', Array.from(node.links).filter(link => linksSet.has(link)).map(link => link.id).join(','));
-    node.setAttribute('data-instances', Array.from(node.instances).filter(node => nodesSet.has(node)).map(node => node.id).join(','));
-  });
+  }
+  for (node of nodes) {
+    node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
+    node.setAttribute('data-instances', [...node.instances].filter(node => nodesSet.has(node)).map(node => node.id).join(','));
+  }
 }
 
 function deserialize(nodes, links) {
-  links.forEach(link => {
+  for (link of links) {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
-  });
-  nodes.forEach(node => {
+  }
+  for (node of nodes) {
     if (node.getAttribute('data-links')) {
       node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
       if (node.links.has(null)) {
@@ -1122,25 +1122,25 @@ function deserialize(nodes, links) {
       node.instances = new Set([node]);
     }
     node.classList.remove('selected');
-  });
+  }
 }
 
 function clearSerialization(nodes, links) {
-  links.forEach(link => {
+  for (link of links) {
     link.removeAttribute('id');
     link.removeAttribute('data-from');
     link.removeAttribute('data-via');
     link.removeAttribute('data-to');
-  });
-  nodes.forEach(node => {
+  }
+  for (node of nodes) {
     node.removeAttribute('id');
     node.removeAttribute('data-links');
     node.removeAttribute('data-instances')
-  });
+  }
 }
 
 function saveState() {
-  prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
+  prepareForSerialization([...document.getElementsByClassName('node')], [...document.getElementsByClassName('link')]);
   cursor.remove();
   localStorage.saved_state = mainSurface.innerHTML;
   currentSurface.appendChild(cursor);
@@ -1148,12 +1148,12 @@ function saveState() {
 
 function restoreState() {
   mainSurface.innerHTML = localStorage.saved_state;
-  Array.from(document.getElementsByClassName('link')).forEach(link => {
+  for (link of [...mainSurface.getElementsByClassName('link')]) {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
-  });
-  Array.from(document.getElementsByClassName('node')).forEach(node => {
+  }
+  for (node of [...mainSurface.getElementsByClassName('node')]) {
     if (node.getAttribute('data-links')) {
       node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
       if (node.links.has(null)) {
@@ -1173,6 +1173,6 @@ function restoreState() {
       node.instances = new Set([node]);
     }
     node.classList.remove('selected');
-  });
-  clearSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
+  }
+  clearSerialization([...document.getElementsByClassName('node')], [...document.getElementsByClassName('link')]);
 }
