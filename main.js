@@ -1,16 +1,11 @@
-var layers = document.getElementById('layers');
+var mainSurface = document.getElementById('main-surface');
+var currentSurface = mainSurface;
 
 if (localStorage.saved_state) {
   restoreState();
 }
 
-var mainPanel = document.getElementById('main-panel');
 var findPanel = document.getElementById('find-panel');
-var currentPanel = mainPanel;
-var currentLayer = mainPanel.getElementsByClassName('layer')[0];
-var currentSurface = currentLayer;
-var layerSelector = document.getElementById('layer-selector');
-var newLayerButton = document.getElementById('new-layer-button');
 
 var cursor = document.createElement('div');
 cursor.id = 'cursor';
@@ -34,40 +29,6 @@ function getNodeUnderCursor() {
     return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
            (nodeY >= cursorY) && (nodeY < (cursorY + 32));
   });
-}
-
-function createLayer() {
-  var layerTab = document.createElement('input');
-  layerTab.classList.add('layer-tab');
-  layerSelector.insertBefore(layerTab, newLayerButton);
-  var layer = document.createElement('div');
-  layer.classList.add('layer');
-  layer.classList.add('surface');
-  layer.innerHTML = '<div class="nodes"></div><svg class="links"></svg>';
-  layers.appendChild(layer);
-  layerTab.focus();
-  return layer;
-}
-
-newLayerButton.addEventListener('click', event => {
-  var layer = createLayer();
-  setCurrentLayer(layers.children.length - 1);
-});
-
-layerSelector.addEventListener('click', event => {
-  if (event.target.classList.contains('layer-tab')) {
-    var layerIndex = Array.from(layerSelector.getElementsByClassName('layer-tab')).indexOf(event.target);
-    setCurrentLayer(layerIndex);
-  }
-});
-
-function setCurrentLayer(index) {
-  if (Array.from(layers).indexOf(currentLayer) !== index) {
-    Array.from(currentLayer.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-    Array.from(layerSelector.children).forEach((layer, i) => layer.classList.toggle('current', i === index));
-    Array.from(layers.children).forEach(       (layer, i) => layer.classList.toggle('current', i === index));
-    currentLayer = layers.children[index];
-  }
 }
 
 function pxToGrid(px) {
@@ -228,7 +189,7 @@ function useNodeForLinkCreationMode(node) {
       layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
     } else if (!linkBeingCreated.to) {
       if (linkBeingCreated.from === node || linkBeingCreated.via === node) return;
-      var existingLink = Array.from(currentLayer.getElementsByClassName('link')).find(link => {
+      var existingLink = Array.from(currentSurface.getElementsByClassName('link')).find(link => {
         return link.from === linkBeingCreated.from &&
                link.via  === linkBeingCreated.via  &&
                link.to   === node;
@@ -321,7 +282,7 @@ function handleNodeMousedown(event) {
   }
 }
 
-layers.addEventListener('dblclick', (event) => {
+mainSurface.addEventListener('dblclick', (event) => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('selected'));
   } else if (event.target.classList.contains('link')) {
@@ -548,34 +509,9 @@ document.body.addEventListener('keydown', event => {
     }
   }
 
-  if (event.key === 'a' && event.ctrlKey) {
+  if (event.ctrlKey && event.key === 'a') {
     event.preventDefault();
-    Array.from(currentLayer.getElementsByClassName('node')).forEach(node => node.classList.add('selected'));
-    return false;
-  }
-
-  if (event.key === 'PageUp' || event.key === 'PageDown') {
-    event.preventDefault();
-    var otherLayer = (event.key  === 'PageUp') ? currentLayer.nextElementSibling : currentLayer.previousElementSibling;
-    if (!otherLayer && event.key === 'PageUp') {
-      otherLayer = createLayer();
-    }
-    if (otherLayer) {
-      var otherLayerNodes = otherLayer.getElementsByClassName('nodes')[0];
-      var otherLayerLinks = otherLayer.getElementsByClassName('links')[0];
-      var selectedNodes = Array.from(currentLayer.querySelectorAll('.node.selected'));
-      var affectedLinks = new Set();
-      selectedNodes.forEach(node => {
-        node.links.forEach(link => affectedLinks.add(link));
-        node.remove();
-        otherLayerNodes.appendChild(node);
-      });
-      affectedLinks.forEach(link => {
-        link.remove();
-        otherLayerLinks.appendChild(link);
-      });
-      setCurrentLayer(Array.from(layers.children).indexOf(otherLayer));
-    }
+    Array.from(currentSurface.getElementsByClassName('node')).forEach(node => node.classList.add('selected'));
     return false;
   }
 
@@ -735,7 +671,7 @@ document.body.addEventListener('keydown', event => {
           selectionBox.style.top    = selectionBoxTop    + 'px';
           selectionBox.style.width  = selectionBoxWidth  + 'px';
           selectionBox.style.height = selectionBoxHeight + 'px';
-          Array.from(currentLayer.getElementsByClassName('node')).forEach(node => {
+          Array.from(currentSurface.getElementsByClassName('node')).forEach(node => {
             var nodeX = parseInt(node.style.left);
             var nodeY = parseInt(node.style.top);
             node.classList.toggle('selected', nodeX > selectionBoxLeft && nodeX < selectionBoxRight &&
@@ -864,19 +800,19 @@ function doFind() {
   var findPanelNodes = Array.from(findPanel.getElementsByClassName('node'));
   if (findPanelNodes.length === 1) {
     if (findPanelNodes[0].value) {
-      Array.from(layers.getElementsByClassName('node')).forEach(node => {
+      Array.from(mainSurface.getElementsByClassName('node')).forEach(node => {
         var match = node.value && node.value === findPanelNodes[0].value;
         node.classList.toggle('selected',    match);
         node.classList.toggle('highlighted', match);
       });
     } else {
-      Array.from(layers.getElementsByClassName('node')).forEach(node => {
+      Array.from(mainSurface.getElementsByClassName('node')).forEach(node => {
         node.classList.remove('selected');
         node.classList.remove('highlighted');
       });
     }
   } else {
-    Array.from(layers.getElementsByClassName('node')).forEach(node => {
+    Array.from(mainSurface.getElementsByClassName('node')).forEach(node => {
       node.classList.remove('selected');
       node.classList.remove('highlighted');
     });
@@ -884,7 +820,7 @@ function doFind() {
     if (findPanelLinks.length > 0) {
       var findLink = findPanelLinks[0];
       var correspondences = [];
-      Array.from(layers.getElementsByClassName('link')).forEach(link => {
+      Array.from(mainSurface.getElementsByClassName('link')).forEach(link => {
         var match = (!findLink.from.value || link.from.value === findLink.from.value) &&
                     (!findLink.via.value  || link.via.value  === findLink.via.value)  &&
                     (!findLink.to.value   || link.to.value   === findLink.to.value);
@@ -900,7 +836,7 @@ function doFind() {
       connectedLinks.forEach(connectedLink => {
         correspondences = correspondences.filter(correspondence => {
           var hasMatchingLink = false;
-          Array.from(layers.getElementsByClassName('link')).forEach(link => {
+          Array.from(mainSurface.getElementsByClassName('link')).forEach(link => {
             var match = ((correspondence.get(link.from) === connectedLink.from) ||
                          (correspondence.get(link.via)  === connectedLink.via)  ||
                          (correspondence.get(link.to)   === connectedLink.to)) &&
@@ -1118,7 +1054,7 @@ document.addEventListener('mousedown', event => {
     event.preventDefault();
     handleMouseDrag(event, {
       mousemove: cursor => {
-        mainPanel.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
+        window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
       },
       mouseup: event => {
         event.preventDefault();
@@ -1132,12 +1068,12 @@ document.addEventListener('mousedown', event => {
 });
 
 // Node instance highlighting
-layers.addEventListener('mouseover', event => {
+mainSurface.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.add('instance-highlighted'));
   }
 });
-layers.addEventListener('mouseout', event => {
+mainSurface.addEventListener('mouseout', event => {
   if (event.target.classList.contains('node')) {
     event.target.instances.forEach(node => node.classList.remove('instance-highlighted'));
   }
@@ -1206,12 +1142,12 @@ function clearSerialization(nodes, links) {
 function saveState() {
   prepareForSerialization(Array.from(document.getElementsByClassName('node')), Array.from(document.getElementsByClassName('link')));
   cursor.remove();
-  localStorage.saved_state = layers.innerHTML;
+  localStorage.saved_state = mainSurface.innerHTML;
   currentSurface.appendChild(cursor);
 }
 
 function restoreState() {
-  layers.innerHTML = localStorage.saved_state;
+  mainSurface.innerHTML = localStorage.saved_state;
   Array.from(document.getElementsByClassName('link')).forEach(link => {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
