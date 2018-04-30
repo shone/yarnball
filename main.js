@@ -23,7 +23,7 @@ function resetCursorBlink() {
 function getNodeUnderCursor() {
   var cursorX = parseInt(cursor.style.left);
   var cursorY = parseInt(cursor.style.top);
-  return Array.from(currentSurface.getElementsByClassName('node')).find(node => {
+  return [...currentSurface.getElementsByClassName('node')].find(node => {
     var nodeX = parseInt(node.style.left);
     var nodeY = parseInt(node.style.top);
     return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
@@ -31,15 +31,8 @@ function getNodeUnderCursor() {
   });
 }
 
-function pxToGrid(px) {
-  return Math.round(px / 64) * 64;
-}
-function pxToGridX(px) {
-  return Math.round(px / 64) * 64;
-}
-function pxToGridY(px) {
-  return Math.round(px / 32) * 32;
-}
+var pxToGridX = px => Math.round(px / 64) * 64;
+var pxToGridY = px => Math.round(px / 32) * 32;
 
 var cursorPositionOnMouseDragStart = null;
 var cursorPositionOffsetOnMouseDragStart = null;
@@ -435,42 +428,40 @@ document.addEventListener('input', event => {
 });
 
 document.addEventListener('paste', event => {
-  if (event.clipboardData.items.length === 1) {
-    var item = event.clipboardData.items[0];
-    if (item.kind === 'string') {
-      item.getAsString(string => {
-        var fragment = document.createRange().createContextualFragment(string);
-        var nodes = Array.from(fragment.querySelectorAll('.node'));
-        var links = Array.from(fragment.querySelectorAll('.link'));
-        nodes.forEach(node => currentSurface.getElementsByClassName('nodes')[0].appendChild(node));
-        links = links.map(link => {
-          var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-          copiedLink.setAttribute('id', link.getAttribute('id'));
-          copiedLink.setAttribute('class', link.getAttribute('class'));
-          copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
-          copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
-          copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
-          currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
-          return copiedLink;
-        });
-        deserialize(nodes, links);
-        clearSerialization(nodes, links);
-        var leftmost = null;
-        var topmost  = null;
-        nodes.forEach(node => {
-          if (leftmost === null || parseInt(node.style.left) < leftmost) leftmost = parseInt(node.style.left);
-          if (topmost  === null || parseInt(node.style.top)  < topmost)  topmost  = parseInt(node.style.top);
-        });
-        var deltaX = pxToGrid(parseInt(cursor.style.left)) - leftmost;
-        var deltaY = pxToGrid(parseInt(cursor.style.top))  - topmost;
-        nodes.forEach(node => {
-          node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-          node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
-        });
-        links.forEach(layoutLink);
-      });
+  if (event.clipboardData.items.length !== 1) return;
+  var item = event.clipboardData.items[0];
+  if (item.kind !== 'string') return;
+  item.getAsString(string => {
+    var fragment = document.createRange().createContextualFragment(string);
+    var nodes = [...fragment.querySelectorAll('.node')];
+    var links = [...fragment.querySelectorAll('.link')];
+    for (node of nodes) currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
+    links = links.map(link => {
+      var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      copiedLink.setAttribute('id',        link.getAttribute('id'));
+      copiedLink.setAttribute('class',     link.getAttribute('class'));
+      copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
+      copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
+      copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
+      currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
+      return copiedLink;
+    });
+    deserialize(nodes, links);
+    clearSerialization(nodes, links);
+    var leftmost = null;
+    var topmost  = null;
+    for (node of nodes) {
+      if (leftmost === null || parseInt(node.style.left) < leftmost) leftmost = parseInt(node.style.left);
+      if (topmost  === null || parseInt(node.style.top)  < topmost)  topmost  = parseInt(node.style.top);
     }
-  }
+    var deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
+    var deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
+    for (node of nodes) {
+      node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+      node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+    }
+    links.forEach(layoutLink);
+  });
 });
 
 document.body.addEventListener('keydown', event => {
@@ -901,8 +892,8 @@ document.addEventListener('keypress', event => {
       document.activeElement.classList.remove('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
       newNode.focus();
-      cursor.style.left = (pxToGrid(parseInt(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGrid(parseInt(newNode.style.top))  - 16) + 'px';
+      cursor.style.left = (pxToGridX(parseInt(newNode.style.left)) - 32) + 'px';
+      cursor.style.top  = (pxToGridY(parseInt(newNode.style.top))  - 16) + 'px';
       resetCursorBlink();
       if (selectionBox) {
         selectionBox.remove();
