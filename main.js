@@ -210,7 +210,7 @@ function deleteElements(elements) {
   elements.forEach(element => {
     if (element.classList.contains('node')) {
       element.instances.delete(element);
-      element.links.forEach(link => affectedLinks.add(link));
+      for (link of element.links) affectedLinks.add(link);
       element.remove();
     } else if (element.classList.contains('link')) {
       affectedLinks.add(element);
@@ -611,7 +611,16 @@ document.body.addEventListener('keydown', event => {
   }
   if (event.key in arrowKeyDirections) {
     if (isDraggingNodes) return false;
-    if (event.ctrlKey) {
+    if (event.altKey) {
+      var scrollX = 0;
+      var scrollY = 0;
+      if (event.key === 'ArrowRight') scrollX += 64;
+      if (event.key === 'ArrowLeft')  scrollX -= 64;
+      if (event.key === 'ArrowUp')    scrollY -= 32;
+      if (event.key === 'ArrowDown')  scrollY += 32;
+      window.scrollBy(scrollX, scrollY);
+      resetCursorBlink();
+    } else if (event.ctrlKey) {
       var affectedLinks = new Set();
       var nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
       if (document.activeElement && document.activeElement.classList.contains('node')) {
