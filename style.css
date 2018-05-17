@@ -104,10 +104,6 @@ body {
   background-color: orange;
 }
 
-.node:focus {
-  outline: 4px solid red;
-}
-
 .node input {
   background-color: transparent;
   border: none;
@@ -117,7 +113,7 @@ body {
   font-size: 14px;
   line-height: 40px;
 }
-.node input:focus {
+.node:focus {
   outline: none;
 }
 
