@@ -340,6 +340,45 @@ function getClosestNodeInDirection(sourceNode, direction) {
   return closestNode;
 }
 
+function getAdjacentNodesInDirection(sourceNode, direction) {
+  return [...currentSurface.getElementsByClassName('node')].filter(node => {
+    if (node === sourceNode) return false;
+    return (
+      (direction === 'right' &&
+       parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
+       parseInt(node.style.left) === parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) + 14)
+      ||
+      (direction === 'left' &&
+        parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
+        parseInt(node.style.left) + parseInt(node.style.width) === parseInt(sourceNode.style.left) - 14)
+      ||
+      (direction === 'up' &&
+        parseInt(node.style.top) === parseInt(sourceNode.style.top) - 32 &&
+        !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
+          parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+      ||
+      (direction === 'down' &&
+        parseInt(node.style.top) === parseInt(sourceNode.style.top) + 32 &&
+        !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
+          parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+    );
+  });
+}
+
+function getAllAdjacentNodesInDirection(sourceNodes, direction) {
+  var adjacentNodes = [];
+  var currentSet = [...sourceNodes];
+  do {
+    var newSet = new Set();
+    for (node of currentSet) {
+      getAdjacentNodesInDirection(node, direction).forEach(n => newSet.add(n));
+    }
+    newSet.forEach(n => adjacentNodes.push(n));
+    currentSet = [...newSet];
+  } while(currentSet.length !== 0)
+  return adjacentNodes;
+}
+
 // Selection box
 var selectionBox = null;
 var selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
@@ -623,22 +662,32 @@ document.body.addEventListener('keydown', event => {
     } else if (event.ctrlKey) {
       var affectedLinks = new Set();
       var nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        nodesToMove.add(document.activeElement);
+      if (nodesToMove.size === 0) {
+        var nodeUnderCursor = getNodeUnderCursor();
+        if (nodeUnderCursor) {
+          nodesToMove.add(nodeUnderCursor);
+        }
       }
+      var adjacentNodes = getAllAdjacentNodesInDirection(nodesToMove, arrowKeyDirections[event.key]);
+      adjacentNodes.forEach(node => nodesToMove.add(node));
       var moveDelta = null;
       if (event.key === 'ArrowLeft')  moveDelta = {x: -64, y:   0};
       if (event.key === 'ArrowRight') moveDelta = {x:  64, y:   0};
       if (event.key === 'ArrowUp')    moveDelta = {x:   0, y: -32};
       if (event.key === 'ArrowDown')  moveDelta = {x:   0, y:  32};
+      var willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
+        return parseInt(node.style.left) + moveDelta.x < 64 ||
+               parseInt(node.style.top)  + moveDelta.y < 32;
+      });
+      if (willNodeBeMovedOutOfBounds) return false;
       cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
       cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
       resetCursorBlink();
-      nodesToMove.forEach(node => {
+      for (node of nodesToMove) {
         node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
         node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
         node.links.forEach(link => affectedLinks.add(link));
-      });
+      }
       affectedLinks.forEach(link => layoutLink(link));
       if (selectionBox) {
         selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
