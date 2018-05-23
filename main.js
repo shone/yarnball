@@ -25,7 +25,7 @@ function getNodeUnderCursor() {
   var cursorY = parseInt(cursor.style.top);
   return [...currentSurface.getElementsByClassName('node')].find(node => {
     return (cursorY === parseInt(node.style.top) - 16) &&
-           (cursorX >= parseInt(node.style.left) - 32) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width) - 16);
+           (cursorX >= parseInt(node.style.left) - 32) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width) - 18);
   });
 }
 
