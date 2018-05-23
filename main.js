@@ -24,10 +24,8 @@ function getNodeUnderCursor() {
   var cursorX = parseInt(cursor.style.left);
   var cursorY = parseInt(cursor.style.top);
   return [...currentSurface.getElementsByClassName('node')].find(node => {
-    var nodeX = parseInt(node.style.left);
-    var nodeY = parseInt(node.style.top);
-    return (nodeX >= cursorX) && (nodeX < (cursorX + 64)) &&
-           (nodeY >= cursorY) && (nodeY < (cursorY + 32));
+    return (cursorY === parseInt(node.style.top) - 16) &&
+           (cursorX >= parseInt(node.style.left) - 32) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width) - 16);
   });
 }
 
@@ -120,6 +118,7 @@ function createNode(options) {
     node.style.left = '0px';
     node.style.top  = '0px';
   }
+  node.style.width = '50px';
   node.instances = new Set([node]);
   node.links = new Set();
   if (options && options.parent) {
