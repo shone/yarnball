@@ -179,3 +179,64 @@ iframe {
 .hidden {
   display: none;
 }
+
+#help-button {
+  position: fixed;
+  top:    8px;
+  right:  8px;
+  width:  40px;
+  height: 40px;
+  z-index: 3;
+  border-radius: 20px;
+  background-color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items:     center;
+  cursor: pointer;
+}
+#help-button:after {
+  content: '?';
+  font-weight: bold;
+  font-size: 1.4rem;
+}
+#help-button.active:after {
+  content: 'X';
+}
+#help-button:hover {
+  background-color: grey;
+}
+
+#help-screen {
+  position: fixed;
+  left: 5px;
+  top: 5px;
+  right: 5px;
+  bottom: 5px;
+  z-index: 2;
+  background-color: #fff;
+  padding: 20px;
+}
+#help-screen table {
+  border-spacing: 20px;
+}
+#help-screen table td:first-of-type {
+  text-align: right;
+}
+
+.help-key {
+  display: inline-flex;
+  background-color: #ccc;
+  border: 1px solid #888;
+  border-radius: 5px;
+  min-height: 25px;
+  justify-content: center;
+  align-items: center;
+  padding-left:  7px;
+  padding-right: 7px;
+  margin: 2px;
+}
+
+.help-key.spacebar {
+  min-width: 100px;
+  font-style: italic;
+}

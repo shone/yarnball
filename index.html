@@ -29,6 +29,65 @@
       <svg class="links"></svg>
     </div>
 
+    <div id="help-screen" class="hidden">
+      <table>
+        <tr>
+          <td><span class="help-key spacebar">spacebar</span></td>
+          <td>New unnamed node to right of cursor</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">enter↲</span></td>
+          <td>New unnamed node downward</td>
+        </tr>
+        <tr>
+          <td>(start typing alphanumeric)</td>
+          <td>Overwrites name of node under cursor, or creates node</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">del</span></td>
+          <td>Delete node at cursor</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> +
+            (
+              <span class="help-key">←</span>
+              <span class="help-key">→</span>
+              <span class="help-key">↑</span>
+              <span class="help-key">↓</span>
+            )
+          </td>
+          <td>
+            Move selected nodes
+          </td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">A</span></td>
+          <td>Select all</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">C</span></td>
+          <td>Copy selected nodes/links</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">V</span></td>
+          <td>Paste nodes/links</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">F</span></td>
+          <td>Show find panel</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">tab</span></td>
+          <td>Toggle link creation mode (and applies current node under cursor to new link)</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">shift</span> + <span class="help-key">S</span></td>
+          <td>Save to local storage</td>
+        </tr>
+      </table>
+    </div>
+    <div id="help-button"></div>
+
     <script src="main.js"></script>
     <script src="html_compiler.js"></script>
     <script src="js_compiler.js"></script>

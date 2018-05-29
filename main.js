@@ -5,6 +5,11 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
+document.getElementById('help-button').addEventListener('click', event => {
+  document.getElementById('help-screen').classList.toggle('hidden');
+  document.getElementById('help-button').classList.toggle('active');
+});
+
 var findPanel = document.getElementById('find-panel');
 
 var cursor = document.createElement('div');
