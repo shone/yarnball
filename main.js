@@ -22,6 +22,18 @@ var findPanel = document.getElementById('find-panel');
 var cursor = currentSurface.getElementsByClassName('cursor')[0];
 cursor.classList.add('blinking');
 
+function setCursorPosition(x, y) {
+  resetCursorBlink();
+  if (parseInt(cursor.style.left) === x && parseInt(cursor.style.top) === y) return;
+  cursor.style.left = x + 'px';
+  cursor.style.top  = y + 'px';
+  cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+  var nodeUnderCursor = getNodeUnderCursor();
+  if (nodeUnderCursor) {
+    nodeUnderCursor.select();
+  }
+}
+
 function resetCursorBlink() {
   cursor.classList.remove('blinking');
   cursor.offsetHeight;
@@ -453,9 +465,10 @@ function handleBackgroundMousedownForSelectionBox(event) {
 document.body.addEventListener('mousedown', event => {
   if (event.target.classList.contains('surface')) {
     setCurrentSurface(event.target);
-    cursor.style.left = (pxToGridX(event.offsetX) - 32) + 'px';
-    cursor.style.top  = (pxToGridY(event.offsetY) - 16) + 'px';
-    resetCursorBlink();
+    setCursorPosition(
+      pxToGridX(event.offsetX) - 32,
+      pxToGridY(event.offsetY) - 16
+    );
     if (cursor.parentElement !== event.target) {
       event.target.appendChild(cursor);
     }
@@ -513,6 +526,12 @@ document.addEventListener('paste', event => {
 
 document.body.addEventListener('keydown', event => {
 
+  if (event.key === 'Home') {
+    event.preventDefault();
+    setCursorPosition(32, 16);
+    return false;
+  }
+
   if (event.ctrlKey && (event.key === 'c' || event.key === 'x')) {
     var selectedNodes = Array.from(currentSurface.querySelectorAll('.node.selected'));
     var selectedNodesSet = new Set(selectedNodes);
@@ -566,8 +585,10 @@ document.body.addEventListener('keydown', event => {
         node.classList.add('selected');
       }
       setCurrentSurface(mainSurface);
-      cursor.style.left = (parseInt(highlightedNodes[0].style.left) - 32) + 'px';
-      cursor.style.top  = (parseInt(highlightedNodes[0].style.top)  - 16) + 'px';
+      setCursorPosition(
+        parseInt(highlightedNodes[0].style.left) - 32,
+        parseInt(highlightedNodes[0].style.top)  - 16
+      );
     }
     return false;
   } else if (event.key === 'Enter') {
@@ -576,9 +597,10 @@ document.body.addEventListener('keydown', event => {
       var offset = event.shiftKey ? -32 : 32;
       var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + offset}});
       newNode.focus();
-      cursor.style.left = (pxToGridX(parseInt(newNode.style.left)) - 32) + 'px';
-      cursor.style.top  = (pxToGridY(parseInt(newNode.style.top))  - 16) + 'px';
-      resetCursorBlink();
+      setCursorPosition(
+        pxToGridX(parseInt(newNode.style.left)) - 32,
+        pxToGridY(parseInt(newNode.style.top))  - 16
+      );
       Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
       if (selectionBox) {
         selectionBox.remove();
@@ -638,33 +660,34 @@ document.body.addEventListener('keydown', event => {
     }
     return false;
   } else if (event.key === 'Delete') {
+    event.preventDefault();
     if (isDraggingNodes) return false;
     var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
     if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
       elementsToDelete.add(document.activeElement);
     }
-    if (elementsToDelete.size > 0) {
-      var focusedNodePosition = null;
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
-      }
-      event.preventDefault();
-      deleteElements(elementsToDelete);
-      if (currentSurface.id === 'find-panel') doFind();
-      if (focusedNodePosition) {
-        var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
-        if (closestNode) {
-          closestNode.focus();
-          cursor.style.left = (pxToGridX(parseInt(closestNode.style.left)) - 32) + 'px';
-          cursor.style.top  = (pxToGridY(parseInt(closestNode.style.top))  - 16) + 'px';
-        }
-      }
-      if (selectionBox) {
-        selectionBox.remove();
-        selectionBox = null;
-      }
-      return false;
+    if (elementsToDelete.size === 0) return false;
+    var focusedNodePosition = null;
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
     }
+    event.preventDefault();
+    deleteElements(elementsToDelete);
+    if (currentSurface.id === 'find-panel') doFind();
+    if (focusedNodePosition) {
+      var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
+      if (closestNode) {
+        setCursorPosition(
+          pxToGridX(parseInt(closestNode.style.left)) - 32,
+          pxToGridY(parseInt(closestNode.style.top))  - 16
+        );
+      }
+    }
+    if (selectionBox) {
+      selectionBox.remove();
+      selectionBox = null;
+    }
+    return false;
   }
 
   var arrowKeyDirections = {
@@ -726,7 +749,12 @@ document.body.addEventListener('keydown', event => {
         if (event.key === 'ArrowLeft')  cursorX -= 64;
         if (event.key === 'ArrowDown')  cursorY += 32;
         if (event.key === 'ArrowUp')    cursorY -= 32;
-        resetCursorBlink();
+        if (cursorX <= 0 || cursorY <= 0) {
+          window.scroll({
+            left: cursorX <= 0 ? 0 : undefined,
+            top:  cursorY <= 0 ? 0 : undefined,
+          });
+        }
         if ((cursorX < 0) || (cursorY < 0)) return false;
         if (event.shiftKey) {
           if (!selectionBox) {
@@ -755,14 +783,13 @@ document.body.addEventListener('keydown', event => {
           selectionBox.remove();
           selectionBox = null;
         }
-        cursor.style.left = cursorX + 'px';
-        cursor.style.top  = cursorY + 'px';
         if (linkBeingCreated) {
           layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
         }
         if (!event.shiftKey) {
           Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
         }
+        setCursorPosition(cursorX, cursorY);
         var nodeUnderCursor = getNodeUnderCursor();
         if (nodeUnderCursor) {
           nodeUnderCursor.focus();
