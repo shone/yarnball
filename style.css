@@ -35,7 +35,7 @@ body {
   pointer-events: none;
 }
 
-#cursor {
+.cursor {
   display: block;
   position: absolute;
   width:  2px;
@@ -45,7 +45,7 @@ body {
   background-color: #000;
   outline: 1px solid #fff;
 }
-#cursor:after {
+.cursor:after {
   content: '';
   display: block;
   width: 16px;
@@ -55,7 +55,7 @@ body {
   background-color: #000;
   outline: 1px solid #fff;
 }
-#cursor.insert-mode {
+.cursor.insert-mode {
   width:  64px;
   height: 32px;
   margin-left: 0;
@@ -64,14 +64,14 @@ body {
   outline: 1px solid #000;
   border:  1px solid #fff;
 }
-#cursor.insert-mode:after {
+.cursor.insert-mode:after {
   display: none;
 }
 
 @keyframes blink-animation {
   to { visibility: hidden; }
 }
-.blinking {
+.surface.current .cursor.blinking {
   animation: blink-animation 1s steps(2, start) infinite;
 }
 
