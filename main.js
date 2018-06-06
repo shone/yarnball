@@ -606,6 +606,13 @@ document.body.addEventListener('keydown', event => {
     if (isDraggingNodes) return false;
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var offset = event.shiftKey ? -32 : 32;
+      var adjacentNodes = getAllAdjacentNodesInDirection([document.activeElement], event.shiftKey ? 'up' : 'down');
+      var affectedLinks = new Set();
+      for (node of adjacentNodes) {
+        node.style.top = (parseInt(node.style.top) + offset) + 'px';
+        for (link of node.links) affectedLinks.add(link);
+      }
+      for (link of affectedLinks) layoutLink(link);
       var newNode = createNode({position: {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top) + offset}});
       newNode.focus();
       setCursorPosition(
@@ -1018,6 +1025,13 @@ document.addEventListener('keypress', event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       event.preventDefault();
       var offset = event.shiftKey ? -64 : parseInt(document.activeElement.offsetWidth) + 14;
+      var adjacentNodes = getAllAdjacentNodesInDirection([document.activeElement], event.shiftKey ? 'left' : 'right');
+      var affectedLinks = new Set();
+      for (node of adjacentNodes) {
+        node.style.left = (parseInt(node.style.left) + offset) + 'px';
+        for (link of node.links) affectedLinks.add(link);
+      }
+      for (link of affectedLinks) layoutLink(link);
       var newNode = createNode({position: {x: parseInt(document.activeElement.style.left) + offset, y: parseInt(document.activeElement.style.top)}});
       document.activeElement.classList.remove('selected');
       Array.from(document.querySelectorAll('.link.selected')).forEach(link => link.classList.remove('selected'));
