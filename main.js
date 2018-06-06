@@ -225,6 +225,17 @@ function useNodeForLinkCreationMode(node) {
     }
   }
 }
+function cancelLinkMode() {
+  if (linkBeingCreated) {
+    if (linkBeingCreated.from) linkBeingCreated.from.links.delete(linkBeingCreated);
+    if (linkBeingCreated.via)  linkBeingCreated.via.links.delete(linkBeingCreated);
+    if (linkBeingCreated.to)   linkBeingCreated.to.links.delete(linkBeingCreated);
+    linkBeingCreated.remove();
+    linkBeingCreated = null;
+  }
+  cursor.classList.remove('insert-mode');
+  resetCursorBlink();
+}
 
 function deleteElements(elements) {
   var affectedLinks = new Set();
@@ -648,13 +659,7 @@ document.body.addEventListener('keydown', event => {
         if (document.activeElement && document.activeElement.classList.contains('node')) {
           useNodeForLinkCreationMode(document.activeElement);
         } else {
-          if (linkBeingCreated.from) linkBeingCreated.from.links.delete(linkBeingCreated);
-          if (linkBeingCreated.via)  linkBeingCreated.via.links.delete(linkBeingCreated);
-          if (linkBeingCreated.to)   linkBeingCreated.to.links.delete(linkBeingCreated);
-          linkBeingCreated.remove();
-          linkBeingCreated = null;
-          cursor.classList.remove('insert-mode');
-          resetCursorBlink();
+          cancelLinkMode();
         }
       }
     }
@@ -827,6 +832,10 @@ document.body.addEventListener('keydown', event => {
       for (selected of [...currentSurface.getElementsByClassName('selected')]) {
         selected.classList.remove('selected');
       }
+      return false;
+    }
+    if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
+      cancelLinkMode();
       return false;
     }
     if (!findPanel.classList.contains('hidden')) {
