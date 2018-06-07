@@ -225,6 +225,49 @@ function useNodeForLinkCreationMode(node) {
     }
   }
 }
+function executeLinkMode() {
+  var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
+  if (selectedNodes.size === 3 && selectedNodes.has(document.activeElement)) {
+    var nonFocusedNodes = selectedNodes;
+    nonFocusedNodes.delete(document.activeElement);
+    nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
+      var fX = parseInt(document.activeElement.style.left);
+      var fY = parseInt(document.activeElement.style.top);
+      var aDeltaX = fX - parseInt(a.style.left);
+      var aDeltaY = fY - parseInt(a.style.top);
+      var bDeltaX = fX - parseInt(b.style.left);
+      var bDeltaY = fY - parseInt(b.style.top);
+      return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
+    });
+    var from = nonFocusedNodes[0];
+    var via = nonFocusedNodes[1]
+    var to = document.activeElement;
+    var link = Array.from(from.links).find(link => link.from === from && link.via === via && link.to === to);
+    if (link) {
+      deleteElements([link]);
+    } else {
+      link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
+      layoutLink(link);
+    }
+    if (currentSurface.id === 'find-panel') doFind();
+    return false;
+  } else if (selectedNodes.size === 0) {
+    if (!linkBeingCreated) {
+      linkBeingCreated = createLink();
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
+        useNodeForLinkCreationMode(document.activeElement);
+      }
+      cursor.classList.add('insert-mode');
+      resetCursorBlink();
+    } else {
+      if (document.activeElement && document.activeElement.classList.contains('node')) {
+        useNodeForLinkCreationMode(document.activeElement);
+      } else {
+        cancelLinkMode();
+      }
+    }
+  }
+}
 function cancelLinkMode() {
   if (linkBeingCreated) {
     if (linkBeingCreated.from) linkBeingCreated.from.links.delete(linkBeingCreated);
@@ -254,6 +297,57 @@ function deleteElements(elements) {
     link.to.links.delete(link);
     link.remove()
   });
+}
+
+function deleteSelection() {
+  if (isDraggingNodes) return false;
+  var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
+  if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
+    elementsToDelete.add(document.activeElement);
+  }
+  if (elementsToDelete.size === 0) return false;
+  var focusedNodePosition = null;
+  if (document.activeElement && document.activeElement.classList.contains('node')) {
+    focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
+  }
+  deleteElements(elementsToDelete);
+  if (currentSurface.id === 'find-panel') highlightQueriedNodes();
+  if (focusedNodePosition) {
+    var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
+    if (closestNode) {
+      setCursorPosition(
+        pxToGridX(parseInt(closestNode.style.left)) - 32,
+        pxToGridY(parseInt(closestNode.style.top))  - 16
+      );
+    }
+  }
+  if (selectionBox) {
+    selectionBox.remove();
+    selectionBox = null;
+  }
+}
+
+function cancelCurrentModeOrOperation() {
+  if (selectionBox) {
+    selectionBox.remove();
+    selectionBox = null;
+    for (selected of [...currentSurface.getElementsByClassName('selected')]) {
+      selected.classList.remove('selected');
+    }
+    return;
+  }
+  if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
+    cancelLinkMode();
+    return;
+  }
+  if (!findPanel.classList.contains('hidden')) {
+    findPanel.classList.add('hidden');
+    for (highlighted of [...mainSurface.getElementsByClassName('highlighted')]) {
+      highlighted.classList.remove('highlighted');
+    }
+    setCurrentSurface(mainSurface);
+    return;
+  }
 }
 
 function selectionToClipboard(options) {
@@ -659,6 +753,22 @@ function getQueriedNodes() {
       });
     }
     return queryResult;
+  }
+}
+
+function openFindPanel() {
+  findPanel.classList.remove('hidden');
+  setCurrentSurface(findPanel);
+  var findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
+  if (findPanelNodes.getElementsByClassName('node').length === 0) {
+    createNode({position: {x: 64, y: 32}, parent: findPanelNodes});
+  } else {
+    highlightQueriedNodes();
+  }
+  resetCursorBlink();
+  var nodeUnderCursor = getNodeUnderCursor();
+  if (nodeUnderCursor) {
+    nodeUnderCursor.focus();
   }
 }
 
