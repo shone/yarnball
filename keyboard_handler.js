@@ -39,6 +39,8 @@ var keyboard_handler = {
 
   TAB:        event => executeLinkMode(),
 
+  CtrlShiftS: event => saveState(),
+
   F10: event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       var html = compileHtml(document.activeElement);
@@ -90,6 +92,19 @@ document.body.addEventListener('keydown', event => {
         }
       }
     }
+    return false;
+  }
+});
+
+document.addEventListener('keypress', event => {
+  if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
+    var newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
+    newNode.focus();
+    if (selectionBox) {
+      selectionBox.remove();
+      selectionBox = null;
+    }
+    if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
     return false;
   }
 });

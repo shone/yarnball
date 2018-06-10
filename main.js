@@ -969,30 +969,6 @@ function scrollMainSurfaceInDirection(direction) {
   resetCursorBlink();
 }
 
-document.addEventListener('keypress', event => {
-//   } else if (event.key === 'd') {
-//     var selectedNodes = Array.from(document.querySelectorAll('.node.selected'));
-//     if (selectedNodes.length > 0) {
-//       event.preventDefault();
-//       duplicateNodes(selectedNodes);
-//       return false;
-//     }
-
-//   } else if (event.key === 'h') {
-//     if (document.activeElement && document.activeElement.classList.contains('node')) {
-//       Array.from(document.getElementsByTagName('iframe')).forEach(iframe => iframe.remove());
-//       var html = compileHtml(document.activeElement);
-//       var iFrame = document.createElement('iframe');
-//       iFrame.src = 'data:text/html;charset=utf-8,' + encodeURI(html);
-//       document.body.appendChild(iFrame);
-//     }
-  if (event.key === 'S' && event.shiftKey && event.ctrlKey) {
-    event.preventDefault();
-    saveState();
-    return false;
-  }
-});
-
 function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
   connectedNodes = connectedNodes || new Set();
   connectedLinks = connectedLinks || new Set();
