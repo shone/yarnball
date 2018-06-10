@@ -82,7 +82,7 @@ function compileStatement(node) {
     return 'await ' + compileStatement(awaitTo);
   }
 
-  var asyncFunctionName = findNodeVia(node, 'declare async function');
+  var asyncFunctionName = findNodeVia(node, 'async-function');
   var asyncFunctionBody = findNodeVia(node, 'body');
   if (asyncFunctionName && asyncFunctionBody) {
     return 'async function ' + asyncFunctionName.value + '() {' + compileStatements(asyncFunctionBody) + '}';
