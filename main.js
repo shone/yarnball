@@ -794,6 +794,46 @@ function moveSelectionToQueriedNodes() {
   }
 }
 
+function moveSelectionInDirection(direction) {
+  resetCursorBlink();
+  var nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
+  var nodeUnderCursor = getNodeUnderCursor();
+  if (nodeUnderCursor) {
+    nodesToMove.add(nodeUnderCursor);
+  }
+  if (nodesToMove.size === 0) return;
+
+  var affectedLinks = new Set();
+  var adjacentNodes = getAllAdjacentNodesInDirection(nodesToMove, direction);
+  adjacentNodes.forEach(node => nodesToMove.add(node));
+  var moveDelta = {
+    left:  {x: -64, y:   0},
+    right: {x:  64, y:   0},
+    up:    {x:   0, y: -32},
+    down:  {x:   0, y:  32},
+  }[direction];
+  var willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
+    return parseInt(node.style.left) + moveDelta.x < 64 ||
+           parseInt(node.style.top)  + moveDelta.y < 32;
+  });
+  if (willNodeBeMovedOutOfBounds) return false;
+
+  for (node of nodesToMove) {
+    node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
+    node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
+    node.links.forEach(link => affectedLinks.add(link));
+  }
+  affectedLinks.forEach(link => layoutLink(link));
+
+  cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
+  cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
+
+  if (selectionBox) {
+    selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
+    selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
+  }
+}
+
 function insertNodeAtCursor(options) {
   var offsetX = 0;
   var offsetY = 0;
@@ -856,6 +896,77 @@ function duplicateNodes(nodes) {
     });
     layoutLink(duplicatedLink);
   });
+}
+
+function moveCursorInDirection(direction, options) {
+  options = options || {};
+  var moveDelta = {
+    left:  {x: -64, y:   0},
+    right: {x:  64, y:   0},
+    up:    {x:   0, y: -32},
+    down:  {x:   0, y:  32},
+  }[direction];
+  var cursorX = parseInt(cursor.style.left) + moveDelta.x;
+  var cursorY = parseInt(cursor.style.top)  + moveDelta.y;
+  if (cursorX <= 0 || cursorY <= 0) {
+    window.scroll({
+      left: cursorX <= 0 ? 0 : undefined,
+      top:  cursorY <= 0 ? 0 : undefined,
+    });
+  }
+  if ((cursorX < 0) || (cursorY < 0)) return;
+  if (options.dragSelectionBox) {
+    if (!selectionBox) {
+      selectionBox = document.createElement('div');
+      selectionBox.id = 'selection-box';
+      currentSurface.appendChild(selectionBox);
+      selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+    }
+    var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
+    var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, cursorY);
+    var selectionBoxWidth  = Math.max(64, Math.abs(selectionBox.anchorPosition.x - cursorX));
+    var selectionBoxHeight = Math.max(32, Math.abs(selectionBox.anchorPosition.y - cursorY));
+    var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
+    var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
+    selectionBox.style.left   = selectionBoxLeft   + 'px';
+    selectionBox.style.top    = selectionBoxTop    + 'px';
+    selectionBox.style.width  = selectionBoxWidth  + 'px';
+    selectionBox.style.height = selectionBoxHeight + 'px';
+    for (node of currentSurface.getElementsByClassName('node')) {
+      var nodeX = parseInt(node.style.left);
+      var nodeY = parseInt(node.style.top);
+      node.classList.toggle('selected', nodeX > selectionBoxLeft && nodeX < selectionBoxRight &&
+                                        nodeY > selectionBoxTop  && nodeY < selectionBoxBottom);
+    }
+  } else if (selectionBox) {
+    selectionBox.remove();
+    selectionBox = null;
+  }
+  if (linkBeingCreated) {
+    layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
+  }
+  if (!options.dragSelectionBox) {
+    for (element of [...currentSurface.getElementsByClassName('selected')]) {element.classList.remove('selected')}
+  }
+  setCursorPosition(cursorX, cursorY);
+  var nodeUnderCursor = getNodeUnderCursor();
+  if (nodeUnderCursor) {
+    nodeUnderCursor.focus();
+    nodeUnderCursor.select();
+  } else if (document.activeElement && document.activeElement.classList.contains('node')) {
+    document.activeElement.blur();
+  }
+}
+
+function scrollMainSurfaceInDirection(direction) {
+  var scrollDelta = {
+    left:  {x: -64, y:   0},
+    right: {x:  64, y:   0},
+    up:    {x:   0, y: -32},
+    down:  {x:   0, y:  32},
+  }[direction];
+  window.scrollBy(scrollDelta.x, scrollDelta.y);
+  resetCursorBlink();
 }
 
 document.addEventListener('keypress', event => {
