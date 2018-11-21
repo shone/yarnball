@@ -7,6 +7,8 @@ function compileStatements(node) {
 }
 
 function compileStatement(node) {
+  if (node.value === 'debugger') return 'debugger';
+
   if (findLinkVia(node, 'calls')) {
     return compileFunctionCall(node);
   }
