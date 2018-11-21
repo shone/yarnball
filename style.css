@@ -228,6 +228,7 @@ iframe {
   z-index: 2;
   background-color: #fff;
   padding: 20px;
+  overflow-y: auto;
 }
 #help-screen table {
   border-spacing: 20px;
