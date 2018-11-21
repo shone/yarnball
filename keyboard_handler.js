@@ -3,7 +3,7 @@ var keyboard_handler = {
 
   ENTER:      event => insertNodeAtCursor({moveAdjacent: 'down' }),
   ShiftENTER: event => insertNodeAtCursor({moveAdjacent: 'up'   }),
-  ' ':        event => insertNodeAtCursor({moveAdjacent: 'right'}),
+  ' ':        event => recordAction(new createNode_(insertNodeAtCursor({moveAdjacent: 'right'}))),
 
   CtrlA:      event => {for (node of currentSurface.getElementsByClassName('node')) {node.classList.add('selected')   }},
   CtrlShiftA: event => {for (node of currentSurface.getElementsByClassName('node')) {node.classList.remove('selected')}},
@@ -24,22 +24,25 @@ var keyboard_handler = {
   ShiftARROWUP:     event => moveCursorInDirection('up',    {dragSelectionBox: true}),
   ShiftARROWDOWN:   event => moveCursorInDirection('down',  {dragSelectionBox: true}),
 
-  CtrlARROWLEFT:  event => moveSelectionInDirection('left'),
-  CtrlARROWRIGHT: event => moveSelectionInDirection('right'),
-  CtrlARROWUP:    event => moveSelectionInDirection('up'),
-  CtrlARROWDOWN:  event => moveSelectionInDirection('down'),
+  CtrlARROWLEFT:  event => recordAction(new moveNodes(moveSelectionInDirection('left'))),
+  CtrlARROWRIGHT: event => recordAction(new moveNodes(moveSelectionInDirection('right'))),
+  CtrlARROWUP:    event => recordAction(new moveNodes(moveSelectionInDirection('up'))),
+  CtrlARROWDOWN:  event => recordAction(new moveNodes(moveSelectionInDirection('down'))),
 
   AltARROWLEFT:   event => scrollMainSurfaceInDirection('left'),
   AltARROWRIGHT:  event => scrollMainSurfaceInDirection('right'),
   AltARROWUP:     event => scrollMainSurfaceInDirection('up'),
   AltARROWDOWN:   event => scrollMainSurfaceInDirection('down'),
 
-  DELETE:     event => deleteSelection(),
+  DELETE:     event => recordAction(new deleteElements_(deleteSelection())),
   ESCAPE:     event => cancelCurrentModeOrOperation(),
 
   TAB:        event => executeLinkMode(),
 
   CtrlShiftS: event => saveState(),
+
+  CtrlZ:      event => undo(),
+  CtrlShiftZ: event => redo(),
 
   F10: event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {

@@ -305,6 +305,10 @@ function deleteSelection() {
   if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
     elementsToDelete.add(document.activeElement);
   }
+  if (elementsToDelete.size === 1) {
+    recordAction(new deleteNode(elementsToDelete.values().next().value));
+    return;
+  }
   if (elementsToDelete.size === 0) return false;
   var focusedNodePosition = null;
   if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -325,6 +329,7 @@ function deleteSelection() {
     selectionBox.remove();
     selectionBox = null;
   }
+  return elementsToDelete;
 }
 
 function cancelCurrentModeOrOperation() {
@@ -409,6 +414,7 @@ function handleNodeMousedown(event) {
     var nodeStartPositions = new Map();
     nodesToDrag.forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
     isDraggingNodes = true;
+    var oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
     handleMouseDrag(event, {
       mousemove: function(mouse) {
         var affectedLinks = new Set();
@@ -427,6 +433,8 @@ function handleNodeMousedown(event) {
       },
       mouseup: function() {
         nodesToDrag.forEach(element => element.classList.remove('dragging'));
+        var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+        recordAction(new moveNodes({oldPositions, newPositions}));
         isDraggingNodes = false;
       }
     });
@@ -815,6 +823,8 @@ function moveSelectionInDirection(direction) {
   });
   if (willNodeBeMovedOutOfBounds) return false;
 
+  var oldPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+
   for (node of nodesToMove) {
     node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
     node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
@@ -829,6 +839,10 @@ function moveSelectionInDirection(direction) {
     selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
     selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
   }
+
+  var newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+
+  return {oldPositions, newPositions};
 }
 
 function insertNodeAtCursor(options) {
@@ -865,6 +879,7 @@ function insertNodeAtCursor(options) {
     selectionBox = null;
   }
   if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
+  return newNode;
 }
 
 function duplicateNodes(nodes) {
