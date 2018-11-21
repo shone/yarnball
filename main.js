@@ -608,9 +608,6 @@ document.body.addEventListener('mousedown', event => {
       pxToGridX(event.offsetX) - 32,
       pxToGridY(event.offsetY) - 16
     );
-    if (cursor.parentElement !== event.target) {
-      event.target.appendChild(cursor);
-    }
   }
 });
 
@@ -1065,13 +1062,16 @@ document.addEventListener('mousedown', event => {
     }
     return false;
   } else if (event.button === 1) {
+    // Middle mouse button drag
     event.preventDefault();
+    document.body.classList.add('panning');
     handleMouseDrag(event, {
       mousemove: cursor => {
         window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
       },
       mouseup: event => {
         event.preventDefault();
+        document.body.classList.remove('panning');
         return false;
       }
     });
