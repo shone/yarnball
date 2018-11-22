@@ -23,7 +23,7 @@ function redo() {
 }
 
 
-function deleteElements_(elements) {
+function deleteElementsAction(elements) {
   this.elements = elements;
   this.undo = () => {
     for (element of this.elements) {
@@ -37,16 +37,15 @@ function deleteElements_(elements) {
   this.redo = () => {
     for (element of this.elements) element.remove();
   };
-  return this;
 }
 
-function createNode_(node) {
+function createNodeAction(node) {
   this.node = node;
   this.undo = () => this.node.remove();
   this.redo = () => mainSurface.appendChild(this.node);
 }
 
-function moveNodes(positions) {
+function moveNodesAction(positions) {
   this.oldPositions = positions.oldPositions;
   this.newPositions = positions.newPositions;
   this.undo = () => {
@@ -67,4 +66,12 @@ function moveNodes(positions) {
     }
     for (link of affectedLinks) layoutLink(link);
   };
+}
+
+function renameNodeAction(node, oldName) {
+  this.node = node;
+  this.oldName = oldName;
+  this.newName = node.value;
+  this.undo = () => this.node.value = this.oldName;
+  this.redo = () => this.node.value = this.newName;
 }

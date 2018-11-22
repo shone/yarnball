@@ -69,14 +69,16 @@ function handleMouseDrag(event, options) {
       var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
       cursorPositionOnLastDragMousemove = position;
       cursorScreenPositionOnLastDragMousemove = positionScreen;
-      options.mousemove({position: position, positionOffset: positionOffset, delta: delta, deltaTotal: deltaTotal, deltaScreen: deltaScreen});
+      options.mousemove({position, positionOffset, delta, deltaTotal, deltaScreen});
     }
   }
   function handleMouseup(event) {
     window.removeEventListener('mousemove', handleMousemove);
     window.removeEventListener('mouseup',   handleMouseup);
     if (options.mouseup) {
-      options.mouseup(event);
+      var position = {x: event.pageX, y: event.pageY};
+      var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
+      options.mouseup({deltaTotal});
     }
   }
   cursorPositionOnMouseDragStart = {x: event.pageX, y: event.pageY};
@@ -305,10 +307,6 @@ function deleteSelection() {
   if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
     elementsToDelete.add(document.activeElement);
   }
-  if (elementsToDelete.size === 1) {
-    recordAction(new deleteNode(elementsToDelete.values().next().value));
-    return;
-  }
   if (elementsToDelete.size === 0) return false;
   var focusedNodePosition = null;
   if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -431,10 +429,12 @@ function handleNodeMousedown(event) {
         cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
         resetCursorBlink();
       },
-      mouseup: function() {
+      mouseup: function(mouse) {
         nodesToDrag.forEach(element => element.classList.remove('dragging'));
-        var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
-        recordAction(new moveNodes({oldPositions, newPositions}));
+        if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
+          var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+          recordAction(new moveNodesAction({oldPositions, newPositions}));
+        }
         isDraggingNodes = false;
       }
     });
@@ -616,6 +616,22 @@ document.body.addEventListener('mousedown', event => {
       pxToGridX(event.offsetX) - 32,
       pxToGridY(event.offsetY) - 16
     );
+  }
+});
+
+var lastFocusedNodeOriginalName = null;
+
+document.addEventListener('focusin', event => {
+  if (event.target.classList.contains('node')) {
+    lastFocusedNodeOriginalName = event.target.value;
+  }
+});
+
+document.addEventListener('focusout', event => {
+  if (event.target.classList.contains('node')) {
+    if (event.target.value !== lastFocusedNodeOriginalName) {
+      recordAction(new renameNodeAction(event.target, lastFocusedNodeOriginalName));
+    }
   }
 });
 

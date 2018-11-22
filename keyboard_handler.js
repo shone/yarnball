@@ -1,9 +1,9 @@
 var keyboard_handler = {
   HOME:       event => setCursorPosition(32, 16),
 
-  ENTER:      event => insertNodeAtCursor({moveAdjacent: 'down' }),
-  ShiftENTER: event => insertNodeAtCursor({moveAdjacent: 'up'   }),
-  ' ':        event => recordAction(new createNode_(insertNodeAtCursor({moveAdjacent: 'right'}))),
+  ENTER:      event => recordAction(new createNodeAction(insertNodeAtCursor({moveAdjacent: 'down' }))),
+  ShiftENTER: event => recordAction(new createNodeAction(insertNodeAtCursor({moveAdjacent: 'up'   }))),
+  ' ':        event => recordAction(new createNodeAction(insertNodeAtCursor({moveAdjacent: 'right'}))),
 
   CtrlA:      event => {for (node of currentSurface.getElementsByClassName('node')) {node.classList.add('selected')   }},
   CtrlShiftA: event => {for (node of currentSurface.getElementsByClassName('node')) {node.classList.remove('selected')}},
@@ -24,17 +24,17 @@ var keyboard_handler = {
   ShiftARROWUP:     event => moveCursorInDirection('up',    {dragSelectionBox: true}),
   ShiftARROWDOWN:   event => moveCursorInDirection('down',  {dragSelectionBox: true}),
 
-  CtrlARROWLEFT:  event => recordAction(new moveNodes(moveSelectionInDirection('left'))),
-  CtrlARROWRIGHT: event => recordAction(new moveNodes(moveSelectionInDirection('right'))),
-  CtrlARROWUP:    event => recordAction(new moveNodes(moveSelectionInDirection('up'))),
-  CtrlARROWDOWN:  event => recordAction(new moveNodes(moveSelectionInDirection('down'))),
+  CtrlARROWLEFT:  event => recordAction(new moveNodesAction(moveSelectionInDirection('left'))),
+  CtrlARROWRIGHT: event => recordAction(new moveNodesAction(moveSelectionInDirection('right'))),
+  CtrlARROWUP:    event => recordAction(new moveNodesAction(moveSelectionInDirection('up'))),
+  CtrlARROWDOWN:  event => recordAction(new moveNodesAction(moveSelectionInDirection('down'))),
 
   AltARROWLEFT:   event => scrollMainSurfaceInDirection('left'),
   AltARROWRIGHT:  event => scrollMainSurfaceInDirection('right'),
   AltARROWUP:     event => scrollMainSurfaceInDirection('up'),
   AltARROWDOWN:   event => scrollMainSurfaceInDirection('down'),
 
-  DELETE:     event => recordAction(new deleteElements_(deleteSelection())),
+  DELETE:     event => recordAction(new deleteElementsAction(deleteSelection())),
   ESCAPE:     event => cancelCurrentModeOrOperation(),
 
   TAB:        event => executeLinkMode(),
@@ -102,6 +102,7 @@ document.body.addEventListener('keydown', event => {
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
     var newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
+    recordAction(new createNodeAction(newNode));
     newNode.focus();
     if (selectionBox) {
       selectionBox.remove();
