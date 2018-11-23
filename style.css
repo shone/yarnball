@@ -50,6 +50,7 @@ body.panning:after {
 .cursor {
   display: block;
   position: absolute;
+  z-index: 2;
   width:  2px;
   height: 16px;
   margin-top:  -8px;
@@ -155,7 +156,7 @@ body.panning:after {
   height: 0;
 }
 
-#selection-box {
+.selection-box {
   position: absolute;
   background-color: grey;
   opacity: 0.5;

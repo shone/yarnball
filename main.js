@@ -2,10 +2,13 @@ var mainSurface = document.getElementById('main-surface');
 var currentSurface = mainSurface;
 
 function setCurrentSurface(surface) {
-  currentSurface.classList.remove('current');
-  surface.classList.add('current');
-  currentSurface = surface;
-  cursor = currentSurface.getElementsByClassName('cursor')[0];
+  if (currentSurface !== surface) {
+    currentSurface.classList.remove('current');
+    surface.classList.add('current');
+    currentSurface = surface;
+    cursor       = currentSurface.getElementsByClassName('cursor')[0];
+    selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
+  }
 }
 
 if (localStorage.saved_state) {
@@ -22,11 +25,11 @@ var findPanel = document.getElementById('find-panel');
 var cursor = currentSurface.getElementsByClassName('cursor')[0];
 cursor.classList.add('blinking');
 
-function setCursorPosition(x, y) {
+function setCursorPosition(position) {
   resetCursorBlink();
-  if (parseInt(cursor.style.left) === x && parseInt(cursor.style.top) === y) return;
-  cursor.style.left = x + 'px';
-  cursor.style.top  = y + 'px';
+  if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) return;
+  cursor.style.left = position.x + 'px';
+  cursor.style.top  = position.y + 'px';
   cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
   var nodeUnderCursor = getNodeUnderCursor();
   if (nodeUnderCursor) {
@@ -78,7 +81,7 @@ function handleMouseDrag(event, options) {
     if (options.mouseup) {
       var position = {x: event.pageX, y: event.pageY};
       var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
-      options.mouseup({deltaTotal});
+      options.mouseup(event, {deltaTotal});
     }
   }
   cursorPositionOnMouseDragStart = {x: event.pageX, y: event.pageY};
@@ -215,10 +218,12 @@ function useNodeForLinkCreationMode(node) {
         linkBeingCreated.from.links.delete(linkBeingCreated);
         linkBeingCreated.via.links.delete(linkBeingCreated);
         linkBeingCreated.remove();
+        recordAction(new deleteElementsAction([existingLink]));
       } else {
         linkBeingCreated.to = node;
         linkBeingCreated.to.links.add(linkBeingCreated);
         layoutLink(linkBeingCreated);
+        recordAction(new createLinkAction(linkBeingCreated));
         if (currentSurface.id === 'find-panel') highlightQueriedNodes();
       }
       linkBeingCreated = null;
@@ -284,7 +289,7 @@ function cancelLinkMode() {
 
 function deleteElements(elements) {
   var affectedLinks = new Set();
-  elements.forEach(element => {
+  for (element of elements) {
     if (element.classList.contains('node')) {
       element.instances.delete(element);
       for (link of element.links) affectedLinks.add(link);
@@ -292,13 +297,13 @@ function deleteElements(elements) {
     } else if (element.classList.contains('link')) {
       affectedLinks.add(element);
     }
-  });
-  affectedLinks.forEach(link => {
+  }
+  for (link of affectedLinks) {
     link.from.links.delete(link);
     link.via.links.delete(link);
     link.to.links.delete(link);
     link.remove()
-  });
+  }
 }
 
 function deleteSelection() {
@@ -314,30 +319,37 @@ function deleteSelection() {
   }
   deleteElements(elementsToDelete);
   if (currentSurface.id === 'find-panel') highlightQueriedNodes();
+  var cursorPositionBefore = {
+    x: parseInt(cursor.style.left),
+    y: parseInt(cursor.style.top),
+  }
   if (focusedNodePosition) {
     var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
     if (closestNode) {
-      setCursorPosition(
-        pxToGridX(parseInt(closestNode.style.left)) - 32,
-        pxToGridY(parseInt(closestNode.style.top))  - 16
-      );
+      setCursorPosition({
+        x: pxToGridX(parseInt(closestNode.style.left)) - 32,
+        y: pxToGridY(parseInt(closestNode.style.top))  - 16
+      });
     }
   }
-  if (selectionBox) {
-    selectionBox.remove();
-    selectionBox = null;
+  var cursorPositionAfter = {
+    x: parseInt(cursor.style.left),
+    y: parseInt(cursor.style.top),
   }
-  return elementsToDelete;
+  recordAction(
+    new deleteElementsAction(elementsToDelete),
+    {
+      cursor: {before: cursorPositionBefore, after: cursorPositionAfter},
+      selectionBox: {before: getSelectionBox(), after: null},
+    }
+  );
+  selectionBox.classList.add('hidden');
 }
 
 function cancelCurrentModeOrOperation() {
-  if (selectionBox) {
-    selectionBox.remove();
-    selectionBox = null;
-    for (selected of [...currentSurface.getElementsByClassName('selected')]) {
-      selected.classList.remove('selected');
-    }
-    return;
+  selectionBox.classList.add('hidden');
+  for (selected of [...currentSurface.getElementsByClassName('selected')]) {
+    selected.classList.remove('selected');
   }
   if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
     cancelLinkMode();
@@ -381,6 +393,7 @@ function selectionToClipboard(options) {
   temporaryInput.remove();
   if (options.cut) {
     deleteElements(selectedNodes);
+    recordAction(new deleteElementsAction(selectedNodes));
     if (currentSurface.id === 'find-panel') highlightQueriedNodes();
   } else if (previouslyFocusedElement) {
     previouslyFocusedElement.focus();
@@ -409,6 +422,7 @@ function handleNodeMousedown(event) {
     nodesToDrag.add(document.activeElement);
     nodesToDrag.forEach(node => node.classList.add('dragging'));
     var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+    var selectionBoxStartPosition = getSelectionBox();
     var nodeStartPositions = new Map();
     nodesToDrag.forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
     isDraggingNodes = true;
@@ -428,12 +442,22 @@ function handleNodeMousedown(event) {
         cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
         cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
         resetCursorBlink();
+        if (selectionBoxStartPosition) {
+          selectionBox.style.left = (selectionBoxStartPosition.left + pxToGridX(mouse.deltaTotal.x)) + 'px';
+          selectionBox.style.top  = (selectionBoxStartPosition.top  + pxToGridY(mouse.deltaTotal.y)) + 'px';
+        }
       },
-      mouseup: function(mouse) {
+      mouseup: function(event, mouse) {
         nodesToDrag.forEach(element => element.classList.remove('dragging'));
         if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
           var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
-          recordAction(new moveNodesAction({oldPositions, newPositions}));
+          recordAction(
+            new moveNodesAction({oldPositions, newPositions}),
+            {
+              cursor: {before: cursorStartPosition, after: {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)}},
+              selectionBox: {before: selectionBoxStartPosition, after: getSelectionBox()}
+            }
+          );
         }
         isDraggingNodes = false;
       }
@@ -547,23 +571,44 @@ function getAllAdjacentNodesInDirection(sourceNodes, direction) {
 }
 
 // Selection box
-var selectionBox = null;
-var selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
-function updateSelectionBox() {
-  selectionBox.style.left   =  selectionBoxPosition.left   + 'px';
-  selectionBox.style.top    =  selectionBoxPosition.top    + 'px';
-  selectionBox.style.width  = (selectionBoxPosition.right  - selectionBoxPosition.left) + 'px';
-  selectionBox.style.height = (selectionBoxPosition.bottom - selectionBoxPosition.top)  + 'px';
+var selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
+function setSelectionBox(position, selectedNodesToPreserve) {
+  if (!position.width)  position.width  = position.right  - position.left;
+  if (!position.height) position.height = position.bottom - position.top;
+  if (!position.right)  position.right  = position.left   + position.width;
+  if (!position.bottom) position.bottom = position.top    + position.height;
+  selectionBox.style.left   = position.left   + 'px';
+  selectionBox.style.top    = position.top    + 'px';
+  selectionBox.style.width  = position.width  + 'px';
+  selectionBox.style.height = position.height + 'px';
+  for (node of [...currentSurface.getElementsByClassName('node')]) {
+    if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
+    var inSelectionBox = !(
+      ((parseInt(node.style.left) + (node.offsetWidth  - 25)) < position.left)  ||
+      ((parseInt(node.style.left) - 25)                       > position.right) ||
+      ((parseInt(node.style.top)  + (node.offsetHeight - 25)) < position.top)   ||
+      ((parseInt(node.style.top)  - 25)                       > position.bottom)
+    );
+    node.classList.toggle('selected', inSelectionBox);
+  }
+}
+function getSelectionBox() {
+  if (selectionBox.classList.contains('hidden')) {
+    return null;
+  } else {
+    return {
+      left:   parseInt(selectionBox.style.left),
+      top:    parseInt(selectionBox.style.top),
+      right:  parseInt(selectionBox.style.left) + parseInt(selectionBox.style.width),
+      bottom: parseInt(selectionBox.style.top)  + parseInt(selectionBox.style.height),
+      width:  parseInt(selectionBox.style.width),
+      height: parseInt(selectionBox.style.height),
+    }
+  }
 }
 var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
   event.preventDefault();
-  selectionBox = document.getElementById('selection-box');
-  if (!selectionBox) {
-    selectionBox = document.createElement('div');
-    selectionBox.id = 'selection-box';
-  }
-  currentSurface.appendChild(selectionBox);
   currentSurface.classList.add('dragging-selection-box');
   if (!event.shiftKey) {
     Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
@@ -573,22 +618,17 @@ function handleBackgroundMousedownForSelectionBox(event) {
   }
   handleMouseDrag(event, {
     mousemove: function(cursor) {
-      selectionBoxPosition.left   = Math.min(cursorPositionOffsetOnMouseDragStart.x, cursor.positionOffset.x);
-      selectionBoxPosition.top    = Math.min(cursorPositionOffsetOnMouseDragStart.y, cursor.positionOffset.y);
-      selectionBoxPosition.right  = Math.max(cursorPositionOffsetOnMouseDragStart.x, cursor.positionOffset.x);
-      selectionBoxPosition.bottom = Math.max(cursorPositionOffsetOnMouseDragStart.y, cursor.positionOffset.y);
-      updateSelectionBox();
-      Array.from(currentSurface.getElementsByClassName('node')).forEach(node => {
-        if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) return;
-        var inSelectionBox = !(
-          ((parseInt(node.style.left) + (node.offsetWidth  - 25)) < selectionBoxPosition.left)  ||
-          ((parseInt(node.style.left) - 25)                       > selectionBoxPosition.right) ||
-          ((parseInt(node.style.top)  + (node.offsetHeight - 25)) < selectionBoxPosition.top)   ||
-          ((parseInt(node.style.top)  - 25)                       > selectionBoxPosition.bottom)
-        );
-        node.classList.toggle('selected', inSelectionBox);
-      });
-      var closestNode = getClosestNodeTo(cursor.position, Array.from(document.querySelectorAll('.node.selected')));
+      setSelectionBox(
+        {
+          left:   Math.min(pxToGridX(cursorPositionOffsetOnMouseDragStart.x) - 32, pxToGridX(cursor.positionOffset.x) - 32),
+          top:    Math.min(pxToGridY(cursorPositionOffsetOnMouseDragStart.y) - 16, pxToGridY(cursor.positionOffset.y) - 16),
+          right:  Math.max(pxToGridX(cursorPositionOffsetOnMouseDragStart.x) - 32, pxToGridX(cursor.positionOffset.x) - 32),
+          bottom: Math.max(pxToGridY(cursorPositionOffsetOnMouseDragStart.y) - 16, pxToGridY(cursor.positionOffset.y) - 16),
+        },
+        selectedNodesToPreserve
+      );
+      selectionBox.classList.remove('hidden');
+      var closestNode = getClosestNodeTo(cursor.position, [...document.querySelectorAll('.node.selected')]);
       if (closestNode) {
         closestNode.focus();
       } else {
@@ -596,26 +636,35 @@ function handleBackgroundMousedownForSelectionBox(event) {
       }
     },
     mouseup: function() {
-      selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
-      updateSelectionBox();
       selectedNodesToPreserve = null;
       currentSurface.classList.remove('dragging-selection-box');
-      selectionBox.remove();
-      selectionBox = null;
     }
   });
-  selectionBoxPosition = {left: 0, top: 0, right: 0, bottom: 0};
-  updateSelectionBox();
+  selectionBox.classList.add('hidden');
   return false;
+}
+
+function selectAll() {
+  for (node of currentSurface.getElementsByClassName('node')) {
+    node.classList.add('selected');
+  }
+  selectionBox.classList.add('hidden');
+}
+
+function deselectAll() {
+  for (node of currentSurface.getElementsByClassName('node')) {
+    node.classList.remove('selected');
+  }
+  selectionBox.classList.add('hidden');
 }
 
 document.body.addEventListener('mousedown', event => {
   if (event.target.classList.contains('surface')) {
     setCurrentSurface(event.target);
-    setCursorPosition(
-      pxToGridX(event.offsetX) - 32,
-      pxToGridY(event.offsetY) - 16
-    );
+    setCursorPosition({
+      x: pxToGridX(event.offsetX) - 32,
+      y: pxToGridY(event.offsetY) - 16,
+    });
   }
 });
 
@@ -808,10 +857,10 @@ function moveSelectionToQueriedNodes() {
   }
   if (queriedNodes.size > 0) {
     setCurrentSurface(mainSurface);
-    setCursorPosition(
-      parseInt([...queriedNodes][0].style.left) - 32,
-      parseInt([...queriedNodes][0].style.top)  - 16
-    );
+    setCursorPosition({
+      x: parseInt([...queriedNodes][0].style.left) - 32,
+      y: parseInt([...queriedNodes][0].style.top)  - 16,
+    });
   }
 }
 
@@ -848,17 +897,31 @@ function moveSelectionInDirection(direction) {
   }
   affectedLinks.forEach(link => layoutLink(link));
 
+  var cursorBefore = {
+    x: parseInt(cursor.style.left),
+    y: parseInt(cursor.style.top),
+  }
   cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
   cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
-
-  if (selectionBox) {
-    selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
-    selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
+  var cursorAfter = {
+    x: parseInt(cursor.style.left),
+    y: parseInt(cursor.style.top),
   }
+
+  var selectionBoxBefore = getSelectionBox();
+  selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
+  selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
+  var selectionBoxAfter = getSelectionBox();
 
   var newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
-  return {oldPositions, newPositions};
+  recordAction(
+    new moveNodesAction({oldPositions, newPositions}),
+    {
+      cursor: {before: cursorBefore, after: cursorAfter},
+      selectionBox: {before: selectionBoxBefore, after: selectionBoxAfter}
+    }
+  );
 }
 
 function insertNodeAtCursor(options) {
@@ -885,16 +948,18 @@ function insertNodeAtCursor(options) {
     }
   });
   newNode.focus();
-  setCursorPosition(
-    pxToGridX(parseInt(newNode.style.left)) - 32,
-    pxToGridY(parseInt(newNode.style.top))  - 16
-  );
-  Array.from(document.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
-  if (selectionBox) {
-    selectionBox.remove();
-    selectionBox = null;
+  var cursorPositionBefore = {
+    x: parseInt(cursor.style.left),
+    y: parseInt(cursor.style.top),
   }
+  var cursorPositionAfter = {
+    x: pxToGridX(parseInt(newNode.style.left)) - 32,
+    y: pxToGridY(parseInt(newNode.style.top))  - 16,
+  }
+  setCursorPosition(cursorPositionAfter);
+  deselectAll();
   if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
+  recordAction(new createNodeAction(newNode), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
   return newNode;
 }
 
@@ -944,10 +1009,7 @@ function moveCursorInDirection(direction, options) {
   }
   if ((cursorX < 0) || (cursorY < 0)) return;
   if (options.dragSelectionBox) {
-    if (!selectionBox) {
-      selectionBox = document.createElement('div');
-      selectionBox.id = 'selection-box';
-      currentSurface.appendChild(selectionBox);
+    if (selectionBox.classList.contains('hidden')) {
       selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     }
     var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
@@ -956,19 +1018,15 @@ function moveCursorInDirection(direction, options) {
     var selectionBoxHeight = Math.max(32, Math.abs(selectionBox.anchorPosition.y - cursorY));
     var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
     var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
-    selectionBox.style.left   = selectionBoxLeft   + 'px';
-    selectionBox.style.top    = selectionBoxTop    + 'px';
-    selectionBox.style.width  = selectionBoxWidth  + 'px';
-    selectionBox.style.height = selectionBoxHeight + 'px';
-    for (node of currentSurface.getElementsByClassName('node')) {
-      var nodeX = parseInt(node.style.left);
-      var nodeY = parseInt(node.style.top);
-      node.classList.toggle('selected', nodeX > selectionBoxLeft && nodeX < selectionBoxRight &&
-                                        nodeY > selectionBoxTop  && nodeY < selectionBoxBottom);
-    }
-  } else if (selectionBox) {
-    selectionBox.remove();
-    selectionBox = null;
+    setSelectionBox({
+      left:   selectionBoxLeft,
+      top:    selectionBoxTop,
+      right:  selectionBoxRight,
+      bottom: selectionBoxBottom,
+    });
+    selectionBox.classList.remove('hidden');
+  } else {
+    selectionBox.classList.add('hidden');
   }
   if (linkBeingCreated) {
     layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
@@ -976,7 +1034,7 @@ function moveCursorInDirection(direction, options) {
   if (!options.dragSelectionBox) {
     for (element of [...currentSurface.getElementsByClassName('selected')]) {element.classList.remove('selected')}
   }
-  setCursorPosition(cursorX, cursorY);
+  setCursorPosition({x: cursorX, y: cursorY});
   var nodeUnderCursor = getNodeUnderCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
@@ -1044,6 +1102,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 document.addEventListener('mousedown', event => {
   if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
+    setCurrentSurface(event.target.closest('.surface'));
     var link = createLink();
     link.from = event.target;
     var fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
@@ -1057,6 +1116,8 @@ document.addEventListener('mousedown', event => {
         } else {
           if (link.closest('#find-panel')) {
             highlightQueriedNodes();
+          } else {
+            recordAction(new createLinkAction(link));
           }
         }
         window.removeEventListener('mouseover', handleMouseover);
