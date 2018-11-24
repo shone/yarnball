@@ -302,8 +302,9 @@ function deleteElements(elements) {
     link.from.links.delete(link);
     link.via.links.delete(link);
     link.to.links.delete(link);
-    link.remove()
+    link.remove();
   }
+  return affectedLinks;
 }
 
 function deleteSelection() {
@@ -317,7 +318,7 @@ function deleteSelection() {
   if (document.activeElement && document.activeElement.classList.contains('node')) {
     focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
   }
-  deleteElements(elementsToDelete);
+  var affectedLinks = deleteElements(elementsToDelete);
   if (currentSurface.id === 'find-panel') highlightQueriedNodes();
   var cursorPositionBefore = {
     x: parseInt(cursor.style.left),
@@ -337,7 +338,7 @@ function deleteSelection() {
     y: parseInt(cursor.style.top),
   }
   recordAction(
-    new deleteElementsAction(elementsToDelete),
+    new deleteElementsAction(new Set([...elementsToDelete, ...affectedLinks])),
     {
       cursor: {before: cursorPositionBefore, after: cursorPositionAfter},
       selectionBox: {before: getSelectionBox(), after: null},

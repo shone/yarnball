@@ -58,11 +58,14 @@ function deleteElementsAction(elements) {
         mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
       } else if (element.classList.contains('link')) {
         mainSurface.getElementsByClassName('links')[0].appendChild(element);
+        element.from.links.add(element);
+        element.via.links.add(element);
+        element.to.links.add(element);
       }
     }
   };
   this.redo = () => {
-    for (element of this.elements) element.remove();
+    deleteElements(this.elements);
   };
 }
 
