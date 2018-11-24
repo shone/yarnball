@@ -15,10 +15,11 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-document.getElementById('help-button').addEventListener('click', event => {
+function toggleHelp() {
   document.getElementById('help-screen').classList.toggle('hidden');
   document.getElementById('help-button').classList.toggle('active');
-});
+}
+document.getElementById('help-button').addEventListener('click', toggleHelp);
 
 var findPanel = document.getElementById('find-panel');
 
@@ -1198,7 +1199,9 @@ function prepareForSerialization(nodes, links) {
     link.setAttribute('data-to',   link.to.id);
   }
   for (node of nodes) {
-    node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
+    if (node.links.size > 0) {
+      node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
+    }
     node.setAttribute('data-instances', [...node.instances].filter(node => nodesSet.has(node)).map(node => node.id).join(','));
     node.classList.remove('highlighted');
     node.classList.remove('selected');
@@ -1249,38 +1252,34 @@ function clearSerialization(nodes, links) {
 }
 
 function saveState() {
-  prepareForSerialization([...document.getElementsByClassName('node')], [...document.getElementsByClassName('link')]);
+  var nodes = [...mainSurface.getElementsByClassName('node')];
+  var links = [...mainSurface.getElementsByClassName('link')];
+  prepareForSerialization(nodes, links);
   localStorage.saved_state = mainSurface.innerHTML;
-  currentSurface.appendChild(cursor);
+  clearSerialization(nodes, links);
 }
 
 function restoreState() {
   mainSurface.innerHTML = localStorage.saved_state;
-  for (link of mainSurface.getElementsByClassName('link')) {
+  var nodes = mainSurface.getElementsByClassName('node');
+  var links = mainSurface.getElementsByClassName('link');
+  for (link of links) {
     link.from = document.getElementById(link.getAttribute('data-from'));
     link.via  = document.getElementById(link.getAttribute('data-via'));
     link.to   = document.getElementById(link.getAttribute('data-to'));
   }
-  for (node of mainSurface.getElementsByClassName('node')) {
-    if (node.getAttribute('data-links')) {
+  for (node of nodes) {
+    if (node.hasAttribute('data-links')) {
       node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
-      if (node.links.has(null)) {
-        console.error('null link');
-        node.links.delete(null);
-      }
     } else {
       node.links = new Set();
     }
-    if (node.getAttribute('data-instances')) {
+    if (node.hasAttribute('data-instances')) {
       node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
-      if (node.instances.has(null)) {
-        console.error('null instance');
-        node.instances.delete(null);
-      }
     } else {
       node.instances = new Set([node]);
     }
     node.classList.remove('selected');
   }
-  clearSerialization([...document.getElementsByClassName('node')], [...document.getElementsByClassName('link')]);
+  clearSerialization(nodes, links);
 }

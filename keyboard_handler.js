@@ -39,10 +39,12 @@ var keyboard_handler = {
 
   TAB:        event => executeLinkMode(),
 
-  CtrlShiftS: event => saveState(),
+  CtrlS:      event => saveState(),
 
   CtrlZ:      event => undo(),
   CtrlShiftZ: event => redo(),
+
+  F1: event => toggleHelp(),
 
   F10: event => {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
