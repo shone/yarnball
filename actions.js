@@ -6,6 +6,8 @@ function recordAction(action, options) {
     action.options = options || {};
     actions.push(action);
     actionsUndone = [];
+  } else if (currentSurface === findPanel) {
+    highlightQueriedNodes();
   }
 }
 
@@ -79,6 +81,19 @@ function createLinkAction(link) {
   this.link = link;
   this.undo = () => this.link.remove();
   this.redo = () => mainSurface.getElementsByClassName('links')[0].appendChild(this.link);
+}
+
+function pasteElementsAction(nodes, links) {
+  this.nodes = nodes;
+  this.links = links;
+  this.undo = () => {
+    for (node of this.nodes) node.remove();
+    for (link of this.links) link.remove();
+  };
+  this.redo = () => {
+    for (node of this.nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
+    for (link of this.links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
+  };
 }
 
 function moveNodesAction(positions) {

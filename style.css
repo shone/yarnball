@@ -92,6 +92,7 @@ body.panning:after {
   position: absolute;
   z-index: 2;
   background-color: #fff;
+  box-sizing: border-box;
   width:  50px;
   height: 20px;
   margin-left: -25px;
@@ -109,22 +110,15 @@ body.panning:after {
 .node.highlighted {
   background-color: #ffff98;
 }
-.node.instance-highlighted {
+.node.mouse-over-instance {
   background-color: #888;
+}
+.node.cursor-at-instance {
+  border: 2px solid #000;
 }
 
 .node.selected {
   background-color: orange;
-}
-
-.node input {
-  background-color: transparent;
-  border: none;
-  padding: 0;
-  text-align: center;
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 40px;
 }
 .node:focus {
   outline: none;
