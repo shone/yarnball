@@ -235,13 +235,15 @@ function useNodeForLinkCreationMode(node) {
         linkBeingCreated.to = node;
         linkBeingCreated.to.links.add(linkBeingCreated);
         layoutLink(linkBeingCreated);
-        recordAction(new createLinkAction(linkBeingCreated));
       }
+      var createdLink = linkBeingCreated;
       linkBeingCreated = null;
       cursor.classList.remove('insert-mode');
       resetCursorBlink();
+      return createdLink;
     }
   }
+  return null;
 }
 function executeLinkMode() {
   var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
@@ -279,7 +281,10 @@ function executeLinkMode() {
       resetCursorBlink();
     } else {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
-        useNodeForLinkCreationMode(document.activeElement);
+        var createdLink = useNodeForLinkCreationMode(document.activeElement);
+        if (createdLink) {
+          recordAction(new createLinkAction(createdLink));
+        }
       } else {
         cancelLinkMode();
       }
@@ -976,8 +981,14 @@ function insertNodeAtCursor(options) {
   }
   setCursorPosition(cursorPositionAfter);
   deselectAll();
-  if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
-  recordAction(new createNodeAction(newNode), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
+  var createdElements = [newNode];
+  if (linkBeingCreated) {
+    var createdLink = useNodeForLinkCreationMode(newNode);
+    if (createdLink) {
+      createdElements.push(createdLink);
+    }
+  }
+  recordAction(new createElementsAction(createdElements), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
   return newNode;
 }
 

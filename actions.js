@@ -71,10 +71,23 @@ function deleteElementsAction(elements) {
   };
 }
 
-function createNodeAction(node) {
-  this.node = node;
-  this.undo = () => this.node.remove();
-  this.redo = () => mainSurface.getElementsByClassName('nodes')[0].appendChild(this.node);
+function createElementsAction(elements) {
+  this.elements = elements;
+  this.undo = () => {
+    deleteElements(this.elements);
+  };
+  this.redo = () => {
+    for (element of this.elements) {
+      if (element.classList.contains('node')) {
+        mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
+      } else if (element.classList.contains('link')) {
+        mainSurface.getElementsByClassName('links')[0].appendChild(element);
+        element.from.links.add(element);
+        element.via.links.add(element);
+        element.to.links.add(element);
+      }
+    }
+  };
 }
 
 function createLinkAction(link) {
@@ -123,6 +136,16 @@ function renameNodeAction(node, oldName) {
   this.node = node;
   this.oldName = oldName;
   this.newName = node.value;
-  this.undo = () => this.node.value = this.oldName;
-  this.redo = () => this.node.value = this.newName;
+  this.undo = () => {
+    this.node.value = this.oldName;
+    if (document.activeElement === this.node) {
+      lastFocusedNodeOriginalName = this.node.value;
+    }
+  }
+  this.redo = () => {
+    this.node.value = this.newName;
+    if (document.activeElement === this.node) {
+      lastFocusedNodeOriginalName = this.node.value;
+    }
+  }
 }

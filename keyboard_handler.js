@@ -104,10 +104,16 @@ document.body.addEventListener('keydown', event => {
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
     var newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
-    recordAction(new createNodeAction(newNode));
     newNode.focus();
     selectionBox.classList.add('hidden');
-    if (linkBeingCreated) useNodeForLinkCreationMode(newNode);
+    var createdElements = [newNode];
+    if (linkBeingCreated) {
+      var createdLink = useNodeForLinkCreationMode(newNode);
+      if (createdLink) {
+        createdElements.push(createdLink);
+      }
+    }
+    recordAction(new createElementsAction(createdElements));
     return false;
   }
 });
