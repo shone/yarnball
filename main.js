@@ -363,14 +363,14 @@ function deleteSelection() {
 }
 
 function cancelCurrentModeOrOperation() {
-  selectionBox.classList.add('hidden');
-  for (selected of [...currentSurface.getElementsByClassName('selected')]) {
-    selected.classList.remove('selected');
-  }
+
+  deselectAll();
+
   if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
     cancelLinkMode();
     return;
   }
+
   if (!findPanel.classList.contains('hidden')) {
     findPanel.classList.add('hidden');
     for (highlighted of [...mainSurface.getElementsByClassName('highlighted')]) {
@@ -432,7 +432,7 @@ function handleNodeMousedown(event) {
       event.target.classList.toggle('selected');
     } else {
       if (!event.target.classList.contains('selected')) {
-        Array.from(currentSurface.getElementsByClassName('selected')).forEach(element => element.classList.remove('selected'));
+        deselectAll();
       }
     }
     // Node dragging
@@ -603,10 +603,10 @@ function setSelectionBox(position, selectedNodesToPreserve) {
   for (node of [...currentSurface.getElementsByClassName('node')]) {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
     var inSelectionBox = !(
-      ((parseInt(node.style.left) + node.offsetWidth)  < position.left)  ||
-      (parseInt(node.style.left)                       > position.right) ||
-      ((parseInt(node.style.top)  + node.offsetHeight) < position.top)   ||
-      (parseInt(node.style.top)                        > position.bottom)
+      (((parseInt(node.style.left) - 25) + node.offsetWidth)  < position.left)  ||
+      ((parseInt(node.style.left)  - 25)                      > position.right) ||
+      (((parseInt(node.style.top)  - 10) + node.offsetHeight) < position.top)   ||
+      ((parseInt(node.style.top)   - 10)                      > position.bottom)
     );
     node.classList.toggle('selected', inSelectionBox);
   }
@@ -630,7 +630,7 @@ function handleBackgroundMousedownForSelectionBox(event) {
   event.preventDefault();
   currentSurface.classList.add('dragging-selection-box');
   if (!event.shiftKey) {
-    for (element of [...currentSurface.getElementsByClassName('selected')]) element.classList.remove('selected');
+    deselectAll();
     if (document.activeElement) document.activeElement.blur();
   } else {
     selectedNodesToPreserve = new Set(currentSurface.getElementsByClassName('selected'));
@@ -671,8 +671,8 @@ function selectAll() {
 }
 
 function deselectAll() {
-  for (node of currentSurface.getElementsByClassName('node')) {
-    node.classList.remove('selected');
+  for (element of [...currentSurface.getElementsByClassName('selected')]) {
+    element.classList.remove('selected');
   }
   selectionBox.classList.add('hidden');
 }
@@ -1055,13 +1055,10 @@ function moveCursorInDirection(direction, options) {
     });
     selectionBox.classList.remove('hidden');
   } else {
-    selectionBox.classList.add('hidden');
+    deselectAll();
   }
   if (linkBeingCreated) {
     layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
-  }
-  if (!options.dragSelectionBox) {
-    for (element of [...currentSurface.getElementsByClassName('selected')]) {element.classList.remove('selected')}
   }
   setCursorPosition({x: cursorX, y: cursorY});
   var nodeUnderCursor = getNodeUnderCursor();
