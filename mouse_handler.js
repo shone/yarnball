@@ -103,7 +103,6 @@ function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
     event.target.focus();
-    setCurrentSurface(event.target.closest('.surface'));
     setCursorPosition({
       x: pxToGridX(parseInt(event.target.style.left)) - 32,
       y: pxToGridY(parseInt(event.target.style.top))  - 16,
@@ -118,25 +117,22 @@ function handleNodeMousedown(event) {
     // Node dragging
     var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.add(document.activeElement);
-    nodesToDrag.forEach(node => node.classList.add('dragging'));
+    for (node of nodesToDrag) {
+      node.classList.add('dragging');
+      node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
+    }
     var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     var selectionBoxStartPosition = getSelectionBox();
-    var nodeStartPositions = new Map();
-    nodesToDrag.forEach(node => nodeStartPositions.set(node, {x: parseInt(node.style.left), y: parseInt(node.style.top)}));
     isDraggingNodes = true;
-    var oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
     handleMouseDrag(event, {
       mousemove: function(mouse) {
         var affectedLinks = new Set();
-        nodesToDrag.forEach(node => {
-          var startPosition = nodeStartPositions.get(node);
-          node.style.left = (startPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
-          node.style.top  = (startPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
-          node.links.forEach(link => affectedLinks.add(link));
-        });
-        affectedLinks.forEach(link => {
-          layoutLink(link);
-        });
+        for (node of nodesToDrag) {
+          node.style.left = (node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
+          node.style.top  = (node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
+          for (link of node.links) affectedLinks.add(link);
+        }
+        for (link of affectedLinks) layoutLink(link);
         cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
         cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
         resetCursorBlink();
@@ -146,8 +142,9 @@ function handleNodeMousedown(event) {
         }
       },
       mouseup: function(event, mouse) {
-        nodesToDrag.forEach(element => element.classList.remove('dragging'));
+        for (node of nodesToDrag) node.classList.remove('dragging');
         if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
+          var oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
           var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
           recordAction(
             new moveNodesAction({oldPositions, newPositions}),
@@ -167,28 +164,45 @@ function handleNodeMousedown(event) {
 document.addEventListener('contextmenu', event => event.preventDefault());
 
 document.addEventListener('mousedown', event => {
+  // Middle mouse button drag
+  if (event.button === 1) {
+    event.preventDefault();
+    document.body.classList.add('panning');
+    handleMouseDrag(event, {
+      mousemove: cursor => window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y),
+      mouseup: event => {
+        event.preventDefault();
+        document.body.classList.remove('panning');
+        return false;
+      }
+    });
+    return false;
+  }
+
+  var surface = event.target.closest('.surface');
+  if (surface) {
+    setCurrentSurface(surface);
+  }
+
+  // Right mouse button down on node
   if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
-    setCurrentSurface(event.target.closest('.surface'));
     var link = createLink();
     link.from = event.target;
     var fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
     handleMouseDrag(event, {
-      mousemove: function(cursor) {
-        layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x, y: fromPosition.y + cursor.deltaTotal.y});
-      },
+      mousemove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x, y: fromPosition.y + cursor.deltaTotal.y}),
       mouseup: function(event) {
-        if (!(link.from && link.via && link.to)) {
-          link.remove();
-        } else {
+        if (link.from && link.via && link.to) {
           recordAction(new createLinkAction(link));
+        } else {
+          link.remove();
         }
         window.removeEventListener('mouseover', handleMouseover);
       }
     });
     function handleMouseover(event) {
-      if (event.target.classList.contains('node') &&
-        event.target !== link.via && event.target !== link.to && event.target !== link.from) {
+      if (event.target.classList.contains('node') && ![link.from, link.via, link.to].includes(event.target)) {
         if (!link.via) {
           link.via = event.target;
         } else if (!link.to) {
@@ -203,35 +217,28 @@ document.addEventListener('mousedown', event => {
     }
     window.addEventListener('mouseover', handleMouseover);
     return false;
-  } else if (event.button === 0 && event.target.classList.contains('node')) {
+  }
+
+  // Left mouse button down on node
+  if (event.button === 0 && event.target.classList.contains('node')) {
     handleNodeMousedown(event);
-  } else if (event.button === 0 && event.target.classList.contains('link')) {
+    return false;
+  }
+
+  // Left mouse button down on link
+  if (event.button === 0 && event.target.classList.contains('link')) {
     event.preventDefault();
-    if (!event.shiftKey) {
-      Array.from(document.getElementsByClassName('selected')).forEach(element => {element.classList.remove('selected')});
-    }
     if (event.shiftKey) {
       event.target.classList.toggle('selected');
     } else {
+      deselectAll();
       event.target.classList.add('selected');
     }
     return false;
-  } else if (event.button === 1) {
-    // Middle mouse button drag
-    event.preventDefault();
-    document.body.classList.add('panning');
-    handleMouseDrag(event, {
-      mousemove: cursor => {
-        window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y);
-      },
-      mouseup: event => {
-        event.preventDefault();
-        document.body.classList.remove('panning');
-        return false;
-      }
-    });
-    return false;
-  } else if (event.target.classList.contains('surface')) {
+  }
+
+  // Mouse button down on surface
+  if (event.target.classList.contains('surface')) {
     handleBackgroundMousedownForSelectionBox(event);
   }
 });
