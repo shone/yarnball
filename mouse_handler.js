@@ -40,8 +40,8 @@ document.body.addEventListener('mousedown', event => {
   if (event.target.classList.contains('surface')) {
     setCurrentSurface(event.target);
     setCursorPosition({
-      x: pxToGridX(event.offsetX) - 32,
-      y: pxToGridY(event.offsetY) - 16,
+      x: pxToGridX(event.offsetX),
+      y: pxToGridY(event.offsetY),
     });
   }
 });
@@ -73,10 +73,10 @@ function handleBackgroundMousedownForSelectionBox(event) {
     mousemove: function(cursor) {
       setSelectionBox(
         {
-          left:   Math.min(pxToGridX(cursorPositionOffsetOnMouseDragStart.x) - 32, pxToGridX(cursor.positionOffset.x) - 32),
-          top:    Math.min(pxToGridY(cursorPositionOffsetOnMouseDragStart.y) - 16, pxToGridY(cursor.positionOffset.y) - 16),
-          right:  Math.max(pxToGridX(cursorPositionOffsetOnMouseDragStart.x) - 32, pxToGridX(cursor.positionOffset.x) - 32),
-          bottom: Math.max(pxToGridY(cursorPositionOffsetOnMouseDragStart.y) - 16, pxToGridY(cursor.positionOffset.y) - 16),
+          left:   Math.min(pxToGridX(cursorPositionOffsetOnMouseDragStart.x), pxToGridX(cursor.positionOffset.x)),
+          top:    Math.min(pxToGridY(cursorPositionOffsetOnMouseDragStart.y), pxToGridY(cursor.positionOffset.y)),
+          right:  Math.max(pxToGridX(cursorPositionOffsetOnMouseDragStart.x), pxToGridX(cursor.positionOffset.x)),
+          bottom: Math.max(pxToGridY(cursorPositionOffsetOnMouseDragStart.y), pxToGridY(cursor.positionOffset.y)),
         },
         selectedNodesToPreserve
       );
@@ -104,8 +104,8 @@ function handleNodeMousedown(event) {
     event.preventDefault();
     event.target.focus();
     setCursorPosition({
-      x: pxToGridX(parseInt(event.target.style.left)) - 32,
-      y: pxToGridY(parseInt(event.target.style.top))  - 16,
+      x: pxToGridX(parseInt(event.target.style.left)),
+      y: pxToGridY(parseInt(event.target.style.top)),
     });
     if (event.shiftKey) {
       event.target.classList.toggle('selected');

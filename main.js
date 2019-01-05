@@ -55,8 +55,8 @@ function getNodeUnderCursor(surface) {
   var cursorX = parseInt(cursor_.style.left);
   var cursorY = parseInt(cursor_.style.top);
   return [...surface.getElementsByClassName('node')].find(node => {
-    return (cursorY === parseInt(node.style.top) - 16) &&
-           (cursorX >= parseInt(node.style.left) - 32) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width) - 18);
+    return (cursorY === parseInt(node.style.top)) &&
+           (cursorX >= parseInt(node.style.left)) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width));
   });
 }
 
@@ -488,10 +488,10 @@ function setSelectionBox(position, selectedNodesToPreserve) {
   for (node of [...currentSurface.getElementsByClassName('node')]) {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
     var inSelectionBox = !(
-      (((parseInt(node.style.left) - 25) + node.offsetWidth)  < position.left)  ||
-      ((parseInt(node.style.left)  - 25)                      > position.right) ||
-      (((parseInt(node.style.top)  - 10) + node.offsetHeight) < position.top)   ||
-      ((parseInt(node.style.top)   - 10)                      > position.bottom)
+      (((parseInt(node.style.left)) + node.offsetWidth)  < position.left)   ||
+       (parseInt(node.style.left)                        >= position.right) ||
+      (((parseInt(node.style.top) ) + node.offsetHeight) < position.top)    ||
+       (parseInt(node.style.top)                         >= position.bottom)
     );
     node.classList.toggle('selected', inSelectionBox);
   }
@@ -744,8 +744,8 @@ function moveSelectionInDirection(direction) {
     down:  {x:   0, y:  32},
   }[direction];
   var willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
-    return parseInt(node.style.left) + moveDelta.x < 64 ||
-           parseInt(node.style.top)  + moveDelta.y < 32;
+    return parseInt(node.style.left) + moveDelta.x < 0 ||
+           parseInt(node.style.top)  + moveDelta.y < 0;
   });
   if (willNodeBeMovedOutOfBounds) return false;
 
@@ -814,8 +814,8 @@ function insertNodeAtCursor(options) {
     y: parseInt(cursor.style.top),
   }
   var cursorPositionAfter = {
-    x: pxToGridX(parseInt(newNode.style.left)) - 32,
-    y: pxToGridY(parseInt(newNode.style.top))  - 16,
+    x: pxToGridX(parseInt(newNode.style.left)),
+    y: pxToGridY(parseInt(newNode.style.top)),
   }
   setCursorPosition(cursorPositionAfter);
   deselectAll();
@@ -945,14 +945,45 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
   }
 }
 
+function getNodeCenter(node) {
+  return {
+    x: parseInt(node.style.left) + (parseInt(node.style.width) / 2) + 5,
+    y: parseInt(node.style.top) + 16,
+  }
+}
+
+function getNodeAnchorPoints(node) {
+  return [
+    {point: getNodeCenter(node)},
+    {point: {x: parseInt(node.style.left) + 18, y: parseInt(node.style.top) + 16}},
+    {point: {x: parseInt(node.style.left) + parseInt(node.style.width) - 8, y: parseInt(node.style.top) + 16}},
+  ]
+}
+
 function layoutLink(link, lastPosition) {
   function pos(node) {
-    return {x: parseInt(node.style.left), y: parseInt(node.style.top)};
+    return {x: parseInt(node.style.left) + 32, y: parseInt(node.style.top) + 16};
   }
   var points = [];
-  if (link.from) points.push(pos(link.from));
-  if (link.via)  points.push(pos(link.via));
-  if (link.to)   points.push(pos(link.to));
+  if (link.from) {
+    var nextPoint = link.via ? getNodeCenter(link.via) : lastPosition;
+    var anchorPoints = getNodeAnchorPoints(link.from);
+    for (anchor of anchorPoints) {
+      anchor.distance = Math.pow(nextPoint.x - anchor.point.x, 2) + Math.pow(nextPoint.y - anchor.point.y, 2);
+    }
+    anchorPoints.sort((a, b) => a.distance - b.distance);
+    points.push(anchorPoints[0].point);
+  }
+  if (link.via)  points.push(getNodeCenter(link.via));
+  if (link.to) {
+    var viaPoint = getNodeCenter(link.via);
+    var anchorPoints = getNodeAnchorPoints(link.to);
+    for (anchor of anchorPoints) {
+      anchor.distance = Math.pow(viaPoint.x - anchor.point.x, 2) + Math.pow(viaPoint.y - anchor.point.y, 2);
+    }
+    anchorPoints.sort((a, b) => a.distance - b.distance);
+    points.push(anchorPoints[0].point);
+  }
   if (points.length < 3 && lastPosition) points.push(lastPosition);
   if (points.length >= 2) {
     link.setAttribute('points', points.map(point => point.x + ',' + point.y).join(' '));

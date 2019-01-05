@@ -1,5 +1,5 @@
 var keyboard_handler = {
-  HOME:       event => setCursorPosition({x: 32, y: 16}),
+  HOME:       event => setCursorPosition({x: 0, y: 0}),
 
   ENTER:      event => insertNodeAtCursor({moveAdjacent: 'down' }),
   ShiftENTER: event => insertNodeAtCursor({moveAdjacent: 'up'   }),
