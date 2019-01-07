@@ -289,7 +289,6 @@ function deleteElements(elements) {
 }
 
 function deleteSelection() {
-  if (isDraggingNodes) return false;
   var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
   if (document.activeElement && document.activeElement.classList.contains('node') && document.activeElement.closest('.surface') === currentSurface) {
     elementsToDelete.add(document.activeElement);
@@ -474,6 +473,18 @@ function getAllAdjacentNodesInDirection(sourceNodes, direction) {
   return adjacentNodes;
 }
 
+function getNodesIntersectingBox(box, nodes) {
+  nodes = nodes || [...currentSurface.getElementsByClassName('node')];
+  return nodes.filter(node => {
+    return !(
+      ((parseInt(node.style.left) + node.offsetWidth)  <  box.left)  ||
+       (parseInt(node.style.left)                      >= box.right) ||
+      ((parseInt(node.style.top)  + node.offsetHeight) <  box.top)   ||
+       (parseInt(node.style.top)                       >= box.bottom)
+    );
+  });
+}
+
 // Selection box
 var selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
 function setSelectionBox(position, selectedNodesToPreserve) {
@@ -485,15 +496,10 @@ function setSelectionBox(position, selectedNodesToPreserve) {
   selectionBox.style.top    = position.top    + 'px';
   selectionBox.style.width  = position.width  + 'px';
   selectionBox.style.height = position.height + 'px';
+  var intersectingNodes = new Set(getNodesIntersectingBox(position));
   for (node of [...currentSurface.getElementsByClassName('node')]) {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
-    var inSelectionBox = !(
-      (((parseInt(node.style.left)) + node.offsetWidth)  < position.left)   ||
-       (parseInt(node.style.left)                        >= position.right) ||
-      (((parseInt(node.style.top) ) + node.offsetHeight) < position.top)    ||
-       (parseInt(node.style.top)                         >= position.bottom)
-    );
-    node.classList.toggle('selected', inSelectionBox);
+    node.classList.toggle('selected', intersectingNodes.has(node));
   }
 }
 function getSelectionBox() {
@@ -692,7 +698,7 @@ function openFindPanel() {
   setCurrentSurface(findPanel);
   var findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
   if (findPanelNodes.getElementsByClassName('node').length === 0) {
-    createNode({position: {x: 64, y: 32}, parent: findPanelNodes});
+    createNode({position: {x: 0, y: 0}, parent: findPanelNodes});
   } else {
     highlightQueriedNodes();
   }
@@ -950,6 +956,17 @@ function getNodeCenter(node) {
     x: parseInt(node.style.left) + (parseInt(node.style.width) / 2) + 5,
     y: parseInt(node.style.top) + 16,
   }
+}
+
+function getNodeBoundingBox(node) {
+  return {
+    left:   parseInt(node.style.left),
+    top:    parseInt(node.style.top),
+    width:  parseInt(node.style.width),
+    height: parseInt(node.style.height),
+    right:  parseInt(node.style.left) + parseInt(node.style.width),
+    bottom: parseInt(node.style.top) + parseInt(node.style.height),
+  };
 }
 
 function getNodeAnchorPoints(node) {

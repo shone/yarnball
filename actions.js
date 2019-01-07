@@ -1,5 +1,6 @@
 var actions = [];
 var actionsUndone = [];
+var isActionInProgress = false;
 
 function recordAction(action, options) {
   if (currentSurface === mainSurface) {

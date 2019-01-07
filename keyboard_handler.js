@@ -63,6 +63,9 @@ document.body.addEventListener('keydown', event => {
                          event.key.toUpperCase();
   if (keyWithModifiers in keyboard_handler) {
     event.preventDefault();
+    if (isActionInProgress) {
+      return false;
+    }
     keyboard_handler[keyWithModifiers](event);
     return false;
   }

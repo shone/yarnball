@@ -97,20 +97,19 @@ function handleBackgroundMousedownForSelectionBox(event) {
   return false;
 }
 
-var isDraggingNodes = false;
-
 function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
-    event.target.focus();
+    var node = event.target;
+    node.focus();
     setCursorPosition({
-      x: pxToGridX(parseInt(event.target.style.left)),
-      y: pxToGridY(parseInt(event.target.style.top)),
+      x: pxToGridX(parseInt(node.style.left)),
+      y: pxToGridY(parseInt(node.style.top)),
     });
     if (event.shiftKey) {
-      event.target.classList.toggle('selected');
+      node.classList.toggle('selected');
     } else {
-      if (!event.target.classList.contains('selected')) {
+      if (!node.classList.contains('selected')) {
         deselectAll();
       }
     }
@@ -118,14 +117,29 @@ function handleNodeMousedown(event) {
     var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.add(document.activeElement);
     for (node of nodesToDrag) {
-      node.classList.add('dragging');
       node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
     }
+    var nodesNotBeingDragged = new Set(currentSurface.getElementsByClassName('node'));
+    for (node of nodesToDrag) nodesNotBeingDragged.delete(node);
     var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     var selectionBoxStartPosition = getSelectionBox();
-    isDraggingNodes = true;
+    isActionInProgress = true;
+    document.body.classList.add('dragging');
     handleMouseDrag(event, {
       mousemove: function(mouse) {
+        // Check if dragging to a valid position
+        for (node of [...nodesToDrag]) {
+          var newNodeBoundingBox = {
+            left:   node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x),
+            top:    node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y),
+            right:  node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x) + parseInt(node.style.width),
+            bottom: node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y) + 20,
+          }
+          if (newNodeBoundingBox.left < 0) return;
+          if (newNodeBoundingBox.top < 0) return;
+          if (getNodesIntersectingBox(newNodeBoundingBox, [...nodesNotBeingDragged]).length !== 0) return;
+        }
+        // Move nodes
         var affectedLinks = new Set();
         for (node of nodesToDrag) {
           node.style.left = (node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
@@ -133,9 +147,11 @@ function handleNodeMousedown(event) {
           for (link of node.links) affectedLinks.add(link);
         }
         for (link of affectedLinks) layoutLink(link);
+        // Move cursor
         cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
         cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
         resetCursorBlink();
+        // Move selection box
         if (selectionBoxStartPosition) {
           selectionBox.style.left = (selectionBoxStartPosition.left + pxToGridX(mouse.deltaTotal.x)) + 'px';
           selectionBox.style.top  = (selectionBoxStartPosition.top  + pxToGridY(mouse.deltaTotal.y)) + 'px';
@@ -154,7 +170,8 @@ function handleNodeMousedown(event) {
             }
           );
         }
-        isDraggingNodes = false;
+        isActionInProgress = false;
+        document.body.classList.remove('dragging');
       }
     });
     return false;
@@ -167,12 +184,12 @@ document.addEventListener('mousedown', event => {
   // Middle mouse button drag
   if (event.button === 1) {
     event.preventDefault();
-    document.body.classList.add('panning');
+    document.body.classList.add('dragging');
     handleMouseDrag(event, {
       mousemove: cursor => window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y),
       mouseup: event => {
         event.preventDefault();
-        document.body.classList.remove('panning');
+        document.body.classList.remove('dragging');
         return false;
       }
     });

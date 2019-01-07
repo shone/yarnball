@@ -10,7 +10,7 @@ body {
   margin:  0;
 }
 
-body.panning:after {
+body.dragging:after {
   content: "";
   display: block;
   position: fixed;
@@ -151,10 +151,6 @@ body.panning:after {
 
 .surface.dragging-selection-box .node,
 .surface.dragging-selection-box .link {
-  pointer-events: none;
-}
-
-.dragging {
   pointer-events: none;
 }
 
