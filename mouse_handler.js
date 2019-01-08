@@ -208,7 +208,7 @@ document.addEventListener('mousedown', event => {
     link.from = event.target;
     var fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
     handleMouseDrag(event, {
-      mousemove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x, y: fromPosition.y + cursor.deltaTotal.y}),
+      mousemove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       mouseup: function(event) {
         if (link.from && link.via && link.to) {
           recordAction(new createLinkAction(link));
