@@ -887,8 +887,8 @@ function moveCursorInDirection(direction, options) {
     }
     var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
     var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, cursorY);
-    var selectionBoxWidth  = Math.max(64, Math.abs(selectionBox.anchorPosition.x - cursorX));
-    var selectionBoxHeight = Math.max(32, Math.abs(selectionBox.anchorPosition.y - cursorY));
+    var selectionBoxWidth  = Math.max(0, Math.abs(selectionBox.anchorPosition.x - cursorX));
+    var selectionBoxHeight = Math.max(0, Math.abs(selectionBox.anchorPosition.y - cursorY));
     var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
     var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
     setSelectionBox({
