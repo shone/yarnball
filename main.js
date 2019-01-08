@@ -304,11 +304,11 @@ function deleteSelection() {
     y: parseInt(cursor.style.top),
   }
   if (focusedNodePosition) {
-    var closestNode = getClosestNodeTo(focusedNodePosition, Array.from(currentSurface.getElementsByClassName('node')));
+    var closestNode = getClosestNodeTo(focusedNodePosition);
     if (closestNode) {
       setCursorPosition({
-        x: pxToGridX(parseInt(closestNode.style.left)) - 32,
-        y: pxToGridY(parseInt(closestNode.style.top))  - 16
+        x: pxToGridX(parseInt(closestNode.style.left)),
+        y: pxToGridY(parseInt(closestNode.style.top)),
       });
     }
   }
@@ -382,12 +382,12 @@ function selectionToClipboard(options) {
 }
 
 function getClosestNodeTo(position, nodes) {
-  nodes = nodes || Array.from(currentSurface.getElementsByClassName('node'));
+  nodes = nodes || currentSurface.getElementsByClassName('node');
   var closestNode = null;
   var closestNodeDistance = null;
   for (var node of nodes) {
-    var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
-    var delta = {x: position.x - nodePosition.x, y: position.y - nodePosition.y};
+    var nodePosition = { x: parseInt(node.style.left),   y: parseInt(node.style.top)    };
+    var delta        = { x: position.x - nodePosition.x, y: position.y - nodePosition.y };
     var distance = (delta.x * delta.x) + (delta.y * delta.y);
     if (!closestNode || distance < closestNodeDistance) {
       closestNode = node;
