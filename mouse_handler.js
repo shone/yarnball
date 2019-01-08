@@ -113,6 +113,10 @@ function handleNodeMousedown(event) {
         deselectAll();
       }
     }
+    if (linkBeingCreated) {
+      useNodeForLinkCreationMode(node);
+      return false;
+    }
     // Node dragging
     var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.add(document.activeElement);
