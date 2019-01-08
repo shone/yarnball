@@ -173,18 +173,22 @@ body.dragging:after {
 
 #find-panel {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left:   8px;
+  right:  8px;
+  bottom: 8px;
   height: 350px;
   z-index: 2;
   background-color: #b5b5b5;
   border-top: 1px solid grey;
+  box-shadow: 1px 3px 18px #000;
 }
 
 .hidden {
   display: none;
 }
+
+
+/* Help */
 
 #help-button {
   position: fixed;
@@ -199,29 +203,39 @@ body.dragging:after {
   justify-content: center;
   align-items:     center;
   cursor: pointer;
+  box-shadow: 2px 2px 18px #000;
 }
 #help-button:after {
   content: '?';
   font-weight: bold;
   font-size: 1.4rem;
 }
-#help-button.active:after {
-  content: 'X';
-}
 #help-button:hover {
   background-color: grey;
 }
+#help-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 0px 12px #000;
+}
+body.showing-help #help-button:after {
+  content: 'X';
+}
 
 #help-screen {
+  display: none;
   position: fixed;
-  left: 5px;
-  top: 5px;
-  right: 5px;
-  bottom: 5px;
+  left:   8px;
+  top:    8px;
+  bottom: 8px;
+  right: 58px;
   z-index: 2;
   background-color: #fff;
   padding: 20px;
   overflow-y: auto;
+  box-shadow: 1px 3px 18px #000;
+}
+body.showing-help #help-screen {
+  display: block;
 }
 #help-screen table {
   border-spacing: 20px;

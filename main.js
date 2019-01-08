@@ -15,11 +15,7 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-function toggleHelp() {
-  document.getElementById('help-screen').classList.toggle('hidden');
-  document.getElementById('help-button').classList.toggle('active');
-}
-document.getElementById('help-button').addEventListener('click', toggleHelp);
+document.getElementById('help-button').addEventListener('click', event => document.body.classList.toggle('showing-help'));
 
 var findPanel = document.getElementById('find-panel');
 
@@ -329,6 +325,10 @@ function deleteSelection() {
 function cancelCurrentModeOrOperation() {
 
   deselectAll();
+
+  if (document.body.classList.contains('showing-help')) {
+    document.body.classList.remove('showing-help')
+  }
 
   if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
     cancelLinkMode();
