@@ -138,13 +138,21 @@ function renameNodeAction(node, oldName) {
   this.oldName = oldName;
   this.newName = node.value;
   this.undo = () => {
-    this.node.value = this.oldName;
+    var instances = [...document.querySelectorAll(`[data-id="${this.node.getAttribute('data-id')}"]`)];
+    for (instance of instances) {
+      instance.value = this.oldName;
+      instance.setAttribute('value', this.oldName);
+    }
     if (document.activeElement === this.node) {
       lastFocusedNodeOriginalName = this.node.value;
     }
   }
   this.redo = () => {
-    this.node.value = this.newName;
+    var instances = [...document.querySelectorAll(`[data-id="${this.node.getAttribute('data-id')}"]`)];
+    for (instance of instances) {
+      instance.value = this.newName;
+      instance.setAttribute('value', this.newName);
+    }
     if (document.activeElement === this.node) {
       lastFocusedNodeOriginalName = this.node.value;
     }

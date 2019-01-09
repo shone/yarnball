@@ -550,9 +550,13 @@ document.addEventListener('focusout', event => {
 document.addEventListener('input', event => {
   if (event.target.classList.contains('node')) {
     var node = event.target;
-    node.setAttribute('value', node.value);
-    var nodeWidth = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
-    node.style.width = nodeWidth + 'px';
+    var instances = [...document.querySelectorAll(`[data-id="${node.getAttribute('data-id')}"]`)];
+    for (instance of instances) {
+      instance.value = node.value;
+      instance.setAttribute('value', node.value);
+      var width = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
+      instance.style.width = width + 'px';
+    }
     if (event.target.closest('#find-panel')) {
       highlightQueriedNodes();
     }
