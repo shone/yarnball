@@ -44,6 +44,10 @@ body.dragging:after {
   background-color: #b5b5b5;
   cursor: crosshair;
 }
+.surface.current {
+  outline: 2px solid #9de1fe;
+  outline-offset: -2px;
+}
 
 #main-surface {
   width:  500rem;
