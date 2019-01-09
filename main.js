@@ -15,7 +15,10 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
-document.getElementById('help-button').addEventListener('click', event => document.body.classList.toggle('showing-help'));
+function toggleHelp() {
+  document.body.classList.toggle('showing-help');
+}
+document.getElementById('help-button').addEventListener('click', toggleHelp);
 
 var findPanel = document.getElementById('find-panel');
 
