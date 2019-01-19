@@ -16,6 +16,7 @@ function undo() {
   var action = actions.pop();
   if (action) {
     setCurrentSurface(mainSurface);
+    closeNameMatchPanel();
     action.undo();
     actionsUndone.push(action);
     if (action.options.cursor) {
@@ -36,6 +37,7 @@ function redo() {
   var action = actionsUndone.pop();
   if (action) {
     setCurrentSurface(mainSurface);
+    closeNameMatchPanel();
     action.redo();
     actions.push(action);
     if (action.options.cursor) {
@@ -66,6 +68,7 @@ function deleteElementsAction(elements) {
         element.to.links.add(element);
       }
     }
+    evaluateCursorPosition();
   };
   this.redo = () => {
     deleteElements(this.elements);
@@ -88,6 +91,7 @@ function createElementsAction(elements) {
         element.to.links.add(element);
       }
     }
+    evaluateCursorPosition();
   };
 }
 
@@ -156,5 +160,26 @@ function renameNodeAction(node, oldName) {
     if (document.activeElement === this.node) {
       lastFocusedNodeOriginalName = this.node.value;
     }
+  }
+}
+
+function changeIdAction(node, old, new_) {
+  this.undo = () => {
+    node.setAttribute('data-id', old.id);
+    node.value = old.name;
+    node.setAttribute('value', old.name);
+    if (document.activeElement === node) {
+      lastFocusedNodeOriginalName = node.value;
+    }
+    evaluateCursorPosition();
+  }
+  this.redo = () => {
+    node.setAttribute('data-id', new_.id);
+    node.value = new_.name;
+    node.setAttribute('value', new_.name);
+    if (document.activeElement === node) {
+      lastFocusedNodeOriginalName = node.value;
+    }
+    evaluateCursorPosition();
   }
 }

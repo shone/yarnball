@@ -3,6 +3,7 @@ var currentSurface = mainSurface;
 
 function setCurrentSurface(surface) {
   if (currentSurface !== surface) {
+    closeNameMatchPanel();
     currentSurface.classList.remove('current');
     surface.classList.add('current');
     currentSurface = surface;
@@ -15,48 +16,56 @@ if (localStorage.saved_state) {
   restoreState();
 }
 
+
+// Help
+
 function toggleHelp() {
   document.body.classList.toggle('showing-help');
 }
 document.getElementById('help-button').addEventListener('click', toggleHelp);
 
-var findPanel = document.getElementById('find-panel');
+
+// Cursor
 
 var cursor = currentSurface.getElementsByClassName('cursor')[0];
-cursor.classList.add('blinking');
-
 function setCursorPosition(position) {
   resetCursorBlink();
   if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) return;
   cursor.style.left = position.x + 'px';
   cursor.style.top  = position.y + 'px';
   cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
-  for (node of currentSurface.getElementsByClassName('node')) {
-    node.classList.remove('cursor-at-instance');
-  }
+  evaluateCursorPosition();
+  nameMatchPanel.remove();
+}
+function evaluateCursorPosition() {
   var nodeUnderCursor = getNodeUnderCursor();
   if (nodeUnderCursor) {
-    nodeUnderCursor.select();
-    var instances = currentSurface.querySelectorAll(`[data-id="${nodeUnderCursor.getAttribute('data-id')}"]`);
-    for (instance of instances) instance.classList.add('cursor-at-instance');
+    nodeUnderCursor.focus();
+  }
+  for (node of document.getElementsByClassName('node')) {
+    node.classList.toggle('cursor-at-instance', nodeUnderCursor && node.getAttribute('data-id') === nodeUnderCursor.getAttribute('data-id'));
   }
 }
-
 function resetCursorBlink() {
   cursor.classList.remove('blinking');
   cursor.offsetHeight;
   cursor.classList.add('blinking');
 }
-
 function getNodeUnderCursor(surface) {
   surface = surface || currentSurface;
   var cursor_ = surface.getElementsByClassName('cursor')[0];
-  var cursorX = parseInt(cursor_.style.left);
-  var cursorY = parseInt(cursor_.style.top);
-  return [...surface.getElementsByClassName('node')].find(node => {
-    return (cursorY === parseInt(node.style.top)) &&
-           (cursorX >= parseInt(node.style.left)) && (cursorX < parseInt(node.style.left) + parseInt(node.style.width));
-  });
+  return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
+}
+
+function getNodeAtPosition(position, surface) {
+  surface = surface || currentSurface;
+  for (node of surface.getElementsByClassName('node')) {
+    if ((position.y === parseInt(node.style.top)) &&
+      (position.x >= parseInt(node.style.left)) && (position.x < (parseInt(node.style.left) + parseInt(node.style.width)))) {
+      return node;
+    }
+  }
+  return null;
 }
 
 var pxToGridX = px => Math.round(px / 64) * 64;
@@ -284,6 +293,7 @@ function deleteElements(elements) {
     link.to.links.delete(link);
     link.remove();
   }
+  evaluateCursorPosition();
   return affectedLinks;
 }
 
@@ -331,6 +341,12 @@ function cancelCurrentModeOrOperation() {
 
   if (document.body.classList.contains('showing-help')) {
     document.body.classList.remove('showing-help')
+    return;
+  }
+
+  if (nameMatchPanel.parentElement) {
+    closeNameMatchPanel();
+    return;
   }
 
   if (linkBeingCreated || cursor.classList.contains('insert-mode')) {
@@ -553,18 +569,104 @@ document.addEventListener('focusout', event => {
 document.addEventListener('input', event => {
   if (event.target.classList.contains('node')) {
     var node = event.target;
-    var instances = [...document.querySelectorAll(`[data-id="${node.getAttribute('data-id')}"]`)];
-    for (instance of instances) {
-      instance.value = node.value;
-      instance.setAttribute('value', node.value);
-      var width = (Math.ceil(((node.value.length * 9) + 5) / 64) * 64) - 14;
-      instance.style.width = width + 'px';
-    }
+    setNodeName(node, node.value);
     if (event.target.closest('#find-panel')) {
       highlightQueriedNodes();
     }
+    while (nameMatchPanel.firstChild) nameMatchPanel.removeChild(nameMatchPanel.firstChild);
+    if (event.target.value !== '') {
+      var ids = new Set();
+      for (node of mainSurface.getElementsByClassName('node')) {
+        if (node != event.target && node.value.startsWith(event.target.value)) {
+          ids.add(node.getAttribute('data-id'));
+        }
+      }
+      for (id of ids) {
+        var match = document.createElement('div');
+        match.classList.add('name-match');
+        match.setAttribute('data-id', id);
+        match.textContent = mainSurface.querySelectorAll(`[data-id="${id}"]`)[0].value;
+        nameMatchPanel.appendChild(match);
+      }
+      nameMatchPanel.style.left = event.target.style.left;
+      nameMatchPanel.style.top  = (parseInt(event.target.style.top) + 32) + 'px';
+      currentSurface.appendChild(nameMatchPanel);
+    }
   }
 });
+
+function setNodeName(node, name) {
+  var instances = [...document.querySelectorAll(`[data-id="${node.getAttribute('data-id')}"]`)];
+  for (instance of instances) {
+    instance.value = name;
+    instance.setAttribute('value', name);
+    var width = (Math.ceil(((name.length * 9) + 5) / 64) * 64) - 14;
+    instance.style.width = width + 'px';
+  }
+}
+
+
+// Name match panel
+
+var nameMatchPanel = document.getElementById('name-match-panel');
+
+function moveNameMatchSelection(direction) {
+  var matches = nameMatchPanel.getElementsByClassName('name-match');
+  if (matches.length > 0) {
+    var selectedMatch = nameMatchPanel.getElementsByClassName('selected')[0];
+    if (selectedMatch) {
+      var otherMatch = direction === 'next' ? selectedMatch.nextElementSibling : selectedMatch.previousElementSibling;
+      if (otherMatch) {
+        selectedMatch.classList.remove('selected');
+        for (node of document.querySelectorAll(`.node[data-id='${selectedMatch.getAttribute('data-id')}']`)) {
+          node.classList.remove('name-match-selected');
+        }
+        otherMatch.classList.add('selected');
+        for (node of document.querySelectorAll(`.node[data-id='${otherMatch.getAttribute('data-id')}']`)) {
+          node.classList.add('name-match-selected');
+        }
+      }
+    } else {
+      matches[0].classList.add('selected');
+      for (node of document.querySelectorAll(`.node[data-id='${matches[0].getAttribute('data-id')}']`)) {
+        node.classList.add('name-match-selected');
+      }
+    }
+  }
+}
+
+function applyCurrentNameMatchSelection(nameMatch) {
+  nameMatch = nameMatch || nameMatchPanel.getElementsByClassName('selected')[0];
+  var node = getNodeUnderCursor();
+  if (node.getAttribute('data-id') !== nameMatch.getAttribute('data-id')) {
+    var oldId = node.getAttribute('data-id');
+    var oldName = node.value;
+    node.setAttribute('data-id', nameMatch.getAttribute('data-id'));
+    setNodeName(node, nameMatch.textContent);
+    lastFocusedNodeOriginalName = nameMatch.textContent;
+    recordAction(new changeIdAction(node, {id: oldId, name: oldName}, {id: nameMatch.getAttribute('data-id'), name: nameMatch.textContent}));
+  }
+  nameMatchPanel.remove();
+  resetCursorBlink();
+  for (otherNode of document.getElementsByClassName('node')) {
+    otherNode.classList.remove('name-match-selected');
+    otherNode.classList.toggle('cursor-at-instance', otherNode.getAttribute('data-id') === nameMatch.getAttribute('data-id'));
+  }
+}
+
+nameMatchPanel.addEventListener('click', event => {
+  if (event.target.classList.contains('name-match')) {
+    applyCurrentNameMatchSelection(event.target);
+  }
+});
+
+function closeNameMatchPanel() {
+  nameMatchPanel.remove();
+  for (node of [...document.getElementsByClassName('name-match-selected')]) {
+    node.classList.remove('name-match-selected');
+  }
+}
+
 
 document.addEventListener('paste', event => {
   if (event.clipboardData.items.length !== 1) return;
@@ -632,13 +734,17 @@ function getConnectedLinks(link) {
   return connectedLinks;
 }
 
+
+// Find panel
+
+var findPanel = document.getElementById('find-panel');
+
 function testNodesFindMatch(findNode, targetNode) {
   return !findNode.value ||
          findNode.value === '*' ||
          targetNode.value === findNode.value ||
          (findNode.value === '$' && (targetNode.classList.contains('selected') || (targetNode === getNodeUnderCursor(mainSurface))));
 }
-
 function getQueriedNodes() {
   var findPanelNodes = Array.from(findPanel.getElementsByClassName('node'));
   if (findPanelNodes.length === 1) {
@@ -699,7 +805,6 @@ function getQueriedNodes() {
     return queryResult;
   }
 }
-
 function openFindPanel() {
   findPanel.classList.remove('hidden');
   setCurrentSurface(findPanel);
@@ -715,14 +820,12 @@ function openFindPanel() {
     nodeUnderCursor.focus();
   }
 }
-
 function highlightQueriedNodes() {
   var queriedNodes = getQueriedNodes();
   for (node of mainSurface.getElementsByClassName('node')) {
     node.classList.toggle('highlighted', queriedNodes.has(node));
   }
 }
-
 function moveSelectionToQueriedNodes() {
   var queriedNodes = getQueriedNodes();
   for (node of mainSurface.getElementsByClassName('node')) {
@@ -796,6 +899,46 @@ function moveSelectionInDirection(direction) {
       selectionBox: {before: selectionBoxBefore, after: selectionBoxAfter}
     }
   );
+}
+
+function createInstanceInDirection(direction) {
+  if (!document.activeElement || !document.activeElement.classList.contains('node')) {
+    return;
+  }
+
+  var node = document.activeElement;
+
+  if (getAdjacentNodesInDirection(node, direction).length !== 0) {
+    return;
+  }
+
+  var instance = document.createElement('input');
+  instance.classList.add('node');
+  instance.setAttribute('data-id', node.getAttribute('data-id'));
+  instance.value = node.value;
+  instance.style.width = node.style.width;
+  instance.setAttribute('value', node.value);
+  if (direction === 'down') {
+    instance.style.left = node.style.left;
+    instance.style.top  = (parseInt(node.style.top) + 32) + 'px';
+  } else if (direction === 'right') {
+    instance.style.left = pxToGridX(parseInt(node.style.left) + parseInt(node.style.width)) + 'px';
+    instance.style.top = node.style.top;
+  } else if (direction === 'up') {
+    instance.style.left = node.style.left;
+    instance.style.top  = (parseInt(node.style.top) - 32) + 'px';
+  } else if (direction === 'left') {
+    instance.style.left = pxToGridX(parseInt(node.style.left) - parseInt(node.style.width)) + 'px';
+    instance.style.top = node.style.top;
+  }
+  instance.links = new Set();
+  node.instances.add(instance);
+  instance.instances = node.instances;
+  currentSurface.getElementsByClassName('nodes')[0].appendChild(instance);
+
+  setCursorPosition({x: parseInt(instance.style.left), y: parseInt(instance.style.top)});
+
+  recordAction(new createElementsAction([instance]));
 }
 
 function insertNodeAtCursor(options) {

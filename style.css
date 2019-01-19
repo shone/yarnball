@@ -94,7 +94,6 @@ body.dragging:after {
 .cursor.insert-mode:after {
   display: none;
 }
-
 @keyframes blink-animation {
   to { visibility: hidden; }
 }
@@ -119,7 +118,6 @@ body.dragging:after {
   line-height: 25px;
   text-align: center;
 }
-
 .node.highlighted {
   background-color: #ffff98;
 }
@@ -128,6 +126,9 @@ body.dragging:after {
 }
 .node.cursor-at-instance {
   border: 2px solid #000;
+}
+.node.name-match-selected {
+  border: 2px solid orange;
 }
 
 .node.selected {
@@ -148,11 +149,9 @@ body.dragging:after {
 .link-arrow {
   fill: #444;
 }
-
 .link:hover {
   stroke: #4e4e4e;
 }
-
 .link.selected {
   stroke: orange;
 }
@@ -175,6 +174,31 @@ body.dragging:after {
 .surface.dragging-selection-box .link {
   pointer-events: none;
 }
+
+#name-match-panel {
+  position: absolute;
+  display: block;
+  padding-top:    5px;
+  padding-bottom: 5px;
+  background-color: #fff;
+  box-shadow: 1px 3px 18px #000;
+  z-index: 2;
+}
+.name-match {
+  height: 18px;
+  padding-left:  5px;
+  padding-right: 5px;
+  cursor: pointer;
+}
+.name-match.selected {
+  background-color: orange;
+}
+.name-match:hover {
+  background-color: grey;
+}
+
+
+/* Find panel */
 
 #find-panel {
   position: fixed;
@@ -261,7 +285,6 @@ body.showing-help #help-screen {
   padding-right: 7px;
   margin: 2px;
 }
-
 .help-key.spacebar {
   min-width: 100px;
   font-style: italic;

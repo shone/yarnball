@@ -1,7 +1,13 @@
 var keyboard_handler = {
   HOME:       event => setCursorPosition({x: 0, y: 0}),
 
-  ENTER:      event => insertNodeAtCursor({moveAdjacent: 'down' }),
+  ENTER:      event => {
+    if (nameMatchPanel.parentElement) {
+      applyCurrentNameMatchSelection();
+    } else {
+      insertNodeAtCursor({moveAdjacent: 'down' });
+    }
+  },
   ShiftENTER: event => insertNodeAtCursor({moveAdjacent: 'up'   }),
   ' ':        event => insertNodeAtCursor({moveAdjacent: 'right'}),
 
@@ -29,6 +35,11 @@ var keyboard_handler = {
   CtrlARROWUP:    event => moveSelectionInDirection('up'),
   CtrlARROWDOWN:  event => moveSelectionInDirection('down'),
 
+  CtrlAltARROWDOWN:  event => createInstanceInDirection('down'),
+  CtrlAltARROWRIGHT: event => createInstanceInDirection('right'),
+  CtrlAltARROWUP:    event => createInstanceInDirection('up'),
+  CtrlAltARROWLEFT:  event => createInstanceInDirection('left'),
+
   AltARROWLEFT:   event => scrollMainSurfaceInDirection('left'),
   AltARROWRIGHT:  event => scrollMainSurfaceInDirection('right'),
   AltARROWUP:     event => scrollMainSurfaceInDirection('up'),
@@ -38,6 +49,9 @@ var keyboard_handler = {
   ESCAPE:     event => cancelCurrentModeOrOperation(),
 
   TAB:        event => executeLinkMode(),
+
+  PAGEUP:     event => moveNameMatchSelection('previous'),
+  PAGEDOWN:   event => moveNameMatchSelection('next'),
 
   CtrlS:      event => saveState(),
 

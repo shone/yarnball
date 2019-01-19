@@ -265,9 +265,9 @@ document.addEventListener('mousedown', event => {
 });
 
 // Node instance highlighting
-mainSurface.addEventListener('mouseover', event => {
+document.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
-    var instances = event.target.closest('.surface').querySelectorAll(`[data-id="${event.target.getAttribute('data-id')}"]`);
+    var instances = [...document.querySelectorAll(`[data-id="${event.target.getAttribute('data-id')}"]`)];
     for (instance of instances) instance.classList.add('mouse-over-instance');
     event.target.addEventListener(
       'mouseleave',
