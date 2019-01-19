@@ -152,6 +152,9 @@ body.dragging:after {
 .link:hover {
   stroke: #4e4e4e;
 }
+.link.mouse-over-instance {
+  stroke: grey;
+}
 .link.selected {
   stroke: orange;
 }

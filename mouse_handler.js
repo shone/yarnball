@@ -276,5 +276,21 @@ document.addEventListener('mouseover', event => {
       },
       {once: true}
     );
+  } else if (event.target.classList.contains('link')) {
+    var instances = [...document.getElementsByClassName('link')].filter(link => {
+      return link.from.getAttribute('data-id') === event.target.from.getAttribute('data-id') &&
+             link.via.getAttribute('data-id')  === event.target.via.getAttribute('data-id')  &&
+             link.to.getAttribute('data-id')   === event.target.to.getAttribute('data-id');
+    });
+    for (instance of instances) {
+      instance.classList.add('mouse-over-instance');
+    }
+    event.target.addEventListener(
+      'mouseleave',
+      event => {
+        for (instance of instances) instance.classList.remove('mouse-over-instance');
+      },
+      {once: true}
+    );
   }
 });
