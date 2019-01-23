@@ -13,7 +13,7 @@ function setCurrentSurface(surface) {
 }
 
 if (localStorage.saved_state) {
-  restoreState();
+  replaceSurfaceFromHtml(localStorage.saved_state);
 }
 
 
@@ -71,18 +71,6 @@ function getNodeAtPosition(position, surface) {
 var pxToGridX = px => Math.round(px / 64) * 64;
 var pxToGridY = px => Math.round(px / 32) * 32;
 
-function findLinkVia(node, via) {
-  for (var instance of node.instances) {
-    var link = [...instance.links].find(link => link.from.instances.has(node) && (link.via.value === via || link.via.instances.has(via)));
-    if (link) return link;
-  }
-  return null;
-}
-
-function findNodeVia(node, via) {
-  var link = findLinkVia(node, via);
-  return link ? link.to : null;
-}
 
 function followListLinks(node, forward) {
   var links = [];
@@ -99,18 +87,6 @@ function followListLinks(node, forward) {
     node = forwardLink ? forwardLink.to : null;
   } while(node)
   return links;
-}
-
-function followListNodes(node, forward) {
-  var nodes = [];
-  var alreadyVisited = new Set();
-  do {
-    if (alreadyVisited.has(node)) break;
-    nodes.push(node);
-    alreadyVisited.add(node);
-    node = findNodeVia(node, forward) || null;
-  } while(node)
-  return nodes;
 }
 
 function makeUuid() {
@@ -381,10 +357,7 @@ function selectionToClipboard(options) {
       ) affectedLinks.add(link);
     }
   }
-  prepareForSerialization(selectedNodes, affectedLinks);
-  var html = [...selectedNodes].map(node => node.outerHTML).join('');
-  html += [...affectedLinks].map(link => link.outerHTML).join('');
-  clearSerialization(selectedNodes, affectedLinks);
+  var html = getNodesAndLinksAsHtml(selectedNodes, affectedLinks);
   var previouslyFocusedElement = document.activeElement;
   var temporaryInput = document.createElement('input');
   temporaryInput.value = html;
@@ -575,22 +548,33 @@ document.addEventListener('input', event => {
     }
     while (nameMatchPanel.firstChild) nameMatchPanel.removeChild(nameMatchPanel.firstChild);
     if (event.target.value !== '') {
-      var ids = new Set();
+      var ids = new Map();
       for (node of mainSurface.getElementsByClassName('node')) {
         if (node != event.target && node.value.startsWith(event.target.value)) {
-          ids.add(node.getAttribute('data-id'));
+          ids.set(node.getAttribute('data-id'), node.value);
         }
       }
-      for (id of ids) {
-        var match = document.createElement('div');
-        match.classList.add('name-match');
-        match.setAttribute('data-id', id);
-        match.textContent = mainSurface.querySelectorAll(`[data-id="${id}"]`)[0].value;
-        nameMatchPanel.appendChild(match);
+      for (entry of builtinNameMatches) {
+        if (entry.name.startsWith(event.target.value)) {
+          ids.set(entry.id, entry.name);
+        }
       }
-      nameMatchPanel.style.left = event.target.style.left;
-      nameMatchPanel.style.top  = (parseInt(event.target.style.top) + 32) + 'px';
-      currentSurface.appendChild(nameMatchPanel);
+      if (ids.size > 0) {
+        for ([id, name] of ids) {
+          var match = document.createElement('div');
+          match.classList.add('name-match');
+          match.setAttribute('data-id', id);
+          match.textContent = name;
+          nameMatchPanel.appendChild(match);
+        }
+        nameMatchPanel.style.left = event.target.style.left;
+        nameMatchPanel.style.top  = (parseInt(event.target.style.top) + 32) + 'px';
+        currentSurface.appendChild(nameMatchPanel);
+      } else {
+        nameMatchPanel.remove();
+      }
+    } else {
+      nameMatchPanel.remove();
     }
   }
 });
@@ -605,10 +589,26 @@ function setNodeName(node, name) {
   }
 }
 
+function moveNodesToPosition(nodes, position) {
+  var leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
+  var topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+  var deltaX = pxToGridX(parseInt(position.x)) - leftmost;
+  var deltaY = pxToGridY(parseInt(position.y)) - topmost;
+  var affectedLinks = new Set();
+  for (node of nodes) {
+    node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+    node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+    for (link of node.links) affectedLinks.add(link);
+  }
+  for (link of affectedLinks) layoutLink(link);
+}
+
 
 // Name match panel
 
 var nameMatchPanel = document.getElementById('name-match-panel');
+
+var builtinNameMatches = [];
 
 function moveNameMatchSelection(direction) {
   var matches = nameMatchPanel.getElementsByClassName('name-match');
@@ -673,32 +673,14 @@ document.addEventListener('paste', event => {
   var item = event.clipboardData.items[0];
   if (item.kind !== 'string') return;
   item.getAsString(string => {
-    var fragment = document.createRange().createContextualFragment(string);
-    var nodes = [...fragment.querySelectorAll('.node')];
-    var links = [...fragment.querySelectorAll('.link')];
-    for (node of nodes) currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
-    links = links.map(link => {
-      var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-      copiedLink.setAttribute('id',        link.getAttribute('id'));
-      copiedLink.setAttribute('class',     link.getAttribute('class'));
-      copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
-      copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
-      copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
-      currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
-      return copiedLink;
-    });
-    deserialize(nodes, links);
-    clearSerialization(nodes, links);
-    var leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-    var topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
-    var deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
-    var deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
+    var inserted = insertNodesAndLinksFromHtml(string);
+    var nodes = inserted.nodes;
+    var links = inserted.links;
+    moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
     for (node of nodes) {
-      node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-      node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
       node.classList.add('selected');
     }
-    links.forEach(layoutLink);
+    evaluateCursorPosition();
     var selectionBox = getSelectionBox();
     recordAction(
       new pasteElementsAction(nodes, links),
@@ -742,11 +724,11 @@ var findPanel = document.getElementById('find-panel');
 function testNodesFindMatch(findNode, targetNode) {
   return !findNode.value ||
          findNode.value === '*' ||
-         targetNode.value === findNode.value ||
+         targetNode.getAttribute('data-id') === findNode.getAttribute('data-id') ||
          (findNode.value === '$' && (targetNode.classList.contains('selected') || (targetNode === getNodeUnderCursor(mainSurface))));
 }
 function getQueriedNodes() {
-  var findPanelNodes = Array.from(findPanel.getElementsByClassName('node'));
+  var findPanelNodes = [...findPanel.getElementsByClassName('node')];
   if (findPanelNodes.length === 1) {
     if (findPanelNodes[0].value) {
       return new Set([...mainSurface.getElementsByClassName('node')].filter(node => {
@@ -798,7 +780,8 @@ function getQueriedNodes() {
     for (correspondence of correspondences) {
       correspondence.forEach((queryNode, targetNode) => {
         if (queryNode.value === '*') {
-          queryResult.add(targetNode);
+          var instances = mainSurface.querySelectorAll(`.node[data-id='${targetNode.getAttribute('data-id')}']`);
+          for (instance of instances) queryResult.add(instance);
         }
       });
     }
@@ -1159,24 +1142,6 @@ function layoutLink(link, lastPosition) {
   }
 }
 
-function prepareForSerialization(nodes, links) {
-  var id = 0;
-  var nodesSet = new Set(nodes);
-  var linksSet = new Set(links);
-  for (node of nodes) node.id = id++;
-  for (link of links) {
-    link.id = id++;
-    link.setAttribute('data-from', link.from.id);
-    link.setAttribute('data-via',  link.via.id);
-    link.setAttribute('data-to',   link.to.id);
-  }
-  for (node of nodes) {
-    if (node.links.size > 0) {
-      node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
-    }
-    node.setAttribute('data-instances', [...node.instances].filter(node => nodesSet.has(node)).map(node => node.id).join(','));
-  }
-}
 
 function deserialize(nodes, links) {
   for (link of links) {
@@ -1185,25 +1150,13 @@ function deserialize(nodes, links) {
     link.to   = document.getElementById(link.getAttribute('data-to'));
   }
   for (node of nodes) {
-    if (node.getAttribute('data-links')) {
-      node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
-      if (node.links.has(null)) {
-        console.error('null link');
-        node.links.delete(null);
-      }
+    var linksList = node.getAttribute('data-links');
+    if (linksList) {
+      node.links = new Set(linksList.split(',').map(id => document.getElementById(id)));
     } else {
       node.links = new Set();
     }
-    if (node.getAttribute('data-instances')) {
-      node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
-      if (node.instances.has(null)) {
-        console.error('null instance');
-        node.instances.delete(null);
-      }
-    } else {
-      node.instances = new Set([node]);
-    }
-    node.classList.remove('selected');
+    node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
   }
 }
 
@@ -1221,35 +1174,175 @@ function clearSerialization(nodes, links) {
   }
 }
 
-function saveState() {
-  var nodes = [...mainSurface.getElementsByClassName('node')];
-  var links = [...mainSurface.getElementsByClassName('link')];
-  prepareForSerialization(nodes, links);
-  localStorage.saved_state = mainSurface.innerHTML;
-  clearSerialization(nodes, links);
-}
+function getNodesAndLinksAsHtml(nodes, links) {
+  var nodes = nodes || [...mainSurface.getElementsByClassName('node')];
+  var links = links || [...mainSurface.getElementsByClassName('link')];
 
-function restoreState() {
-  mainSurface.innerHTML = localStorage.saved_state;
-  var nodes = mainSurface.getElementsByClassName('node');
-  var links = mainSurface.getElementsByClassName('link');
+  var classes = new Map();
+  for (node of nodes) {
+    classes.set(node, node.className);
+    node.className = 'node';
+  }
   for (link of links) {
-    link.from = document.getElementById(link.getAttribute('data-from'));
-    link.via  = document.getElementById(link.getAttribute('data-via'));
-    link.to   = document.getElementById(link.getAttribute('data-to'));
+    classes.set(link, link.className.baseVal);
+    link.className.baseVal = 'link';
+  }
+
+  var id = 0;
+  var nodesSet = new Set(nodes);
+  var linksSet = new Set(links);
+  for (node of nodes) node.id = id++;
+  for (link of links) {
+    link.id = id++;
+    link.setAttribute('data-from', link.from.id);
+    link.setAttribute('data-via',  link.via.id);
+    link.setAttribute('data-to',   link.to.id);
   }
   for (node of nodes) {
-    if (node.hasAttribute('data-links')) {
-      node.links = new Set(node.getAttribute('data-links').split(',').map(id => document.getElementById(id)));
-    } else {
-      node.links = new Set();
+    if (node.links.size > 0) {
+      node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
     }
-    if (node.hasAttribute('data-instances')) {
-      node.instances = new Set(node.getAttribute('data-instances').split(',').map(id => document.getElementById(id)));
-    } else {
-      node.instances = new Set([node]);
-    }
-    node.classList.remove('selected');
+    node.setAttribute('data-instances', [...node.instances].filter(node => nodesSet.has(node)).map(node => node.id).join(','));
   }
+
+  var html = '<div class="nodes">' + [...nodes].map(node => node.outerHTML).join('') + '</div>' +
+             '<svg class="links">' + [...links].map(link => link.outerHTML).join('') + '</svg>';
+
   clearSerialization(nodes, links);
+
+  for ([element, className] of classes) {
+    if (element.classList.contains('link')) {
+      element.className.baseVal = className;
+    } else {
+      element.className = className;
+    }
+  }
+
+  return html;
 }
+
+function insertNodesAndLinksFromHtml(html) {
+  var fragment = document.createRange().createContextualFragment(html);
+  var nodes = [...fragment.querySelectorAll('.node')];
+  var links = [...fragment.querySelectorAll('.link')];
+  for (node of nodes) currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
+  links = links.map(link => {
+    var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    copiedLink.setAttribute('id',        link.getAttribute('id'));
+    copiedLink.setAttribute('class',     link.getAttribute('class'));
+    copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
+    copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
+    copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
+    currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
+    return copiedLink;
+  });
+  deserialize(nodes, links);
+  clearSerialization(nodes, links);
+  var leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
+  var topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+  var deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
+  var deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
+  for (node of nodes) {
+    node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+    node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+    node.classList.add('selected');
+  }
+  links.forEach(layoutLink);
+  evaluateCursorPosition();
+  return {nodes, links};
+}
+
+function replaceSurfaceFromHtml(html) {
+  var originalCursor       = mainSurface.getElementsByClassName('cursor')[0];
+  var originalSelectionBox = mainSurface.getElementsByClassName('selection-box')[0];
+
+  mainSurface.innerHTML = html;
+  var nodes = mainSurface.getElementsByClassName('node');
+  var links = mainSurface.getElementsByClassName('link');
+  deserialize(nodes, links);
+  clearSerialization(nodes, links);
+
+  var newCursor       = mainSurface.appendChild(originalCursor);
+  var newSelectionBox = mainSurface.appendChild(originalSelectionBox);
+  if (currentSurface === mainSurface) {
+    cursor = newCursor;
+    selectionBox = newSelectionBox;
+  }
+
+  evaluateCursorPosition();
+}
+
+
+// File drag-drop
+
+mainSurface.addEventListener('dragenter', event => {
+  event.preventDefault();
+  return false;
+});
+mainSurface.addEventListener('dragover', event => {
+  event.preventDefault();
+  setCursorPosition({
+    x: pxToGridX(event.offsetX),
+    y: pxToGridY(event.offsetY),
+  });
+  return false;
+});
+mainSurface.addEventListener('drop', event => {
+  event.preventDefault();
+  var html = event.dataTransfer.getData('text/html');
+  if (html) {
+    var inserted = insertNodesAndLinksFromHtml(html);
+    var nodes = inserted.nodes;
+    var links = inserted.links;
+    moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
+    recordAction(new pasteElementsAction(nodes, links));
+  } else if (event.dataTransfer.files.length > 0) {
+    var file = event.dataTransfer.files[0];
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      var inserted = insertNodesAndLinksFromHtml(event.target.result);
+      var nodes = inserted.nodes;
+      var links = inserted.links;
+      moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
+      recordAction(new pasteElementsAction(nodes, links));
+    };
+    reader.readAsText(file);
+  }
+  return false;
+});
+
+var exportButton = document.getElementById('export-button');
+
+exportButton.addEventListener('dragenter', event => {
+  event.preventDefault();
+  return false;
+});
+exportButton.addEventListener('dragover', event => {
+  event.preventDefault();
+  return false;
+});
+
+exportButton.addEventListener('drop', event => {
+  event.preventDefault();
+  var html = event.dataTransfer.getData('text/html');
+  if (html) {
+    var oldHtml = getNodesAndLinksAsHtml();
+    replaceSurfaceFromHtml(html);
+    recordAction(new replaceSurfaceAction(oldHtml, html));
+  } else if (event.dataTransfer.files.length > 0) {
+    var file = event.dataTransfer.files[0];
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      var html = event.target.result;
+      var oldHtml = getNodesAndLinksAsHtml();
+      replaceSurfaceFromHtml(html);
+      recordAction(new replaceSurfaceAction(oldHtml, html));
+    };
+    reader.readAsText(file);
+  }
+  return false;
+});
+
+exportButton.addEventListener('dragstart', event => {
+  event.dataTransfer.setData("text/html", getNodesAndLinksAsHtml());
+});

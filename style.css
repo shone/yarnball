@@ -219,6 +219,27 @@ body.dragging:after {
   display: none;
 }
 
+button {
+  border-radius: 20px;
+  border: none;
+  background-color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items:     center;
+  cursor: pointer;
+  box-shadow: 2px 2px 18px #000;
+}
+button:hover {
+  background-color: grey;
+}
+button:focus {
+  outline: none;
+}
+button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 0px 12px #000;
+}
+
 
 /* Help */
 
@@ -228,26 +249,12 @@ body.dragging:after {
   right:  8px;
   width:  40px;
   height: 40px;
-  z-index: 3;
-  border-radius: 20px;
-  background-color: #fff;
-  display: flex;
-  justify-content: center;
-  align-items:     center;
-  cursor: pointer;
-  box-shadow: 2px 2px 18px #000;
+  z-index: 2;
 }
 #help-button:after {
   content: '?';
   font-weight: bold;
   font-size: 1.4rem;
-}
-#help-button:hover {
-  background-color: grey;
-}
-#help-button:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 0px 12px #000;
 }
 body.showing-help #help-button:after {
   content: 'X';
@@ -260,7 +267,7 @@ body.showing-help #help-button:after {
   top:    8px;
   bottom: 8px;
   right: 58px;
-  z-index: 2;
+  z-index: 3;
   background-color: #fff;
   padding: 20px;
   overflow-y: auto;
@@ -291,4 +298,17 @@ body.showing-help #help-screen {
 .help-key.spacebar {
   min-width: 100px;
   font-style: italic;
+}
+
+#export-button {
+  position: fixed;
+  right: 56px;
+  top:   8px;
+  min-width: 40px;
+  height:    40px;
+  padding-left:  8px;
+  padding-right: 8px;
+  z-index: 3;
+  font-weight: bold;
+  font-size: 1.4rem;
 }

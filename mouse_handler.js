@@ -37,7 +37,7 @@ function handleMouseDrag(event, options) {
 }
 
 document.body.addEventListener('mousedown', event => {
-  if (event.target.classList.contains('surface')) {
+  if (event.target.classList.contains('surface') && event.button === 0) {
     setCurrentSurface(event.target);
     setCursorPosition({
       x: pxToGridX(event.offsetX),
@@ -102,6 +102,7 @@ function handleNodeMousedown(event) {
     event.preventDefault();
     var node = event.target;
     node.focus();
+    node.select();
     setCursorPosition({
       x: pxToGridX(parseInt(node.style.left)),
       y: pxToGridY(parseInt(node.style.top)),

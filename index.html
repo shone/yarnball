@@ -27,7 +27,7 @@
       <div class="nodes"></div>
       <svg class="links"></svg>
       <div class="selection-box hidden"></div>
-      <div class="cursor blinking" style="left: 32px; top: 16px;"></div>
+      <div class="cursor blinking" style="left: 0px; top: 0px;"></div>
     </div>
 
     <div id="find-panel" class="panel surface hidden">
@@ -37,6 +37,9 @@
       <div class="cursor" style="left: 0px; top: 0px;"></div>
     </div>
 
+    <button id="export-button" draggable="true" title="Export">⤵</button>
+
+    <button id="help-button" title="Help"></button>
     <div id="help-screen" class="hidden">
       <table>
         <tr>
@@ -106,6 +109,10 @@
           <td>Save to local storage</td>
         </tr>
         <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">shift</span> + <span class="help-key">S</span></td>
+          <td>Save to file (download)</td>
+        </tr>
+        <tr>
           <td>(middle mouse button drag)</td>
           <td>Scroll/pan view</td>
         </tr>
@@ -119,9 +126,9 @@
         </tr>
       </table>
     </div>
-    <div id="help-button"></div>
 
     <script src="main.js">             </script>
+    <script src="graph.js">            </script>
     <script src="actions.js">          </script>
     <script src="keyboard_handler.js"> </script>
     <script src="mouse_handler.js">    </script>

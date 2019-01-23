@@ -53,20 +53,26 @@ var keyboard_handler = {
   PAGEUP:     event => moveNameMatchSelection('previous'),
   PAGEDOWN:   event => moveNameMatchSelection('next'),
 
-  CtrlS:      event => saveState(),
+  CtrlS:      event => localStorage.saved_state = getNodesAndLinksAsHtml(),
+  CtrlShiftS: event => {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
+    element.setAttribute('download', '');
+    element.style.display = 'none';
+
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element); 
+  },
 
   CtrlZ:      event => undo(),
   CtrlShiftZ: event => redo(),
 
   F1: event => toggleHelp(),
 
-  F10: event => {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var html = compileHtml(document.activeElement);
-      var window_ = window.open("", "Yarnball compiled HTML");
-      window_.document.write(html);
-    }
-  },
+  F8:  event => logJsSourceAtCursor(),
+  F9:  event => logJsAtCursor(),
+  F10: event => runJsAtCursor(),
 }
 
 document.body.addEventListener('keydown', event => {
@@ -87,32 +93,6 @@ document.body.addEventListener('keydown', event => {
   if (event.key === 'F8') {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       console.log(compileStatements(document.activeElement));
-    }
-    return false;
-  } else if (event.key === 'F9') {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      var compiledStatements = compileStatements(document.activeElement);
-      var f = null;
-      if (compiledStatements.indexOf('await') !== -1) {
-        var AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-        f = new AsyncFunction([], compiledStatements);
-      } else {
-        f = new Function([], compiledStatements);
-      }
-      var returnValue = f();
-      if (typeof returnValue !== 'undefined') {
-        if (typeof returnValue.then === 'function') {
-          returnValue.then(promisedValue => {
-            if (typeof promisedValue === 'object') {
-              document.activeElement.classList.remove('selected');
-              makeJsonGraph(promisedValue, {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)});
-            }
-          });
-        } else if (typeof returnValue === 'object') {
-          document.activeElement.classList.remove('selected');
-          makeJsonGraph(returnValue, {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)});
-        }
-      }
     }
     return false;
   }

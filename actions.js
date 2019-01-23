@@ -107,10 +107,12 @@ function pasteElementsAction(nodes, links) {
   this.undo = () => {
     for (node of this.nodes) node.remove();
     for (link of this.links) link.remove();
+    evaluateCursorPosition();
   };
   this.redo = () => {
     for (node of this.nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
     for (link of this.links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
+    evaluateCursorPosition();
   };
 }
 
@@ -182,4 +184,9 @@ function changeIdAction(node, old, new_) {
     }
     evaluateCursorPosition();
   }
+}
+
+function replaceSurfaceAction(old, new_) {
+  this.undo = () => replaceSurfaceFromHtml(old);
+  this.redo = () => replaceSurfaceFromHtml(new_);
 }
