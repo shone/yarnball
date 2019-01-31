@@ -1,8 +1,0 @@
-input[value='tag'],
-input[value='child'],
-input[value='next'],
-input[value='text']
-{
-  color: green;
-  font-weight: bold;
-}

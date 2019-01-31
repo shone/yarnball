@@ -1,29 +1,45 @@
-input[data-id='c25841503f6300d1a1596d7857f15577'], /* var */
-input[data-id='f91505880c0d564484651c082ec8ac91'], /* = */
-input[data-id='d7c64660b917a006d7ee44d9a63f4a30'], /* calls */
-input[data-id='306e41be644af73ffe32c023f2542157'], /* => */
-input[data-id='927ad3ba8e18f78e2a40acf07b1cc216'], /* return */
-input[data-id='14f546625ba20b7a9f16eb2856e0df50'], /* debugger */
-input[data-id='1a999c551bb257a060cf9ee12ee90c80'], /* arg0 */
-input[data-id='428893f0ba55b8ae6b7d7b2eb048ce28'], /* arg1 */
-input[data-id='a31cd1de77937a195c661c6e31411ed3'], /* ; */
-input[data-id='c07443aac7845de6e528aabf8ac8b9d7'], /* , */
-input[data-id='f14cf1dee906242cb05c851806d09403'], /* : */
-input[data-id='066fc9006935c654d92da7e37eb9c025'], /* [] */
-input[data-id='f25ba8820a24770336a7db493a669698'], /* for */
-input[data-id='5b4a607c62dd9796a9201f7667be2d31'], /* of */
-input[data-id='ca9a572f8076df24642f743201a29f22'], /* do */
-input[data-id='7396a212aa6e8a028dd22af0e0ea5ffa'], /* if */
-input[data-id='bc8acf9fc911546ca9ae3c596ceef430'], /* then */
-input[data-id='3c5f558043161cf19ebc2d84f04ab596'], /* else */
-input[data-id='68d2dc712a4250302bfc0d8276a6acb3'], /* is */
-input[data-id='da04eff3debce2fc6913d4f07d48c2d2'], /* + */
-input[data-id='e1b13be452e682a8007b32230751bffe'], /* * */
-input[data-id='d86016a6b310e0854d0095541c568aac'], /* true */
-input[data-id='b999ebbaf067ecf6265c163528074532'], /* false */
-input[data-id='462fa97a7761f3c0c82ef10043cebb81'], /* null */
-input[data-id='2d92747b3bbad3635a0d1026fb5eed40'] /* filter */
+[data-id='c25841503f6300d1a1596d7857f15577'], /* var */
+[data-id='9876d4cc0671d98029499a89eeee403e'], /* var= */
+[data-id='587daf98eb42f8c35c175ebcc25bfd48'], /* var=[] */
+[data-id='f91505880c0d564484651c082ec8ac91'], /* = */
+[data-id='d7c64660b917a006d7ee44d9a63f4a30'], /* calls */
+[data-id='306e41be644af73ffe32c023f2542157'], /* => */
+[data-id='9b898d4d67176583125bc9b2b171264b'], /* func */
+[data-id='927ad3ba8e18f78e2a40acf07b1cc216'], /* return */
+[data-id='14f546625ba20b7a9f16eb2856e0df50'], /* debugger */
+[data-id='1a999c551bb257a060cf9ee12ee90c80'], /* arg0 */
+[data-id='428893f0ba55b8ae6b7d7b2eb048ce28'], /* arg1 */
+[data-id='a31cd1de77937a195c661c6e31411ed3'], /* ; */
+[data-id='c07443aac7845de6e528aabf8ac8b9d7'], /* , */
+[data-id='f14cf1dee906242cb05c851806d09403'], /* : */
+[data-id='066fc9006935c654d92da7e37eb9c025'], /* [] */
+[data-id='b62908d39501120190b5f705fd2c4215'], /* x[] */
+[data-id='f25ba8820a24770336a7db493a669698'], /* for */
+[data-id='5b4a607c62dd9796a9201f7667be2d31'], /* of */
+[data-id='ca9a572f8076df24642f743201a29f22'], /* do */
+[data-id='7396a212aa6e8a028dd22af0e0ea5ffa'], /* if */
+[data-id='bc8acf9fc911546ca9ae3c596ceef430'], /* then */
+[data-id='3c5f558043161cf19ebc2d84f04ab596'], /* else */
+[data-id='68d2dc712a4250302bfc0d8276a6acb3'], /* is */
+[data-id='da04eff3debce2fc6913d4f07d48c2d2'], /* + */
+[data-id='e1b13be452e682a8007b32230751bffe'], /* * */
+[data-id='d86016a6b310e0854d0095541c568aac'], /* true */
+[data-id='b999ebbaf067ecf6265c163528074532'], /* false */
+[data-id='462fa97a7761f3c0c82ef10043cebb81'], /* null */
+[data-id='2d92747b3bbad3635a0d1026fb5eed40'], /* filter */
+[data-id='dd5388bc649d2adebd3e75173882b44b'], /* . */
+[data-id='497151bb0675c63c6bd8af6b281bbcc6'], /* < */
+[data-id='3cd7aecd2c529aa89b616ef24eb59fe3']  /* === */
 {
   color: blue;
+  font-weight: bold;
+}
+
+[data-id='7d81b8d30a96a491c939a8d0d4dd7bdb'], /* node */
+[data-id='114dd6a9f611a288c8d360f7f9ba3d3e'], /* name? */
+[data-id='5f56351aba5c581fb5ca329049ac4b0a'], /* name */
+[data-id='d91e6d8da5d91ce3b0a45594cbf5711e']  /* click */
+{
+  color: purple;
   font-weight: bold;
 }

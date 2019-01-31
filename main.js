@@ -33,12 +33,14 @@ function setCursorPosition(position) {
   if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) return;
   cursor.style.left = position.x + 'px';
   cursor.style.top  = position.y + 'px';
-  cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+  if (currentSurface === mainSurface) {
+    cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+  }
   evaluateCursorPosition();
   nameMatchPanel.remove();
 }
 function evaluateCursorPosition() {
-  var nodeUnderCursor = getNodeUnderCursor();
+  var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
   }
@@ -51,7 +53,7 @@ function resetCursorBlink() {
   cursor.offsetHeight;
   cursor.classList.add('blinking');
 }
-function getNodeUnderCursor(surface) {
+function getNodeAtCursor(surface) {
   surface = surface || currentSurface;
   var cursor_ = surface.getElementsByClassName('cursor')[0];
   return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
@@ -584,8 +586,11 @@ function setNodeName(node, name) {
   for (instance of instances) {
     instance.value = name;
     instance.setAttribute('value', name);
-    var width = (Math.ceil(((name.length * 9) + 5) / 64) * 64) - 14;
-    instance.style.width = width + 'px';
+    var width = (Math.ceil(((name.length * 8) + 5) / 64) * 64) - 14;
+    if (parseInt(instance.style.width) !== width) {
+      instance.style.width = width + 'px';
+      for (link of node.links) layoutLink(link);
+    }
   }
 }
 
@@ -601,6 +606,18 @@ function moveNodesToPosition(nodes, position) {
     for (link of node.links) affectedLinks.add(link);
   }
   for (link of affectedLinks) layoutLink(link);
+}
+
+function makeNodeAtCursorUnique() {
+  var node = getNodeAtCursor();
+  if (!node) {
+    return;
+  }
+  var oldId = node.getAttribute('data-id');
+  var newId = makeUuid();
+  node.setAttribute('data-id', newId);
+  evaluateCursorPosition();
+  recordAction(new changeIdAction(node, {id: oldId}, {id: newId}));
 }
 
 
@@ -637,7 +654,7 @@ function moveNameMatchSelection(direction) {
 
 function applyCurrentNameMatchSelection(nameMatch) {
   nameMatch = nameMatch || nameMatchPanel.getElementsByClassName('selected')[0];
-  var node = getNodeUnderCursor();
+  var node = getNodeAtCursor();
   if (node.getAttribute('data-id') !== nameMatch.getAttribute('data-id')) {
     var oldId = node.getAttribute('data-id');
     var oldName = node.value;
@@ -725,7 +742,7 @@ function testNodesFindMatch(findNode, targetNode) {
   return !findNode.value ||
          findNode.value === '*' ||
          targetNode.getAttribute('data-id') === findNode.getAttribute('data-id') ||
-         (findNode.value === '$' && (targetNode.classList.contains('selected') || (targetNode === getNodeUnderCursor(mainSurface))));
+         (findNode.value === '$' && (targetNode.classList.contains('selected') || (targetNode === getNodeAtCursor(mainSurface))));
 }
 function getQueriedNodes() {
   var findPanelNodes = [...findPanel.getElementsByClassName('node')];
@@ -798,7 +815,7 @@ function openFindPanel() {
     highlightQueriedNodes();
   }
   resetCursorBlink();
-  var nodeUnderCursor = getNodeUnderCursor();
+  var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
   }
@@ -827,7 +844,7 @@ function moveSelectionToQueriedNodes() {
 function moveSelectionInDirection(direction) {
   resetCursorBlink();
   var nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
-  var nodeUnderCursor = getNodeUnderCursor();
+  var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodesToMove.add(nodeUnderCursor);
   }
@@ -1007,7 +1024,7 @@ function moveCursorInDirection(direction, options) {
   }[direction];
   var cursorX = parseInt(cursor.style.left) + moveDelta.x;
   var cursorY = parseInt(cursor.style.top)  + moveDelta.y;
-  if (cursorX <= 0 || cursorY <= 0) {
+  if (currentSurface === mainSurface && (cursorX <= 0 || cursorY <= 0)) {
     window.scroll({
       left: cursorX <= 0 ? 0 : undefined,
       top:  cursorY <= 0 ? 0 : undefined,
@@ -1038,7 +1055,7 @@ function moveCursorInDirection(direction, options) {
     layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
   }
   setCursorPosition({x: cursorX, y: cursorY});
-  var nodeUnderCursor = getNodeUnderCursor();
+  var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
     nodeUnderCursor.select();

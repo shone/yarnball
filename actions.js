@@ -168,19 +168,23 @@ function renameNodeAction(node, oldName) {
 function changeIdAction(node, old, new_) {
   this.undo = () => {
     node.setAttribute('data-id', old.id);
-    node.value = old.name;
-    node.setAttribute('value', old.name);
-    if (document.activeElement === node) {
-      lastFocusedNodeOriginalName = node.value;
+    if ('name' in old) {
+      node.value = old.name;
+      node.setAttribute('value', old.name);
+      if (document.activeElement === node) {
+        lastFocusedNodeOriginalName = node.value;
+      }
     }
     evaluateCursorPosition();
   }
   this.redo = () => {
     node.setAttribute('data-id', new_.id);
-    node.value = new_.name;
-    node.setAttribute('value', new_.name);
-    if (document.activeElement === node) {
-      lastFocusedNodeOriginalName = node.value;
+    if ('name' in new_) {
+      node.value = new_.name;
+      node.setAttribute('value', new_.name);
+      if (document.activeElement === node) {
+        lastFocusedNodeOriginalName = node.value;
+      }
     }
     evaluateCursorPosition();
   }

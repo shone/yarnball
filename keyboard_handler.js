@@ -68,6 +68,8 @@ var keyboard_handler = {
   CtrlZ:      event => undo(),
   CtrlShiftZ: event => redo(),
 
+  CtrlD: event => makeNodeAtCursorUnique(),
+
   F1: event => toggleHelp(),
 
   F8:  event => logJsSourceAtCursor(),
