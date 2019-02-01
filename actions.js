@@ -1,3 +1,5 @@
+'use strict';
+
 var actions = [];
 var actionsUndone = [];
 var isActionInProgress = false;
@@ -58,7 +60,7 @@ function redo() {
 function deleteElementsAction(elements) {
   this.elements = elements;
   this.undo = () => {
-    for (element of this.elements) {
+    for (let element of this.elements) {
       if (element.classList.contains('node')) {
         mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
       } else if (element.classList.contains('link')) {
@@ -81,7 +83,7 @@ function createElementsAction(elements) {
     deleteElements(this.elements);
   };
   this.redo = () => {
-    for (element of this.elements) {
+    for (let element of this.elements) {
       if (element.classList.contains('node')) {
         mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
       } else if (element.classList.contains('link')) {
@@ -105,13 +107,13 @@ function pasteElementsAction(nodes, links) {
   this.nodes = nodes;
   this.links = links;
   this.undo = () => {
-    for (node of this.nodes) node.remove();
-    for (link of this.links) link.remove();
+    for (let node of this.nodes) node.remove();
+    for (let link of this.links) link.remove();
     evaluateCursorPosition();
   };
   this.redo = () => {
-    for (node of this.nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
-    for (link of this.links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
+    for (let node of this.nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
+    for (let link of this.links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
     evaluateCursorPosition();
   };
 }
@@ -121,21 +123,21 @@ function moveNodesAction(positions) {
   this.newPositions = positions.newPositions;
   this.undo = () => {
     var affectedLinks = new Set();
-    for (i of this.oldPositions) {
+    for (let i of this.oldPositions) {
       i.node.style.left = i.left;
       i.node.style.top  = i.top;
-      for (link of i.node.links) affectedLinks.add(link);
+      for (let link of i.node.links) affectedLinks.add(link);
     }
-    for (link of affectedLinks) layoutLink(link);
+    for (let link of affectedLinks) layoutLink(link);
   };
   this.redo = () => {
     var affectedLinks = new Set();
-    for (i of this.newPositions) {
+    for (let i of this.newPositions) {
       i.node.style.left = i.left;
       i.node.style.top  = i.top;
-      for (link of i.node.links) affectedLinks.add(link);
+      for (let link of i.node.links) affectedLinks.add(link);
     }
-    for (link of affectedLinks) layoutLink(link);
+    for (let link of affectedLinks) layoutLink(link);
   };
 }
 
@@ -145,7 +147,7 @@ function renameNodeAction(node, oldName) {
   this.newName = node.value;
   this.undo = () => {
     var instances = [...document.querySelectorAll(`[data-id="${this.node.getAttribute('data-id')}"]`)];
-    for (instance of instances) {
+    for (let instance of instances) {
       instance.value = this.oldName;
       instance.setAttribute('value', this.oldName);
     }
@@ -155,7 +157,7 @@ function renameNodeAction(node, oldName) {
   }
   this.redo = () => {
     var instances = [...document.querySelectorAll(`[data-id="${this.node.getAttribute('data-id')}"]`)];
-    for (instance of instances) {
+    for (let instance of instances) {
       instance.value = this.newName;
       instance.setAttribute('value', this.newName);
     }

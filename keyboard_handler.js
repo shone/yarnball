@@ -1,3 +1,5 @@
+'use strict';
+
 var keyboard_handler = {
   HOME:       event => setCursorPosition({x: 0, y: 0}),
 

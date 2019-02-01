@@ -1,3 +1,5 @@
+'use strict';
+
 var cursorPositionOnMouseDragStart          = null;
 var cursorPositionOffsetOnMouseDragStart    = null;
 var cursorPositionOnLastDragMousemove       = null;
@@ -48,14 +50,14 @@ document.body.addEventListener('mousedown', event => {
 
 document.body.addEventListener('dblclick', event => {
   if (event.target.classList.contains('node')) {
-    var instances = event.target.closest('.surface').querySelectorAll(`[data-id="${event.target.getAttribute('data-id')}"]`);
-    for (instance of instances) instance.classList.add('selected');
+    var instances = event.target.closest('.surface').querySelectorAll(`[data-id="${event.target.dataset.id}"]`);
+    for (let instance of instances) instance.classList.add('selected');
   } else if (event.target.classList.contains('link')) {
     var connectedLinks = new Set([event.target]);
     var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
     getAllConnectedNodesAndLinks(event.target.to, connectedNodes, connectedLinks);
     connectedNodes.delete(event.target.from);
-    for (node of connectedNodes) node.classList.add('selected');
+    for (let node of connectedNodes) node.classList.add('selected');
   }
 });
 
@@ -121,11 +123,11 @@ function handleNodeMousedown(event) {
     // Node dragging
     var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
     nodesToDrag.add(document.activeElement);
-    for (node of nodesToDrag) {
+    for (let node of nodesToDrag) {
       node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
     }
     var nodesNotBeingDragged = new Set(currentSurface.getElementsByClassName('node'));
-    for (node of nodesToDrag) nodesNotBeingDragged.delete(node);
+    for (let node of nodesToDrag) nodesNotBeingDragged.delete(node);
     var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     var selectionBoxStartPosition = getSelectionBox();
     isActionInProgress = true;
@@ -133,7 +135,7 @@ function handleNodeMousedown(event) {
     handleMouseDrag(event, {
       mousemove: function(mouse) {
         // Check if dragging to a valid position
-        for (node of [...nodesToDrag]) {
+        for (let node of [...nodesToDrag]) {
           var newNodeBoundingBox = {
             left:   node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x),
             top:    node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y),
@@ -146,12 +148,12 @@ function handleNodeMousedown(event) {
         }
         // Move nodes
         var affectedLinks = new Set();
-        for (node of nodesToDrag) {
+        for (let node of nodesToDrag) {
           node.style.left = (node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
           node.style.top  = (node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
-          for (link of node.links) affectedLinks.add(link);
+          for (let link of node.links) affectedLinks.add(link);
         }
-        for (link of affectedLinks) layoutLink(link);
+        for (let link of affectedLinks) layoutLink(link);
         // Move cursor
         cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
         cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
@@ -163,7 +165,7 @@ function handleNodeMousedown(event) {
         }
       },
       mouseup: function(event, mouse) {
-        for (node of nodesToDrag) node.classList.remove('dragging');
+        for (let node of nodesToDrag) node.classList.remove('dragging');
         if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
           var oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
           var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
@@ -265,31 +267,31 @@ document.addEventListener('mousedown', event => {
   }
 });
 
-// Node instance highlighting
+// Node/link instance highlighting
 document.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
-    var instances = [...document.querySelectorAll(`[data-id="${event.target.getAttribute('data-id')}"]`)];
-    for (instance of instances) instance.classList.add('mouse-over-instance');
+    var instances = [...document.querySelectorAll(`[data-id="${event.target.dataset.id}"]`)];
+    for (let instance of instances) instance.classList.add('mouse-over-instance');
     event.target.addEventListener(
       'mouseleave',
       event => {
-        for (instance of instances) instance.classList.remove('mouse-over-instance')
+        for (let instance of instances) instance.classList.remove('mouse-over-instance')
       },
       {once: true}
     );
   } else if (event.target.classList.contains('link')) {
     var instances = [...document.getElementsByClassName('link')].filter(link => {
-      return link.from.getAttribute('data-id') === event.target.from.getAttribute('data-id') &&
-             link.via.getAttribute('data-id')  === event.target.via.getAttribute('data-id')  &&
-             link.to.getAttribute('data-id')   === event.target.to.getAttribute('data-id');
+      return link.from.dataset.id === event.target.from.dataset.id &&
+             link.via.dataset.id  === event.target.via.dataset.id  &&
+             link.to.dataset.id   === event.target.to.dataset.id;
     });
-    for (instance of instances) {
+    for (let instance of instances) {
       instance.classList.add('mouse-over-instance');
     }
     event.target.addEventListener(
       'mouseleave',
       event => {
-        for (instance of instances) instance.classList.remove('mouse-over-instance');
+        for (let instance of instances) instance.classList.remove('mouse-over-instance');
       },
       {once: true}
     );

@@ -8,25 +8,25 @@ const graph = {
   },
 
   findLinkVia(node, via) {
-    for (var instance of mainSurface.querySelectorAll(`.node[data-id='${via}']`)) {
-      var link = [...instance.links].find(link => link.from.getAttribute('data-id') === node && link.via.getAttribute('data-id') === via);
+    for (let instance of mainSurface.querySelectorAll(`.node[data-id='${via}']`)) {
+      var link = [...instance.links].find(link => link.from.dataset.id === node && link.via.dataset.id === via);
       if (link) return link;
     }
     return null;
   },
 
   findLinksVia(node, via) {
-    return [...mainSurface.getElementsByClassName('link')].filter(link => link.from.getAttribute('data-id') === node && link.via.getAttribute('data-id') === via);
+    return [...mainSurface.getElementsByClassName('link')].filter(link => link.from.dataset.id === node && link.via.dataset.id === via);
   },
 
   findNodeVia(node, via) {
     var link = this.findLinkVia(node, via);
-    return link ? link.to.getAttribute('data-id') : null;
+    return link ? link.to.dataset.id : null;
   },
 
   findNodesVia(node, via) {
     var links = this.findLinksVia(node, via);
-    return [...new Set(links.map(link => link.to.getAttribute('data-id')))];
+    return [...new Set(links.map(link => link.to.dataset.id))];
   },
 
   followListNodes(id, forward) {

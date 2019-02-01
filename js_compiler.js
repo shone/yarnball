@@ -3,14 +3,14 @@
 function logJsSourceAtCursor() {
   var node = getNodeAtCursor();
   if (!node) return;
-  var compiledStatements = compileStatements(node.getAttribute('data-id'));
+  var compiledStatements = compileStatements(node.dataset.id);
   console.log(compiledStatements);
 }
 
 function logJsAtCursor() {
   var node = getNodeAtCursor();
   if (!node) return;
-  var compiledStatement = compileStatement(node.getAttribute('data-id'));
+  var compiledStatement = compileStatement(node.dataset.id);
   var f = new Function('return ' + compiledStatement);
   var returnValue = f();
   console.log(returnValue);
@@ -19,7 +19,7 @@ function logJsAtCursor() {
 function runJsAtCursor() {
   var node = getNodeAtCursor();
   if (!node) return;
-  var compiledStatements = compileStatements(node.getAttribute('data-id'));
+  var compiledStatements = compileStatements(node.dataset.id);
   var f = new Function(compiledStatements);
   f();
 }
@@ -303,7 +303,7 @@ function compileYarnballSetName(node) {
 
 mainSurface.addEventListener('mousedown', event => {
   if (event.target.classList.contains('node')) {
-    var click = graph.findNodeVia(event.target.getAttribute('data-id'), _yarnballClick);
+    var click = graph.findNodeVia(event.target.dataset.id, _yarnballClick);
     if (click) {
       var jsSource = compileStatements(click);
       var f = new Function(jsSource);
@@ -315,7 +315,7 @@ mainSurface.addEventListener('mousedown', event => {
 function makeJsonGraph(json, position) {
   var firstKeyNode = null;
   var previousKeyNode = null;
-  for (var key in json) {
+  for (let key in json) {
     var keyNode = null;
     if (typeof json[key] === 'object') {
       keyNode = createNode(position, key);
