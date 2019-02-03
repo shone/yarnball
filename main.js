@@ -350,8 +350,9 @@ function selectionToClipboard(options) {
   document.execCommand('copy');
   temporaryInput.remove();
   if (options.cut) {
-    deleteElements(selectedNodes);
-    recordAction(new deleteElementsAction(selectedNodes));
+    var elements = [...selectedNodes, ...affectedLinks];
+    deleteElements(elements);
+    recordAction(new deleteElementsAction(elements));
   } else if (previouslyFocusedElement) {
     previouslyFocusedElement.focus();
   }
