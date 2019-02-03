@@ -72,6 +72,22 @@ function getNodeAtPosition(position, surface) {
   return null;
 }
 
+function getNodeClosestToPosition(position, surface) {
+  surface = surface || currentSurface;
+  var closestNode = null;
+  var closestDistance = null;
+  for (let node of surface.getElementsByClassName('node')) {
+    var deltaX = parseInt(node.style.left) - position.x;
+    var deltaY = parseInt(node.style.top)  - position.y;
+    var distance = (deltaX*deltaX) + (deltaY*deltaY);
+    if (!closestNode || (distance < closestDistance)) {
+      closestNode = node;
+      closestDistance = distance;
+    }
+  }
+  return closestNode;
+}
+
 var pxToGridX = px => Math.round(px / 64) * 64;
 var pxToGridY = px => Math.round(px / 32) * 32;
 
@@ -1009,6 +1025,21 @@ function scrollMainSurfaceInDirection(direction) {
   }[direction];
   window.scrollBy(scrollDelta.x, scrollDelta.y);
   resetCursorBlink();
+}
+
+function getConnectedNodes(node) {
+  var connectedNodes = new Set();
+  var nodesToVisit = [node];
+  while (nodesToVisit.length > 0) {
+    var node = nodesToVisit.pop();
+    connectedNodes.add(node);
+    for (let link of node.links) {
+      if (!connectedNodes.has(link.from)) nodesToVisit.push(link.from);
+      if (!connectedNodes.has(link.via))  nodesToVisit.push(link.via);
+      if (!connectedNodes.has(link.to))   nodesToVisit.push(link.to);
+    }
+  }
+  return [...connectedNodes];
 }
 
 function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {

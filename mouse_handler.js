@@ -49,9 +49,35 @@ document.body.addEventListener('mousedown', event => {
 });
 
 document.body.addEventListener('dblclick', event => {
-  if (event.target.classList.contains('node')) {
-    var instances = event.target.closest('.surface').querySelectorAll(`[data-id="${event.target.dataset.id}"]`);
-    for (let instance of instances) instance.classList.add('selected');
+  if (event.target.classList.contains('surface')) {
+    var closestNode = getNodeClosestToPosition({
+      x: pxToGridX(event.offsetX),
+      y: pxToGridY(event.offsetY),
+    }, event.target.closest('.surface'));
+    if (closestNode) {
+      if (!event.shiftKey) {
+        deselectAll();
+      }
+      var connectedNodes = getConnectedNodes(closestNode);
+      for (let node of connectedNodes) {
+        node.classList.add('selected');
+      }
+    }
+  } else if (event.target.classList.contains('node')) {
+    if (!event.shiftKey) {
+      deselectAll();
+    }
+    if (event.ctrlKey) {
+      var surface = event.target.closest('.surface');
+      for (let node of surface.querySelectorAll(`.node[data-id='${event.target.dataset.id}']`)) {
+        node.classList.add('selected');
+      }
+    } else {
+      var connectedNodes = getConnectedNodes(event.target);
+      for (let node of connectedNodes) {
+        node.classList.add('selected');
+      }
+    }
   } else if (event.target.classList.contains('link')) {
     var connectedLinks = new Set([event.target]);
     var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
@@ -103,6 +129,16 @@ function handleNodeMousedown(event) {
   if (event.button === 0) {
     event.preventDefault();
     var node = event.target;
+    if (event.ctrlKey) {
+      if (!event.shiftKey) {
+        deselectAll();
+      }
+      var connectedNodes = getConnectedNodes(node).filter(connectedNode => connectedNode.dataset.id === node.dataset.id);
+      for (let connectedNode of connectedNodes) {
+        connectedNode.classList.add('selected');
+      }
+      return;
+    }
     node.focus();
     node.select();
     setCursorPosition({
@@ -131,9 +167,9 @@ function handleNodeMousedown(event) {
     var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     var selectionBoxStartPosition = getSelectionBox();
     isActionInProgress = true;
-    document.body.classList.add('dragging');
     handleMouseDrag(event, {
       mousemove: function(mouse) {
+        document.body.classList.add('dragging');
         // Check if dragging to a valid position
         for (let node of [...nodesToDrag]) {
           var newNodeBoundingBox = {
@@ -181,7 +217,6 @@ function handleNodeMousedown(event) {
         document.body.classList.remove('dragging');
       }
     });
-    return false;
   }
 }
 
@@ -246,7 +281,6 @@ document.addEventListener('mousedown', event => {
   // Left mouse button down on node
   if (event.button === 0 && event.target.classList.contains('node')) {
     handleNodeMousedown(event);
-    return false;
   }
 
   // Left mouse button down on link
