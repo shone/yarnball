@@ -36,10 +36,18 @@ function setCursorPosition(position) {
   cursor.style.left = position.x + 'px';
   cursor.style.top  = position.y + 'px';
   if (currentSurface === mainSurface) {
-    cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    var nodeUnderCursor = getNodeAtCursor();
+    if (nodeUnderCursor) {
+      nodeUnderCursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    } else {
+      cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    }
   }
   evaluateCursorPosition();
   nameMatchPanel.remove();
+}
+function moveCursorToNode(node) {
+  setCursorPosition({x: parseInt(node.style.left), y: parseInt(node.style.top)});
 }
 function evaluateCursorPosition() {
   var nodeUnderCursor = getNodeAtCursor();
@@ -59,6 +67,48 @@ function getNodeAtCursor(surface) {
   surface = surface || currentSurface;
   var cursor_ = surface.getElementsByClassName('cursor')[0];
   return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
+}
+function moveCursorToBlockEdge(direction) {
+  var nodesInRow = [...currentSurface.getElementsByClassName('node')].filter(node => node.style.top === cursor.style.top);
+  if (direction === 'left') {
+    var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < parseInt(cursor.style.left));
+    if (nodesToLeft.length > 0) {
+      nodesToLeft.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+      var node = nodesToLeft[nodesToLeft.length - 1];
+      if ((parseInt(cursor.style.left) - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+        moveCursorToNode(node);
+      } else {
+        for (var i = nodesToLeft.length - 2; i >= 0; i--) {
+          if ((parseInt(node.style.left) - (parseInt(nodesToLeft[i].style.left) + parseInt(nodesToLeft[i].style.width))) > 20) {
+            break;
+          }
+          node = nodesToLeft[i];
+        }
+        moveCursorToNode(node);
+      }
+    } else {
+      setCursorPosition({x: 0, y: parseInt(cursor.style.top)});
+    }
+  } else if (direction === 'right') {
+    var nodesToRight = nodesInRow.filter(node => parseInt(node.style.left) > parseInt(cursor.style.left));
+    if (nodesToRight.length === 0) {
+      return;
+    }
+    nodesToRight.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+    var node = nodesToRight[0];
+    var nodeAtCursor = getNodeAtCursor();
+    if (!nodeAtCursor || (parseInt(node.style.left) - (parseInt(nodeAtCursor.style.left) + parseInt(nodeAtCursor.style.width)) > 20)) {
+      moveCursorToNode(node);
+    } else {
+      for (var i=1; i < nodesToRight.length; i++) {
+        if ((parseInt(nodesToRight[i].style.left) - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+          break;
+        }
+        node = nodesToRight[i];
+      }
+      moveCursorToNode(node);
+    }
+  }
 }
 
 function getNodeAtPosition(position, surface) {

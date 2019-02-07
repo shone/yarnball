@@ -1,7 +1,8 @@
 'use strict';
 
 var keyboard_handler = {
-  HOME:       event => setCursorPosition({x: 0, y: 0}),
+  HOME:       event => moveCursorToBlockEdge('left'),
+  END:        event => moveCursorToBlockEdge('right'),
 
   ENTER:      event => {
     if (nameMatchPanel.parentElement) {
