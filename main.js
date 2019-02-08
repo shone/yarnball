@@ -267,7 +267,7 @@ function executeLinkMode() {
       if (document.activeElement && document.activeElement.classList.contains('node')) {
         var createdLink = useNodeForLinkCreationMode(document.activeElement);
         if (createdLink) {
-          recordAction(new createLinkAction(createdLink));
+          recordAction(new createElementsAction([createdLink]));
         }
       } else {
         cancelLinkMode();

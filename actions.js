@@ -97,12 +97,6 @@ function createElementsAction(elements) {
   };
 }
 
-function createLinkAction(link) {
-  this.link = link;
-  this.undo = () => this.link.remove();
-  this.redo = () => mainSurface.getElementsByClassName('links')[0].appendChild(this.link);
-}
-
 function pasteElementsAction(nodes, links) {
   this.nodes = nodes;
   this.links = links;

@@ -253,7 +253,7 @@ document.addEventListener('mousedown', event => {
       mousemove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       mouseup: function(event) {
         if (link.from && link.via && link.to) {
-          recordAction(new createLinkAction(link));
+          recordAction(new createElementsAction([link]));
         } else {
           link.remove();
         }
@@ -314,6 +314,7 @@ document.addEventListener('mouseover', event => {
       {once: true}
     );
   } else if (event.target.classList.contains('link')) {
+    event.target.closest('.links').appendChild(event.target);
     var instances = [...document.getElementsByClassName('link')].filter(link => {
       return link.from.dataset.id === event.target.from.dataset.id &&
              link.via.dataset.id  === event.target.via.dataset.id  &&
