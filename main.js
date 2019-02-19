@@ -35,8 +35,18 @@ function setCursorPosition(position) {
   if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) return;
   cursor.style.left = position.x + 'px';
   cursor.style.top  = position.y + 'px';
+  if (linkBeingCreated) {
+    layoutLink(linkBeingCreated, {x: position.x + 32, y: position.y + 16});
+  }
+  var nodeUnderCursor = getNodeAtCursor();
+  for (let link of [...currentSurface.getElementsByClassName('link')]) {
+    var isConnected = link.from === nodeUnderCursor || link.via === nodeUnderCursor || link.to === nodeUnderCursor;
+    link.classList.toggle('highlight-for-connected', isConnected);
+    if (isConnected) {
+      link.parentElement.appendChild(link); // Bring to front
+    }
+  }
   if (currentSurface === mainSurface) {
-    var nodeUnderCursor = getNodeAtCursor();
     if (nodeUnderCursor) {
       nodeUnderCursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
     } else {
@@ -68,8 +78,12 @@ function getNodeAtCursor(surface) {
   var cursor_ = surface.getElementsByClassName('cursor')[0];
   return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
 }
-function moveCursorToBlockEdge(direction) {
+function moveCursorToBlockEdge(direction, options) {
+  options = options || {};
   var nodesInRow = [...currentSurface.getElementsByClassName('node')].filter(node => node.style.top === cursor.style.top);
+  if (options.dragSelectionBox && selectionBox.classList.contains('hidden')) {
+    selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+  }
   if (direction === 'left') {
     var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < parseInt(cursor.style.left));
     if (nodesToLeft.length > 0) {
@@ -108,6 +122,23 @@ function moveCursorToBlockEdge(direction) {
       }
       moveCursorToNode(node);
     }
+  }
+  if (options.dragSelectionBox) {
+    var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, parseInt(cursor.style.left));
+    var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, parseInt(cursor.style.top));
+    var selectionBoxWidth  = Math.max(0, Math.abs(selectionBox.anchorPosition.x - parseInt(cursor.style.left)));
+    var selectionBoxHeight = Math.max(0, Math.abs(selectionBox.anchorPosition.y - parseInt(cursor.style.top)));
+    var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
+    var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
+    setSelectionBox({
+      left:   selectionBoxLeft,
+      top:    selectionBoxTop,
+      right:  selectionBoxRight,
+      bottom: selectionBoxBottom,
+    });
+    selectionBox.classList.remove('hidden');
+  } else {
+    deselectAll();
   }
 }
 
@@ -230,48 +261,22 @@ function useNodeForLinkCreationMode(node) {
   return null;
 }
 function executeLinkMode() {
-  var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
-  if (selectedNodes.size === 3 && selectedNodes.has(document.activeElement)) {
-    var nonFocusedNodes = selectedNodes;
-    nonFocusedNodes.delete(document.activeElement);
-    nonFocusedNodes = Array.from(nonFocusedNodes).sort((a, b) => {
-      var fX = parseInt(document.activeElement.style.left);
-      var fY = parseInt(document.activeElement.style.top);
-      var aDeltaX = fX - parseInt(a.style.left);
-      var aDeltaY = fY - parseInt(a.style.top);
-      var bDeltaX = fX - parseInt(b.style.left);
-      var bDeltaY = fY - parseInt(b.style.top);
-      return (((aDeltaX*aDeltaX) + (aDeltaY*aDeltaY)) > ((bDeltaX*bDeltaX) + (bDeltaY*bDeltaY))) ? -1 : 1;
-    });
-    var from = nonFocusedNodes[0];
-    var via = nonFocusedNodes[1]
-    var to = document.activeElement;
-    var link = Array.from(from.links).find(link => link.from === from && link.via === via && link.to === to);
-    if (link) {
-      deleteElements([link]);
-    } else {
-      link = createLink({from: nonFocusedNodes[0], via: nonFocusedNodes[1], to: document.activeElement});
-      layoutLink(link);
+  if (!linkBeingCreated) {
+    linkBeingCreated = createLink();
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      useNodeForLinkCreationMode(document.activeElement);
     }
-    if (currentSurface.id === 'find-panel') doFind();
-    return false;
-  } else if (selectedNodes.size === 0) {
-    if (!linkBeingCreated) {
-      linkBeingCreated = createLink();
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        useNodeForLinkCreationMode(document.activeElement);
+    cursor.classList.add('insert-mode');
+    resetCursorBlink();
+    nameMatchPanel.remove();
+  } else {
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var createdLink = useNodeForLinkCreationMode(document.activeElement);
+      if (createdLink) {
+        recordAction(new createElementsAction([createdLink]));
       }
-      cursor.classList.add('insert-mode');
-      resetCursorBlink();
     } else {
-      if (document.activeElement && document.activeElement.classList.contains('node')) {
-        var createdLink = useNodeForLinkCreationMode(document.activeElement);
-        if (createdLink) {
-          recordAction(new createElementsAction([createdLink]));
-        }
-      } else {
-        cancelLinkMode();
-      }
+      cancelLinkMode();
     }
   }
 }
@@ -400,9 +405,19 @@ function selectionToClipboard(options) {
   document.execCommand('copy');
   temporaryInput.remove();
   if (options.cut) {
-    var elements = [...selectedNodes, ...affectedLinks];
-    deleteElements(elements);
-    recordAction(new deleteElementsAction(elements));
+    // Don't delete nodes that have links to unselected nodes
+    var nodesToDelete = new Set([...selectedNodes].filter(node =>
+      [...node.links].every(link =>
+        selectedNodes.has(link.from) &&
+        selectedNodes.has(link.via)  &&
+        selectedNodes.has(link.to)
+      )
+    ));
+    if (nodesToDelete.size > 0 || affectedLinks.size > 0) {
+      var elements = [...nodesToDelete, ...affectedLinks];
+      deleteElements(elements);
+      recordAction(new deleteElementsAction(elements));
+    }
   } else if (previouslyFocusedElement) {
     previouslyFocusedElement.focus();
   }
@@ -559,6 +574,9 @@ function deselectAll() {
 }
 
 var lastFocusedNodeOriginalName = null;
+if (getNodeAtCursor() !== null) {
+  lastFocusedNodeOriginalName = getNodeAtCursor().value;
+}
 
 document.addEventListener('focusin', event => {
   if (event.target.classList.contains('node')) {
@@ -651,6 +669,24 @@ function makeNodeAtCursorUnique() {
   node.setAttribute('data-id', newId);
   evaluateCursorPosition();
   recordAction(new changeIdAction(node, {id: oldId}, {id: newId}));
+}
+
+function isolateSelection() {
+  var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
+  var linksToDelete = new Set();
+  for (let node of selectedNodes) {
+    for (let link of node.links) {
+      if (!selectedNodes.has(link.from) ||
+          !selectedNodes.has(link.via) ||
+          !selectedNodes.has(link.to)) {
+        linksToDelete.add(link);
+      }
+    }
+  }
+  if (linksToDelete.size > 0) {
+    deleteElements([...linksToDelete]);
+    recordAction(new deleteElementsAction([...linksToDelete]));
+  }
 }
 
 
@@ -1054,9 +1090,6 @@ function moveCursorInDirection(direction, options) {
   } else {
     deselectAll();
   }
-  if (linkBeingCreated) {
-    layoutLink(linkBeingCreated, {x: cursorX + 32, y: cursorY + 16});
-  }
   setCursorPosition({x: cursorX, y: cursorY});
   var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
@@ -1116,6 +1149,31 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
   return {
     nodes: connectedNodes,
     links: connectedLinks,
+  }
+}
+
+function selectConnectedNodesAtCursor() {
+  var nodeAtCursor = getNodeAtCursor();
+  if (nodeAtCursor) {
+    deselectAll();
+    for (let node of getConnectedNodes(nodeAtCursor)) {
+      node.classList.add('selected');
+    }
+  }
+}
+
+function selectInstancesOfNodeAtCursor(options) {
+  options = options || {};
+  var nodeAtCursor = getNodeAtCursor();
+  if (nodeAtCursor) {
+    deselectAll();
+    var nodes = options.onlyConnectedNodes ?
+      getConnectedNodes(nodeAtCursor).filter(connectedNode => connectedNode.dataset.id === nodeAtCursor.dataset.id)
+      :
+      currentSurface.querySelectorAll(`.node[data-id='${nodeAtCursor.dataset.id}']`);
+    for (let node of nodes) {
+      node.classList.add('selected');
+    }
   }
 }
 
@@ -1303,6 +1361,26 @@ function replaceSurfaceFromHtml(html) {
   }
 
   evaluateCursorPosition();
+}
+
+function saveToLocalStorage() {
+  localStorage.saved_state = getNodesAndLinksAsHtml();
+  if (actions.length > 0) {
+    savedAction = actions[actions.length-1];
+  } else {
+    savedAction = null;
+  }
+}
+
+function download() {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
+  element.setAttribute('download', '');
+  element.style.display = 'none';
+
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
 }
 
 

@@ -314,9 +314,13 @@ document.addEventListener('mouseover', event => {
       {once: true}
     );
   } else if (event.target.classList.contains('link')) {
-    event.target.closest('.links').appendChild(event.target);
+    if (!(event.target.from && event.target.via && event.target.to)) {
+      return;
+    }
+    event.target.parentElement.appendChild(event.target);
     var instances = [...document.getElementsByClassName('link')].filter(link => {
-      return link.from.dataset.id === event.target.from.dataset.id &&
+      return (link.from && link.via && link.to) &&
+             link.from.dataset.id === event.target.from.dataset.id &&
              link.via.dataset.id  === event.target.via.dataset.id  &&
              link.to.dataset.id   === event.target.to.dataset.id;
     });

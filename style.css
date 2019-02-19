@@ -152,6 +152,9 @@ body.dragging:after {
 .link:hover {
   stroke: #4e4e4e;
 }
+.link.highlight-for-connected {
+  stroke: purple;
+}
 .link.mouse-over-instance {
   stroke: grey;
 }
@@ -275,6 +278,16 @@ body.showing-help #help-button:after {
 }
 body.showing-help #help-screen {
   display: block;
+}
+#help-screen h1 {
+  color: #333f4f;
+  font-size: 34px;
+  text-align: center;
+}
+#help-screen h1 img {
+  width: 45px;
+  height: 61px;
+  margin-bottom: -10px;
 }
 #help-screen table {
   border-spacing: 20px;

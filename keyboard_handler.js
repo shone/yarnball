@@ -3,6 +3,9 @@
 var keyboard_handler = {
   HOME:       event => moveCursorToBlockEdge('left'),
   END:        event => moveCursorToBlockEdge('right'),
+  ShiftHOME:  event => moveCursorToBlockEdge('left',  {dragSelectionBox: true}),
+  ShiftEND:   event => moveCursorToBlockEdge('right', {dragSelectionBox: true}),
+  CtrlHOME:   event => setCursorPosition({x: 0, y: 0}),
 
   ENTER:      event => {
     if (nameMatchPanel.parentElement) {
@@ -16,6 +19,9 @@ var keyboard_handler = {
 
   CtrlA:      event => selectAll(),
   CtrlShiftA: event => deselectAll(),
+  CtrlG:      event => selectConnectedNodesAtCursor(),
+  CtrlI:      event => selectInstancesOfNodeAtCursor({onlyConnectedNodes: true}),
+  CtrlShiftI: event => selectInstancesOfNodeAtCursor(),
 
   CtrlC:      event => selectionToClipboard(),
   CtrlX:      event => selectionToClipboard({cut: true}),
@@ -56,24 +62,19 @@ var keyboard_handler = {
   PAGEUP:     event => moveNameMatchSelection('previous'),
   PAGEDOWN:   event => moveNameMatchSelection('next'),
 
-  CtrlS:      event => localStorage.saved_state = getNodesAndLinksAsHtml(),
-  CtrlShiftS: event => {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
-    element.setAttribute('download', '');
-    element.style.display = 'none';
-
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element); 
-  },
+  CtrlS:      event => saveToLocalStorage(),
+  CtrlShiftS: event => download(),
 
   CtrlZ:      event => undo(),
   CtrlShiftZ: event => redo(),
 
   CtrlD: event => makeNodeAtCursorUnique(),
+  CtrlE: event => isolateSelection(),
 
   F1: event => toggleHelp(),
+
+  F6: event => transpileHtmlAtCursor(),
+  F7: event => launchHtmlAtCursor(),
 
   F8:  event => logJsSourceAtCursor(),
   F9:  event => logJsAtCursor(),
@@ -92,13 +93,6 @@ document.body.addEventListener('keydown', event => {
       return false;
     }
     keyboard_handler[keyWithModifiers](event);
-    return false;
-  }
-
-  if (event.key === 'F8') {
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      console.log(compileStatements(document.activeElement));
-    }
     return false;
   }
 });

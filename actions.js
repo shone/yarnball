@@ -3,6 +3,7 @@
 var actions = [];
 var actionsUndone = [];
 var isActionInProgress = false;
+var savedAction = null;
 
 function recordAction(action, options) {
   if (currentSurface === mainSurface) {
@@ -56,6 +57,12 @@ function redo() {
   }
 }
 
+window.addEventListener('beforeunload', event => {
+  if (actions.length > 0 && actions[actions.length-1] !== savedAction) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 
 function deleteElementsAction(elements) {
   this.elements = elements;

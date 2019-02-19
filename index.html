@@ -8,6 +8,8 @@
     <link rel="preload" href="fonts/hack-bold-subset.woff2?sha=3114f1256"    as="font"/>
     <link rel="shortcut icon" href="favicon.png">
     <link href="js_styling.css"   rel="stylesheet">
+    <link href="html_styling.css" rel="stylesheet">
+    <link href="css_styling.css"  rel="stylesheet">
     <link href="deutsche_styling.css" rel="stylesheet">
   </head>
 
@@ -41,6 +43,7 @@
 
     <button id="help-button" title="Help"></button>
     <div id="help-screen" class="hidden">
+      <h1><img src="icon.svg">Yarnball</h1>
       <table>
         <tr>
           <td><span class="help-key spacebar">spacebar</span></td>
@@ -57,6 +60,10 @@
         <tr>
           <td><span class="help-key">del</span></td>
           <td>Delete node at cursor</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">tab</span></td>
+          <td>Toggle link creation mode (and applies current node under cursor to new link)</td>
         </tr>
         <tr>
           <td><span class="help-key">ctrl</span> +
@@ -85,6 +92,38 @@
           </td>
         </tr>
         <tr>
+          <td>
+            <span class="help-key">ctrl</span> +
+            <span class="help-key">alt</span>  +
+            (
+              <span class="help-key">←</span>
+              <span class="help-key">→</span>
+              <span class="help-key">↑</span>
+              <span class="help-key">↓</span>
+            )
+          </td>
+          <td>
+            Create instance of node at cursor in given direction
+          </td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">D</span></td>
+          <td>Make node at cursor unique</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">E</span></td>
+          <td>Isolate selection</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">home</span></td>
+          <td>Move cursor left to nearest edge of connected block of nodes</td>
+        </tr>
+        <tr>
+          <td><span class="help-key">end</span></td>
+          <td>Move cursor right to nearest edge of connected block of nodes</td>
+        </tr>
+        <tr></tr>
+        <tr>
           <td><span class="help-key">ctrl</span> + <span class="help-key">A</span></td>
           <td>Select all</td>
         </tr>
@@ -101,6 +140,11 @@
           <td>Select nearest group of connected nodes</td>
         </tr>
         <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">G</span></td>
+          <td>Select all nodes connected to the node at the cursor</td>
+        </tr>
+        <tr></tr>
+        <tr>
           <td><span class="help-key">ctrl</span> + <span class="help-key">C</span></td>
           <td>Copy selected nodes/links</td>
         </tr>
@@ -108,14 +152,7 @@
           <td><span class="help-key">ctrl</span> + <span class="help-key">V</span></td>
           <td>Paste nodes/links</td>
         </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">F</span></td>
-          <td>Show find panel</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">tab</span></td>
-          <td>Toggle link creation mode (and applies current node under cursor to new link)</td>
-        </tr>
+        <tr></tr>
         <tr>
           <td><span class="help-key">ctrl</span> + <span class="help-key">S</span></td>
           <td>Save to local storage</td>
@@ -125,16 +162,21 @@
           <td>Save to file (download)</td>
         </tr>
         <tr>
-          <td>(middle mouse button drag)</td>
-          <td>Scroll/pan view</td>
-        </tr>
-        <tr>
           <td><span class="help-key">ctrl</span> + <span class="help-key">Z</span></td>
           <td>Undo</td>
         </tr>
         <tr>
           <td><span class="help-key">ctrl</span> + <span class="help-key">shift</span> + <span class="help-key">Z</span></td>
           <td>Redo</td>
+        </tr>
+        <tr></tr>
+        <tr>
+          <td><span class="help-key">ctrl</span> + <span class="help-key">F</span></td>
+          <td>Show find panel</td>
+        </tr>
+        <tr>
+          <td>(middle mouse button drag)</td>
+          <td>Scroll/pan view</td>
         </tr>
       </table>
     </div>
@@ -144,6 +186,8 @@
     <script src="actions.js">          </script>
     <script src="keyboard_handler.js"> </script>
     <script src="mouse_handler.js">    </script>
-    <script src="js_compiler.js">      </script>
+    <script src="js_transpiler.js"     async="true"></script>
+    <script src="html_transpiler.js" async="true"></script>
+    <script src="css_transpiler.js"  async="true"></script>
   </body>
 </html>

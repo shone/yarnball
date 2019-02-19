@@ -35,6 +35,7 @@ const _object         = 'b7455d55447ba1d396bd793d4444c92b'; builtinNameMatches.p
 const _nextInArray    = 'c07443aac7845de6e528aabf8ac8b9d7'; builtinNameMatches.push({name: ',',        id: _nextInArray});
 const _keyValue       = 'f14cf1dee906242cb05c851806d09403'; builtinNameMatches.push({name: ':',        id: _keyValue});
 const _for            = 'f25ba8820a24770336a7db493a669698'; builtinNameMatches.push({name: 'for',      id: _for});
+const _forof          = '6ab17eed66f42d3c61b0fc6332b9fae4'; builtinNameMatches.push({name: 'forof',    id: _forof});
 const _var            = 'c25841503f6300d1a1596d7857f15577'; builtinNameMatches.push({name: 'var',      id: _var});
 const _varAssign      = '9876d4cc0671d98029499a89eeee403e'; builtinNameMatches.push({name: 'var=',     id: _varAssign});
 const _varAssignArray = '587daf98eb42f8c35c175ebcc25bfd48'; builtinNameMatches.push({name: 'var=[]',  id: _varAssignArray});
@@ -44,9 +45,10 @@ const _do             = 'ca9a572f8076df24642f743201a29f22'; builtinNameMatches.p
 const _true           = 'd86016a6b310e0854d0095541c568aac'; builtinNameMatches.push({name: 'true',     id: _true});
 const _false          = 'b999ebbaf067ecf6265c163528074532'; builtinNameMatches.push({name: 'false',    id: _false});
 const _null           = '462fa97a7761f3c0c82ef10043cebb81'; builtinNameMatches.push({name: 'null',     id: _null});
-const _filter         = '2d92747b3bbad3635a0d1026fb5eed40'; builtinNameMatches.push({name: 'filter',   id: _filter});
 const _is             = '68d2dc712a4250302bfc0d8276a6acb3'; builtinNameMatches.push({name: 'is',       id: _is});
 const _plus           = 'da04eff3debce2fc6913d4f07d48c2d2'; builtinNameMatches.push({name: '+',        id: _plus});
+const _increment      = '195b789126391dacd626e006c2eef205'; builtinNameMatches.push({name: '++',       id: _increment});
+const _decrement      = 'a29e8926b29df8128c09a47b22ddfb50'; builtinNameMatches.push({name: '--',       id: _decrement});
 const _multiply       = 'e1b13be452e682a8007b32230751bffe'; builtinNameMatches.push({name: '*',        id: _multiply});
 const _arrowFunction  = '306e41be644af73ffe32c023f2542157'; builtinNameMatches.push({name: '=>',       id: _arrowFunction});
 const _if             = '7396a212aa6e8a028dd22af0e0ea5ffa'; builtinNameMatches.push({name: 'if',       id: _if});
@@ -69,16 +71,16 @@ function compileStatements(id) {
 
 function compileStatement(node) {
 
-
   let statement = null;
 
+  if (statement = compileAssignment(node))         return statement;
   if (statement = compileForLoop(node))            return statement;
-  if (statement = compileFilter(node))             return statement;
-  if (statement = compileArrowFunction(node))      return statement;
+  if (statement = compileForofLoop(node))          return statement;
   if (statement = compileVarAssignment(node))      return statement;
   if (statement = compileVarArrayAssignment(node)) return statement;
   if (statement = compileIfStatement(node))        return statement;
-  if (statement = compileFunction(node))           return statement;
+  if (statement = compileIncrement(node))          return statement;
+  if (statement = compileDecrement(node))          return statement;
 
   var return_ = graph.findNodeVia(node, _return);
   if (return_) {
@@ -99,21 +101,28 @@ function compileExpression(node) {
     return constants[node];
   }
 
-  let statement = null;
+  let expression = null;
 
-  if (statement = compileArrayLookup(node))        return statement;
-  if (statement = compileObjectLookup(node))       return statement;
-  if (statement = compileFunctionCall(node))       return statement;
-  if (statement = compileArray(node))              return statement;
-  if (statement = compileObject(node))             return statement;
-  if (statement = compileAddition(node))           return statement;
-  if (statement = compileMultiplication(node))     return statement;
-  if (statement = compileLessThan(node))           return statement;
-  if (statement = compileEqualityTest(node))       return statement;
+  if (expression = compileArrayLookup(node))        return expression;
+  if (expression = compileObjectLookup(node))       return expression;
+  if (expression = compileFunctionCall(node))       return expression;
+  if (expression = compileArray(node))              return expression;
+  if (expression = compileObject(node))             return expression;
+  if (expression = compileAddition(node))           return expression;
+  if (expression = compileMultiplication(node))     return expression;
+  if (expression = compileLessThan(node))           return expression;
+  if (expression = compileEqualityTest(node))       return expression;
+  if (expression = compileFunction(node))           return expression;
+  if (expression = compileArrowFunction(node))      return expression;
 
-  if (statement = compileYarnballNode(node))       return statement;
-  if (statement = compileYarnballGetName(node))    return statement;
-  if (statement = compileYarnballSetName(node))    return statement;
+  if (expression = compileYarnballNode(node))       return expression;
+  if (expression = compileYarnballGetName(node))    return expression;
+  if (expression = compileYarnballSetName(node))    return expression;
+
+  var is = graph.findNodeVia(node, _is);
+  if (is) {
+    return graph.getNameForId(is);
+  }
 
   return graph.getNameForId(node);
 }
@@ -124,24 +133,33 @@ function compileObjectLookup(node) {
     return null;
   }
   var is = graph.getNameForId(graph.findNodeVia(node, _is) || node);
-  return is + '.' + compileStatement(objectLookup);
+  return is + '.' + compileExpression(objectLookup);
 }
 
 function compileFunctionCall(node) {
   var calls = graph.findNodeVia(node, _calls);
   if (calls === null) return null;
-  var callsStatement = compileStatement(calls);
+  var callsStatement = compileExpression(calls);
   var arg0 = graph.findNodeVia(node, _arg0);
   if (arg0) {
     var arg1 = graph.findNodeVia(node, _arg1);
     if (arg1) {
-      return callsStatement + '(' + compileStatement(arg0) + ',' + compileStatement(arg1) + ')';
+      return callsStatement + '(' + compileExpression(arg0) + ',' + compileExpression(arg1) + ')';
     } else {
-      return callsStatement + '(' + compileStatement(arg0) + ')';
+      return callsStatement + '(' + compileExpression(arg0) + ')';
     }
   } else {
     return callsStatement + '()';
   }
+}
+
+function compileAssignment(node) {
+  var rvalue = graph.findNodeVia(node, _assign);
+  if (!rvalue) {
+    return null;
+  }
+  var lvalue = graph.findNodeVia(node, _is) || node;
+  return `${compileExpression(lvalue)} = ${compileExpression(rvalue)}`;
 }
 
 function compileForLoop(node) {
@@ -149,7 +167,17 @@ function compileForLoop(node) {
   var of_ = graph.findNodeVia(node, _of);
   var do_ = graph.findNodeVia(node, _do);
   if (for_ && of_ && do_) {
-    return 'for (var ' + graph.getNameForId(for_) + ' of ' + compileStatement(of_) + ') {' + compileStatements(do_) + '}';
+    return 'for (let ' + graph.getNameForId(for_) + ' of ' + compileExpression(of_) + ') {' + compileStatements(do_) + '}';
+  } else {
+    return null;
+  }
+}
+
+function compileForofLoop(node) {
+  var forof_ = graph.findNodeVia(node, _forof);
+  var do_ = graph.findNodeVia(node, _do);
+  if (forof_ && do_) {
+    return 'for (let ' + graph.getNameForId(node) + ' of ' + compileExpression(forof_) + ') {' + compileStatements(do_) + '}';
   } else {
     return null;
   }
@@ -158,7 +186,7 @@ function compileForLoop(node) {
 function compileArray(node) {
   var firstElement = graph.findNodeVia(node, _array);
   if (!firstElement) return null;
-  return '[' + graph.followListNodes(firstElement, _nextInArray).map(a => compileStatement(a)).join(',') + ']';
+  return '[' + graph.followListNodes(firstElement, _nextInArray).map(a => compileExpression(a)).join(',') + ']';
 }
 
 function compileObject(node) {
@@ -167,23 +195,11 @@ function compileObject(node) {
   return '{' + graph.followListNodes(firstKey, _nextInArray).map(keyNode => {
     var value = graph.findNodeVia(keyNode, _keyValue);
     if (value) {
-      return "'" + graph.getNameForId(keyNode) + "':" + compileStatement(value);
+      return `${graph.getNameForId(keyNode)}: ${compileExpression(value)}`;
     } else {
-      return "'" + graph.getNameForId(keyNode) + "':undefined";
+      return `${graph.getNameForId(keyNode)}: undefined`;
     }
   }).join(',') + '}';
-}
-
-function compileFilter(node) {
-  var filterCallback = graph.findNodeVia(node, _filter);
-  if (!filterCallback) return null;
-  var is = graph.findNodeVia(node, _is);
-  if (is) {
-    is = compileStatement(is);
-  } else {
-    is = graph.getNameForId(node);
-  }
-  return is + '.filter(()=>{' + compileStatement(filterCallback) + '})';
 }
 
 function compileAddition(node) {
@@ -236,6 +252,23 @@ function compileIfStatement(node) {
   }
 }
 
+function compileIncrement(node) {
+  var increment = graph.findNodeVia(node, _increment);
+  if (increment) {
+    return graph.getNameForId(increment) + '++';
+  } else {
+    return null;
+  }
+}
+function compileDecrement(node) {
+  var decrement = graph.findNodeVia(node, _decrement);
+  if (decrement) {
+    return graph.getNameForId(decrement) + '--';
+  } else {
+    return null;
+  }
+}
+
 function compileFunction(node) {
   var body = graph.findNodeVia(node, _func);
   if (!body) return null;
@@ -248,7 +281,7 @@ function compileFunction(node) {
       args += ', ' + graph.getNameForId(arg1);
     }
   }
-  return `function ${graph.getNameForId(node)}(${args}){return ${compileStatement(body)};}`;
+  return `function ${graph.getNameForId(node)}(${args}){${compileStatements(body)};}`;
 }
 
 function compileLessThan(node) {
