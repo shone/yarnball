@@ -13,11 +13,11 @@ function handleMouseDrag(event, options) {
   function handleMousemove(event) {
     if (options.mousemove) {
       var position       = { x: event.pageX,   y: event.pageY   };
-      var positionOffset = { x: event.offsetX, y: event.offsetY };
       var positionScreen = { x: event.screenX, y: event.screenY };
       var delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
       var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
       var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
+      var positionOffset = { x: cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
       cursorPositionOnLastDragMousemove = position;
       cursorScreenPositionOnLastDragMousemove = positionScreen;
       options.mousemove({position, positionOffset, delta, deltaTotal, deltaScreen});
@@ -90,35 +90,32 @@ document.body.addEventListener('dblclick', event => {
 var selectedNodesToPreserve = null;
 function handleBackgroundMousedownForSelectionBox(event) {
   event.preventDefault();
-  currentSurface.classList.add('dragging-selection-box');
+  document.body.classList.add('dragging-selection-box');
   if (!event.shiftKey) {
     deselectAll();
     if (document.activeElement) document.activeElement.blur();
   } else {
     selectedNodesToPreserve = new Set(currentSurface.getElementsByClassName('selected'));
   }
+  selectionBox.anchorPosition = undefined;
   handleMouseDrag(event, {
     mousemove: function(cursor) {
+      var cursorPosition = {x: pxToGridX(cursor.positionOffset.x), y: pxToGridY(cursor.positionOffset.y)};
+      if (cursorPosition.x < 0) cursorPosition.x = 0;
+      if (cursorPosition.y < 0) cursorPosition.y = 0;
+      if (!selectionBox.anchorPosition) {
+        selectionBox.anchorPosition = {x: pxToGridX(cursorPositionOffsetOnMouseDragStart.x), y: pxToGridY(cursorPositionOffsetOnMouseDragStart.y)};
+      }
       setSelectionBox(
-        {
-          left:   Math.min(pxToGridX(cursorPositionOffsetOnMouseDragStart.x), pxToGridX(cursor.positionOffset.x)),
-          top:    Math.min(pxToGridY(cursorPositionOffsetOnMouseDragStart.y), pxToGridY(cursor.positionOffset.y)),
-          right:  Math.max(pxToGridX(cursorPositionOffsetOnMouseDragStart.x), pxToGridX(cursor.positionOffset.x)),
-          bottom: Math.max(pxToGridY(cursorPositionOffsetOnMouseDragStart.y), pxToGridY(cursor.positionOffset.y)),
-        },
+        getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition),
         selectedNodesToPreserve
       );
       selectionBox.classList.remove('hidden');
-      var closestNode = getClosestNodeTo(cursor.position, [...currentSurface.querySelectorAll('.node.selected')]);
-      if (closestNode) {
-        closestNode.focus();
-      } else {
-        if (document.activeElement) document.activeElement.blur();
-      }
+      setCursorPosition(cursorPosition);
     },
     mouseup: function() {
       selectedNodesToPreserve = null;
-      currentSurface.classList.remove('dragging-selection-box');
+      document.body.classList.remove('dragging-selection-box');
     }
   });
   selectionBox.classList.add('hidden');
@@ -170,34 +167,51 @@ function handleNodeMousedown(event) {
     handleMouseDrag(event, {
       mousemove: function(mouse) {
         document.body.classList.add('dragging');
-        // Check if dragging to a valid position
+        var cursorPosition = {
+          x: cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x),
+          y: cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y),
+        }
+        var cursorDelta = {
+          x: cursorPosition.x - cursorStartPosition.x,
+          y: cursorPosition.y - cursorStartPosition.y,
+        }
+        // Don't allow dragging off the edge of the document
+        var leftmost = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.x + cursorDelta.x));
+        var topmost  = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.y + cursorDelta.y));
+        if (leftmost < 0) {
+          cursorPosition.x += -leftmost;
+          cursorDelta.x    += -leftmost;
+        }
+        if (topmost < 0) {
+          cursorPosition.y += -topmost;
+          cursorDelta.y    += -topmost;
+        }
+        // Don't allow dragging to where nodes would overlap with other nodes
         for (let node of [...nodesToDrag]) {
           var newNodeBoundingBox = {
-            left:   node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x),
-            top:    node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y),
-            right:  node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x) + parseInt(node.style.width),
-            bottom: node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y) + 20,
+            left:   node.dragStartPosition.x + cursorDelta.x,
+            top:    node.dragStartPosition.y + cursorDelta.y,
+            right:  node.dragStartPosition.x + cursorDelta.x + parseInt(node.style.width),
+            bottom: node.dragStartPosition.y + cursorDelta.y + 20,
           }
-          if (newNodeBoundingBox.left < 0) return;
-          if (newNodeBoundingBox.top < 0) return;
-          if (getNodesIntersectingBox(newNodeBoundingBox, [...nodesNotBeingDragged]).length !== 0) return;
+          if (getNodesIntersectingBox(newNodeBoundingBox, [...nodesNotBeingDragged]).length !== 0) {
+            return;
+          }
         }
         // Move nodes
         var affectedLinks = new Set();
         for (let node of nodesToDrag) {
-          node.style.left = (node.dragStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
-          node.style.top  = (node.dragStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
+          node.style.left = (node.dragStartPosition.x + cursorDelta.x) + 'px';
+          node.style.top  = (node.dragStartPosition.y + cursorDelta.y) + 'px';
           for (let link of node.links) affectedLinks.add(link);
         }
         for (let link of affectedLinks) layoutLink(link);
         // Move cursor
-        cursor.style.left = (cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x)) + 'px';
-        cursor.style.top  = (cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y)) + 'px';
-        resetCursorBlink();
+        setCursorPosition(cursorPosition);
         // Move selection box
         if (selectionBoxStartPosition) {
-          selectionBox.style.left = (selectionBoxStartPosition.left + pxToGridX(mouse.deltaTotal.x)) + 'px';
-          selectionBox.style.top  = (selectionBoxStartPosition.top  + pxToGridY(mouse.deltaTotal.y)) + 'px';
+          selectionBox.style.left = (selectionBoxStartPosition.left + pxToGridX(cursorPosition.x - cursorStartPosition.x)) + 'px';
+          selectionBox.style.top  = (selectionBoxStartPosition.top  + pxToGridY(cursorPosition.y - cursorStartPosition.y)) + 'px';
         }
       },
       mouseup: function(event, mouse) {

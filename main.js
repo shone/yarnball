@@ -80,16 +80,17 @@ function getNodeAtCursor(surface) {
 }
 function moveCursorToBlockEdge(direction, options) {
   options = options || {};
+  var cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   var nodesInRow = [...currentSurface.getElementsByClassName('node')].filter(node => node.style.top === cursor.style.top);
   if (options.dragSelectionBox && selectionBox.classList.contains('hidden')) {
-    selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+    selectionBox.anchorPosition = cursorPosition;
   }
   if (direction === 'left') {
-    var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < parseInt(cursor.style.left));
+    var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < cursorPosition.x);
     if (nodesToLeft.length > 0) {
       nodesToLeft.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
       var node = nodesToLeft[nodesToLeft.length - 1];
-      if ((parseInt(cursor.style.left) - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+      if ((cursorPosition.x - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
         moveCursorToNode(node);
       } else {
         for (var i = nodesToLeft.length - 2; i >= 0; i--) {
@@ -101,10 +102,10 @@ function moveCursorToBlockEdge(direction, options) {
         moveCursorToNode(node);
       }
     } else {
-      setCursorPosition({x: 0, y: parseInt(cursor.style.top)});
+      setCursorPosition({x: 0, y: cursorPosition.y});
     }
   } else if (direction === 'right') {
-    var nodesToRight = nodesInRow.filter(node => parseInt(node.style.left) > parseInt(cursor.style.left));
+    var nodesToRight = nodesInRow.filter(node => parseInt(node.style.left) > cursorPosition.x);
     if (nodesToRight.length === 0) {
       return;
     }
@@ -124,22 +125,22 @@ function moveCursorToBlockEdge(direction, options) {
     }
   }
   if (options.dragSelectionBox) {
-    var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, parseInt(cursor.style.left));
-    var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, parseInt(cursor.style.top));
-    var selectionBoxWidth  = Math.max(0, Math.abs(selectionBox.anchorPosition.x - parseInt(cursor.style.left)));
-    var selectionBoxHeight = Math.max(0, Math.abs(selectionBox.anchorPosition.y - parseInt(cursor.style.top)));
-    var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
-    var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
-    setSelectionBox({
-      left:   selectionBoxLeft,
-      top:    selectionBoxTop,
-      right:  selectionBoxRight,
-      bottom: selectionBoxBottom,
-    });
+    cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+    setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition));
     selectionBox.classList.remove('hidden');
   } else {
     deselectAll();
   }
+}
+
+function getBoundingBoxForPoints(pointA, pointB) {
+  var left   = Math.min(pointA.x, pointB.x);
+  var top    = Math.min(pointA.y, pointB.y);
+  var right  = Math.max(pointA.x, pointB.x);
+  var bottom = Math.max(pointA.y, pointB.y);
+  var width  = right - left;
+  var height = bottom - top;
+  return {left, top, right, bottom, width, height};
 }
 
 function getNodeAtPosition(position, surface) {
@@ -1074,18 +1075,7 @@ function moveCursorInDirection(direction, options) {
     if (selectionBox.classList.contains('hidden')) {
       selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
     }
-    var selectionBoxLeft   = Math.min(selectionBox.anchorPosition.x, cursorX);
-    var selectionBoxTop    = Math.min(selectionBox.anchorPosition.y, cursorY);
-    var selectionBoxWidth  = Math.max(0, Math.abs(selectionBox.anchorPosition.x - cursorX));
-    var selectionBoxHeight = Math.max(0, Math.abs(selectionBox.anchorPosition.y - cursorY));
-    var selectionBoxRight  = selectionBoxLeft + selectionBoxWidth;
-    var selectionBoxBottom = selectionBoxTop  + selectionBoxHeight;
-    setSelectionBox({
-      left:   selectionBoxLeft,
-      top:    selectionBoxTop,
-      right:  selectionBoxRight,
-      bottom: selectionBoxBottom,
-    });
+    setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, {x: cursorX, y: cursorY}));
     selectionBox.classList.remove('hidden');
   } else {
     deselectAll();

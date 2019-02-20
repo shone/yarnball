@@ -27,16 +27,11 @@ body {
   margin:  0;
 }
 
-body.dragging:after {
-  content: "";
-  display: block;
-  position: fixed;
-  left:   0;
-  top:    0;
-  right:  0;
-  bottom: 0;
-  z-index: 3;
+body.dragging .surface {
   cursor: move;
+}
+body.dragging :not(.surface) {
+  pointer-events: none;
 }
 
 .surface {
@@ -176,8 +171,7 @@ body.dragging:after {
   pointer-events: none;
 }
 
-.surface.dragging-selection-box .node,
-.surface.dragging-selection-box .link {
+body.dragging-selection-box :not(.surface) {
   pointer-events: none;
 }
 
