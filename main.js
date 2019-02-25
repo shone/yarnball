@@ -63,6 +63,7 @@ function evaluateCursorPosition() {
   var nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
+    nodeUnderCursor.select();
   }
   for (let node of document.getElementsByClassName('node')) {
     node.classList.toggle('cursor-at-instance', nodeUnderCursor && node.dataset.id === nodeUnderCursor.dataset.id);
