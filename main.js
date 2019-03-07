@@ -517,6 +517,296 @@ function getAllAdjacentNodesInDirection(sourceNodes, direction) {
   return adjacentNodes;
 }
 
+function getNodesOrganizedIntoRows(nodes) {
+  var rows = [];
+  for (const node of nodes) {
+    var nodeY = parseInt(node.style.top);
+    var row = nodeY / 32;
+    rows[row] = rows[row] || [];
+    rows[row].push(node);
+  }
+  return rows;
+}
+
+function getNodesOrganizedIntoColumns(nodes) {
+  var columns = [];
+  for (const node of nodes) {
+    var nodeX = parseInt(node.style.left);
+    var nodeWidth = parseInt(node.style.width);
+    var column = nodeX / 64;
+    var columnCount = pxToGridX(nodeWidth) / 64;
+    for (let c=0; c < columnCount; c++) {
+      columns[column+c] = columns[column+c] || [];
+      columns[column+c].push(node);
+    }
+  }
+  return columns;
+}
+
+function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
+  if (direction === 'left' || direction === 'right') {
+    var rows = getNodesOrganizedIntoRows(nodes);
+    var touchingNodes = [];
+    for (const row of rows) {
+      if (!row) {
+        continue;
+      }
+      if (direction === 'left') {
+        row.sort((a,b) => parseInt(a.style.left) - parseInt(b.style.left));
+      } else if (direction === 'right') {
+        row.sort((a,b) => parseInt(b.style.left) - parseInt(a.style.left));
+      }
+      var lastNodeEdge = null;
+      var lastNodeWasSourceNode = null;
+      var currentBlock = [];
+      for (const node of row) {
+        var leftEdge = parseInt(node.style.left);
+        var rightEdge = leftEdge + parseInt(node.style.width);
+        var edge = (direction === 'left') ? leftEdge : rightEdge;
+        var isSourceNode = sourceNodes.has(node);
+        if (lastNodeEdge !== null && Math.abs(edge - lastNodeEdge) < 20) {
+          if (isSourceNode) {
+            touchingNodes.push(...currentBlock);
+            currentBlock = [];
+          } else {
+            currentBlock.push(node);
+          }
+        } else {
+          currentBlock = [node];
+        }
+        lastNodeEdge = (direction === 'left') ? rightEdge : leftEdge;
+        lastNodeWasSourceNode = isSourceNode;
+      }
+    }
+    return touchingNodes;
+  } else if (direction === 'up' || direction === 'down') {
+    var touchingNodes = new Set();
+    var columns = getNodesOrganizedIntoColumns(nodes);
+    for (const column of columns) {
+      if (!column) {
+        continue;
+      }
+      if (direction === 'up') {
+        column.sort((a,b) => parseInt(b.style.top) - parseInt(a.style.top));
+      } else if (direction === 'down') {
+        column.sort((a,b) => parseInt(a.style.top) - parseInt(b.style.top));
+      }
+    }
+    var maxY = Math.max(...columns.filter(column => column).map(column => parseInt((direction === 'down' ? column[column.length-1] : column[0]).style.top)));
+    var rowCount = (maxY + 32) / 32;
+    for (let row = 0; row < rowCount; row++) {
+      var normalizedRow = direction === 'down' ? row : (rowCount - row);
+      var rowPx = (normalizedRow * 32) + 'px';
+      for (const column of columns) {
+        if (!column) {
+          continue;
+        }
+        var nodeIndex = column.findIndex(node => node.style.top === rowPx);
+        if (nodeIndex >= 1) {
+          var node     = column[nodeIndex];
+          var prevNode = column[nodeIndex-1];
+          if (Math.abs(parseInt(prevNode.style.top) - parseInt(node.style.top)) === 32) {
+            if (sourceNodes.has(prevNode) || touchingNodes.has(prevNode)) {
+              touchingNodes.add(node);
+            }
+          }
+        }
+      }
+    }
+    return touchingNodes;
+  }
+}
+
+function getNodeGroups() {
+  var visitedNodes = new Set();
+  var groups = [];
+  for (const node of currentSurface.getElementsByClassName('node')) {
+    if (!visitedNodes.has(node)) {
+      var group = new Set();
+      var nodesToVisit = new Set([node]);
+      while (nodesToVisit.size > 0) {
+        var visitingNode = nodesToVisit.values().next().value;
+        nodesToVisit.delete(visitingNode);
+        group.add(visitingNode);
+        visitedNodes.add(visitingNode);
+        for (let link of visitingNode.links) {
+          if (!group.has(link.from)) {
+            nodesToVisit.add(link.from);
+          }
+          if (!group.has(link.via)) {
+            nodesToVisit.add(link.via);
+          }
+          if (!group.has(link.to)) {
+            nodesToVisit.add(link.to);
+          }
+        }
+      }
+      groups.push(group);
+    }
+  }
+  return groups;
+}
+
+function getGroupsOrganizedIntoRows(groups) {
+  var rows = [];
+  for (const group of groups) {
+    for (const node of group) {
+      var nodeY = parseInt(node.style.top);
+      var row = nodeY / 32;
+      rows[row] = rows[row] || [];
+      rows[row].push({group, node});
+    }
+  }
+  return rows;
+}
+
+function getGroupsOrganizedIntoColumns(groups) {
+  var columns = [];
+  for (const group of groups) {
+    for (const node of group) {
+      var nodeX = parseInt(node.style.left);
+      var nodeWidth = parseInt(node.style.width);
+      var column = nodeX / 64;
+      var columnCount = pxToGridX(nodeWidth) / 64;
+      for (let c=0; c < columnCount; c++) {
+        columns[column+c] = columns[column+c] || [];
+        columns[column+c].push({group, node});
+      }
+    }
+  }
+  return columns;
+}
+
+function getTouchingGroupsInDirection(sourceNodes, direction, groups) {
+  groups = groups || getNodeGroups();
+
+  if (direction === 'left' || direction === 'right') {
+    var rows = getGroupsOrganizedIntoRows(groups);
+
+    for (const row of rows) {
+      if (!row) {
+        continue;
+      }
+      if (direction === 'left') {
+        row.sort((a,b) => parseInt(a.node.style.left) - parseInt(b.node.style.left));
+      } else if (direction === 'right') {
+        row.sort((a,b) => parseInt(b.node.style.left) - parseInt(a.node.style.left));
+      }
+      var lastNodeEdge = null;
+      var lastNodeGroup = null;
+      for (const entry of row) {
+        var leftEdge = parseInt(entry.node.style.left);
+        var rightEdge = leftEdge + parseInt(entry.node.style.width);
+        var edge = (direction === 'left') ? leftEdge : rightEdge;
+        if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
+          if (Math.abs(edge - lastNodeEdge) < 20) {
+            entry.group.touches = entry.group.touches || new Set();
+            entry.group.touches.add(lastNodeGroup);
+          }
+        }
+        lastNodeEdge = (direction === 'left') ? rightEdge : leftEdge;
+        lastNodeGroup = entry.group;
+      }
+    }
+  } else if (direction === 'up' || direction === 'down') {
+    var columns = getGroupsOrganizedIntoColumns(groups);
+
+    for (const column of columns) {
+      if (!column) {
+        continue;
+      }
+      if (direction === 'up') {
+        column.sort((a,b) => parseInt(a.node.style.top) - parseInt(b.node.style.top));
+      } else if (direction === 'down') {
+        column.sort((a,b) => parseInt(b.node.style.top) - parseInt(a.node.style.top));
+      }
+      var lastNodeEdge = null;
+      var lastNodeGroup = null;
+      for (const entry of column) {
+        var topEdge = parseInt(entry.node.style.top);
+        var bottomEdge = topEdge + 32;
+        var edge = (direction === 'up') ? topEdge : bottomEdge;
+        if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
+          if (edge === lastNodeEdge) {
+            entry.group.touches = entry.group.touches || new Set();
+            entry.group.touches.add(lastNodeGroup);
+          }
+        }
+        lastNodeEdge = (direction === 'up') ? bottomEdge : topEdge;
+        lastNodeGroup = entry.group;
+      }
+    }
+  }
+
+  var sourceGroups = groups.filter(group => { for (const node of group) if (sourceNodes.has(node)) return true; });
+  var visitedGroups = new Set();
+  var groupsToVisit = new Set(sourceGroups);
+  while (groupsToVisit.size > 0) {
+    var group = groupsToVisit.values().next().value;
+    groupsToVisit.delete(group);
+    visitedGroups.add(group);
+    if (group.touches) {
+      for (const touchingGroup of group.touches) {
+        if (!visitedGroups.has(touchingGroup)) {
+          groupsToVisit.add(touchingGroup);
+        }
+      }
+    }
+  }
+  return visitedGroups;
+}
+
+function doGroupsTouch(groupA, groupB, direction) {
+  if (direction === 'left'/* || direction === 'right'*/) {
+    var groupAMinY = Math.min(...[...groupA].map(node => parseInt(node.style.top)));
+    var groupAMaxY = Math.max(...[...groupA].map(node => parseInt(node.style.top) + 32));
+
+    var groupBMinY = Math.min(...[...groupB].map(node => parseInt(node.style.top)));
+    var groupBMaxY = Math.max(...[...groupB].map(node => parseInt(node.style.top) + 32));
+
+    if ((groupAMinY > groupBMaxY) || (groupAMaxY < groupBMinY)) {
+      return false;
+    }
+
+    var minY = Math.min(groupAMinY, groupBMinY);
+    var maxY = Math.max(groupAMaxY, groupBMaxY);
+    var rowCount = (maxY - minY) / 32;
+    var rows = [];
+
+    for (let node of groupA) {
+      var nodeY = parseInt(node.style.top);
+      var row = (nodeY - minY) / 32;
+      rows[row] = rows[row] || [];
+      rows[row].push({group: 'a', node: node});
+    }
+    for (let node of groupB) {
+      var nodeY = parseInt(node.style.top);
+      var row = (nodeY - minY) / 32;
+      rows[row] = rows[row] || [];
+      rows[row].push({group: 'b', node: node});
+    }
+
+    for (let row of rows) {
+      if (!row) {
+        continue;
+      }
+      row.sort((a,b) => parseInt(a.node.style.left) - parseInt(b.node.style.left));
+      var lastNodeEdge = null;
+      var lastNodeGroup = null;
+      for (let entry of row) {
+        var leftEdge = parseInt(entry.node.style.left);
+        var rightEdge = leftEdge + parseInt(entry.node.style.width);
+        if (lastNodeEdge !== null && (entry.group !== lastNodeGroup) && ((leftEdge - lastNodeEdge) < 20)) {
+          return true;
+        }
+        lastNodeEdge = rightEdge;
+        lastNodeGroup = entry.group;
+      }
+    }
+  }
+  return false;
+}
+
 function getNodesIntersectingBox(box, nodes) {
   nodes = nodes || [...currentSurface.getElementsByClassName('node')];
   return nodes.filter(node => {
@@ -922,8 +1212,38 @@ function moveSelectionInDirection(direction) {
   if (nodesToMove.size === 0) return;
 
   var affectedLinks = new Set();
-  var adjacentNodes = getAllAdjacentNodesInDirection(nodesToMove, direction);
-  adjacentNodes.forEach(node => nodesToMove.add(node));
+
+  var groups = getNodeGroups();
+
+  var selectedGroups = groups.filter(group => [...group].some(node => node.classList.contains('selected') || document.activeElement === node));
+  var selectedGroupsNodes = [];
+  for (const group of selectedGroups) {
+    selectedGroupsNodes.push(...group);
+  }
+  var touchingNodes = getTouchingNodesInDirection(nodesToMove, direction, selectedGroupsNodes);
+  for (const node of touchingNodes) {
+    nodesToMove.add(node);
+  }
+
+  var unselectedGroups = groups.filter(group => [...group].every(node => !node.classList.contains('selected') && document.activeElement !== node));
+  for (const group of selectedGroups) {
+    var newGroup = new Set();
+    for (const node of group) {
+      if (node.classList.contains('selected') || document.activeElement === node) {
+        newGroup.add(node);
+      }
+    }
+    unselectedGroups.push(newGroup);
+  }
+
+  var touchingGroups = getTouchingGroupsInDirection(nodesToMove, direction, unselectedGroups);
+  for (const group of touchingGroups) {
+    if ([...group].every(node => !nodesToMove.has(node))) {
+      for (const node of group) {
+        nodesToMove.add(node);
+      }
+    }
+  }
   var moveDelta = {
     left:  {x: -64, y:   0},
     right: {x:  64, y:   0},
