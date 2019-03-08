@@ -154,11 +154,11 @@ function compileFunctionCall(node) {
 }
 
 function compileAssignment(node) {
+  var lvalue = node;
   var rvalue = graph.findNodeVia(node, _assign);
   if (!rvalue) {
     return null;
   }
-  var lvalue = graph.findNodeVia(node, _is) || node;
   return `${compileExpression(lvalue)} = ${compileExpression(rvalue)}`;
 }
 
