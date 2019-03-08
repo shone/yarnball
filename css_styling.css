@@ -1,8 +1,10 @@
 [data-id='348b6fa30fc94e55378565889927dc7e'], /* rules */
+[data-id='7b4d5216c9d438a6cfca7259ce5940d2'], /* -> */
 [data-id='9adf38d5f8209523ab285d0343097f8f'], /* body */
-[data-id='79a0b037275b58db64688c341db0e45f'], /* id */
-[data-id='17fb4cef59e502e243803bb54706b29b'], /* class */
+[data-id='79a0b037275b58db64688c341db0e45f'], /* # */
+[data-id='17fb4cef59e502e243803bb54706b29b'], /* . */
 [data-id='55b040349bd16be47eb934032fd494fa'], /* tag */
+[data-id='2e12c3086297f40f93a7d05ee6f06ccb'], /* : */
 [data-id='f86422d6dd3fad8dca7dca5e6dad8324'], /* display */
 [data-id='fc53fcb152c2a8210bc6e7a81cbdfda6'], /* background-color */
 [data-id='cd01ae587b327df6e77b0759e4b7c7c3'], /* padding */
@@ -17,8 +19,10 @@
 [data-id='c14e368b8aeb868c6e906fbb06f75d22'], /* flex-direction */
 [data-id='a29962df9606c22cc38b8b793c119682'], /* align-items */
 [data-id='6cd1aa156dd0e09ea1646c5d1cea796f'], /* justify-content */
+[data-id='86812720a030b393cc19a754898e6832'], /* content */
 [data-id='8623f6638bbdc2d25c773a98711a17c3'], /* center */
-[data-id='625e8195abfcbc9d2aedad118c23bfbc']  /* column */
+[data-id='625e8195abfcbc9d2aedad118c23bfbc'], /* column */
+[data-id='60664bc282ddd29aebccae7f5c3f784e']  /* visibility */
 {
   color: #006ebd;
   font-weight: bold;

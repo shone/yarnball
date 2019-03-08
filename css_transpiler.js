@@ -1,12 +1,13 @@
 'use strict';
 
-const _rules   = '348b6fa30fc94e55378565889927dc7e'; builtinNameMatches.push({name: 'rules',   id: _rules});
-const _body    = '9adf38d5f8209523ab285d0343097f8f'; builtinNameMatches.push({name: 'body',    id: _body});
+const _rules    = '348b6fa30fc94e55378565889927dc7e'; builtinNameMatches.push({name: 'rules',   id: _rules});
+const _nextPart = '7b4d5216c9d438a6cfca7259ce5940d2'; builtinNameMatches.push({name: '->',      id: _nextPart});
 
 const selectors = new Map([
-  ['id',    '79a0b037275b58db64688c341db0e45f'],
-  ['class', '17fb4cef59e502e243803bb54706b29b'],
-  ['tag',   '55b040349bd16be47eb934032fd494fa'],
+  ['#',      '79a0b037275b58db64688c341db0e45f'],
+  ['.',      '17fb4cef59e502e243803bb54706b29b'],
+  ['tag',    '55b040349bd16be47eb934032fd494fa'],
+  [':',      '2e12c3086297f40f93a7d05ee6f06ccb'],
 ]);
 for (let [name, id] of selectors) {
   builtinNameMatches.push({name: name, id: id});
@@ -27,6 +28,8 @@ const properties = new Map([
   ['flex-direction',   'c14e368b8aeb868c6e906fbb06f75d22'],
   ['align-items',      'a29962df9606c22cc38b8b793c119682'],
   ['justify-content',  '6cd1aa156dd0e09ea1646c5d1cea796f'],
+  ['content',          '86812720a030b393cc19a754898e6832'],
+  ['visibility',       '60664bc282ddd29aebccae7f5c3f784e'],
 ]);
 for (let [name, id] of properties) {
   builtinNameMatches.push({name: name, id: id});
@@ -48,27 +51,7 @@ function transpileCss(node) {
 function transpileCssRule(node) {
   var declarations = '';
 
-  var selector = '';
-  if (node === _body) {
-    selector = 'body';
-  }
-  if (!selector) {
-    for (let [name, id] of selectors) {
-      var value = graph.findNodeVia(node, id);
-      if (value) {
-        if (name === 'id') {
-          selector += `[id='${value}']`;
-        } else if (name === 'class') {
-          selector += `.${graph.getNameForId(value)}`;
-        } else if (name === 'tag') {
-          selector += graph.getNameForId(value);
-        }
-      }
-    }
-  }
-  if (!selector) {
-    selector = `[id="${node}"]`;
-  }
+  var selector = transpileCssSelector(node);
 
   for (let [property, id] of properties) {
     var value = graph.findNodeVia(node, id);
@@ -80,3 +63,29 @@ function transpileCssRule(node) {
 
   return `${selector} { ${declarations} }`;
 }
+
+function transpileCssSelector(node) {
+  var parts = graph.followListNodes(node, _nextPart);
+  return parts.map(part => {
+    var partString = '';
+    for (let [name, id] of selectors) {
+      var value = graph.findNodeVia(part, id);
+      if (value) {
+        if (name === '#') {
+          partString += `[id='${value}']`;
+        } else if (name === '.') {
+          partString += `.${graph.getNameForId(value)}`;
+        } else if (name === 'tag') {
+          partString += graph.getNameForId(value);
+        } else if (name === ':') {
+          partString += `:${graph.getNameForId(value)}`;
+        }
+      }
+    }
+    if (!partString) {
+      partString = `[id="${part}"]`;
+    }
+    return partString;
+  }).join('');
+}
+
