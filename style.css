@@ -116,6 +116,9 @@ body.dragging :not(.surface) {
 .node.highlighted {
   background-color: #ffff98;
 }
+.node.highlight-for-connected {
+  border: 2px solid purple;
+}
 .node.mouse-over-instance {
   background-color: #888;
 }

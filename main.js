@@ -32,20 +32,42 @@ document.getElementById('help-button').addEventListener('click', toggleHelp);
 var cursor = currentSurface.getElementsByClassName('cursor')[0];
 function setCursorPosition(position) {
   resetCursorBlink();
-  if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) return;
+
+  if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) {
+    return;
+  }
+  if (position.x < 0 || position.y < 0) {
+    throw `Invalid cursor position: {x: ${position.x}, y: ${position.y}}`;
+  }
+
   cursor.style.left = position.x + 'px';
   cursor.style.top  = position.y + 'px';
+
   if (linkBeingCreated) {
     layoutLink(linkBeingCreated, {x: position.x + 32, y: position.y + 16});
   }
+
   var nodeUnderCursor = getNodeAtCursor();
-  for (let link of [...currentSurface.getElementsByClassName('link')]) {
-    var isConnected = link.from === nodeUnderCursor || link.via === nodeUnderCursor || link.to === nodeUnderCursor;
-    link.classList.toggle('highlight-for-connected', isConnected);
-    if (isConnected) {
+
+  // Highlighting
+  for (const element of [...currentSurface.getElementsByClassName('highlight-for-connected')]) {
+    element.classList.remove('highlight-for-connected');
+  }
+  if (nodeUnderCursor) {
+    var nodesToHighlight = new Set();
+    for (const link of nodeUnderCursor.links) {
+      link.classList.add('highlight-for-connected');
       link.parentElement.appendChild(link); // Bring to front
+      nodesToHighlight.add(link.from);
+      nodesToHighlight.add(link.via);
+      nodesToHighlight.add(link.to);
+    }
+    for (const node of nodesToHighlight) {
+      node.classList.add('highlight-for-connected');
     }
   }
+
+  // Scroll into view
   if (currentSurface === mainSurface) {
     if (nodeUnderCursor) {
       nodeUnderCursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
@@ -53,7 +75,9 @@ function setCursorPosition(position) {
       cursor.scrollIntoView({block: 'nearest', inline: 'nearest'});
     }
   }
+
   evaluateCursorPosition();
+
   nameMatchPanel.remove();
 }
 function moveCursorToNode(node) {
