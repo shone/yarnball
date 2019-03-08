@@ -10,6 +10,7 @@ const _script      = '144d24c36274780d9c872d59f675a162'; builtinNameMatches.push
 const _style       = '3049868f3e58a4e7046fd4f1234e17f4'; builtinNameMatches.push({name: 'style',   id: _style});
 const _button      = '0402df62de7d3950f811d38036bee89e'; builtinNameMatches.push({name: 'button',  id: _button});
 const _id          = '573465db3ae28ac8e42d716faa44ff4a'; builtinNameMatches.push({name: 'id',      id: _id});
+const _class       = '6c8d5c7756858aa43f136630c279dbe4'; builtinNameMatches.push({name: 'class',   id: _class});
 
 
 var launchedHtmlWindow = null;
@@ -91,6 +92,11 @@ function transpileElement(node) {
     attributes.set('id', graph.getNameForId(id));
   } else {
     attributes.set('id', node);
+  }
+
+  var class_ = graph.findNodeVia(node, _class);
+  if (class_) {
+    attributes.set('class', graph.getNameForId(class_));
   }
 
   var attributesText = '';
