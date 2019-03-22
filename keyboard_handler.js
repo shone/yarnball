@@ -55,6 +55,7 @@ var keyboard_handler = {
   AltARROWDOWN:   event => scrollMainSurfaceInDirection('down'),
 
   DELETE:     event => deleteSelection(),
+  BACKSPACE:  event => backspace(event),
   ESCAPE:     event => cancelCurrentModeOrOperation(),
 
   TAB:        event => executeLinkMode(),

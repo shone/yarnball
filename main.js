@@ -30,6 +30,9 @@ document.getElementById('help-button').addEventListener('click', toggleHelp);
 // Cursor
 
 var cursor = currentSurface.getElementsByClassName('cursor')[0];
+function getCursorPosition() {
+  return {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+}
 function setCursorPosition(position) {
   resetCursorBlink();
 
@@ -349,31 +352,35 @@ function deleteSelection() {
     focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
   }
   var affectedLinks = deleteElements(elementsToDelete);
-  var cursorPositionBefore = {
-    x: parseInt(cursor.style.left),
-    y: parseInt(cursor.style.top),
-  }
-  if (focusedNodePosition) {
-    var closestNode = getClosestNodeTo(focusedNodePosition);
-    if (closestNode) {
-      setCursorPosition({
-        x: pxToGridX(parseInt(closestNode.style.left)),
-        y: pxToGridY(parseInt(closestNode.style.top)),
-      });
-    }
-  }
-  var cursorPositionAfter = {
-    x: parseInt(cursor.style.left),
-    y: parseInt(cursor.style.top),
-  }
   recordAction(
     new deleteElementsAction(new Set([...elementsToDelete, ...affectedLinks])),
     {
-      cursor: {before: cursorPositionBefore, after: cursorPositionAfter},
       selectionBox: {before: getSelectionBox(), after: null},
     }
   );
   selectionBox.classList.add('hidden');
+}
+
+function backspace() {
+  if (currentSurface.getElementsByClassName('selected').length > 0) {
+    deleteSelection();
+  } else if (document.activeElement && document.activeElement.classList.contains('node')) {
+    var node = document.activeElement;
+    if (node.value !== '') {
+      setNodeName(node, node.value.slice(0, -1));
+    } else {
+      var affectedLinks = deleteElements([node]);
+      var oldCursorPosition = getCursorPosition();
+      var newCursorPosition = {x: Math.max(0, oldCursorPosition.x - 64), y: oldCursorPosition.y};
+      setCursorPosition(newCursorPosition);
+      recordAction(
+        new deleteElementsAction([node, ...affectedLinks]),
+        {cursor: {before: oldCursorPosition, after: newCursorPosition}}
+      );
+    }
+  } else {
+    setCursorPosition({x: Math.max(0, parseInt(cursor.style.left) - 64), y: parseInt(cursor.style.top)});
+  }
 }
 
 function cancelCurrentModeOrOperation() {
