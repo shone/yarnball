@@ -2,12 +2,15 @@
 
 var cursorPositionOnMouseDragStart          = null;
 var cursorPositionOffsetOnMouseDragStart    = null;
+var cursorOnTargetPositionStart             = null;
 var cursorPositionOnLastDragMousemove       = null;
 var cursorScreenPositionOnLastDragMousemove = null;
 
 function handlePointerDrag(event, options) {
+  var target = options.target !== undefined ? options.target : event.target;
   cursorPositionOnMouseDragStart          = { x: event.pageX,   y: event.pageY   };
   cursorPositionOffsetOnMouseDragStart    = { x: event.offsetX, y: event.offsetY };
+  cursorOnTargetPositionStart             = { x: target.scrollLeft + event.offsetX, y: target.scrollTop + event.offsetY };
   cursorScreenPositionOnLastDragMousemove = { x: event.screenX, y: event.screenY };
   cursorPositionOnLastDragMousemove = cursorPositionOnMouseDragStart;
   var lastCursorClientPosition = {x: event.clientX, y: event.clientY};
@@ -33,13 +36,13 @@ function handlePointerDrag(event, options) {
       var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
       var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
       var positionOffset = { x: cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
+      var positionOnTarget = { x: target.scrollLeft + cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: target.scrollTop + cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
       cursorPositionOnLastDragMousemove = position;
       cursorScreenPositionOnLastDragMousemove = positionScreen;
-      options.onmove({position, positionOffset, delta, deltaTotal, deltaScreen});
+      options.onmove({position, positionOffset, positionOnTarget, delta, deltaTotal, deltaScreen});
     }
     lastCursorClientPosition = cursorClientPosition;
   }
-  var target = options.target !== undefined ? options.target : event.target;
   var pointerId = event.pointerId;
   if (target) {
     target.setPointerCapture(pointerId);
@@ -183,12 +186,17 @@ function handleContextMenuForSurface(event) {
 }
 
 function handlePointerDownForSurface(event) {
+  let surface = event.target.closest('.surface');
+  if (surface) {
+    setCurrentSurface(surface);
+  }
+
   // Middle mouse button drag
   if (event.button === 1) {
     event.preventDefault();
     document.body.classList.add('dragging');
     handlePointerDrag(event, {
-      onmove: cursor => window.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y),
+      onmove: cursor => surface.scrollBy(-cursor.deltaScreen.x, -cursor.deltaScreen.y),
       onup: event => {
         event.preventDefault();
         document.body.classList.remove('dragging');
@@ -198,17 +206,13 @@ function handlePointerDownForSurface(event) {
     return false;
   }
 
-  var surface = event.target.closest('.surface');
-  if (surface) {
-    setCurrentSurface(surface);
-  }
-
   // Left button down on surface
   if (event.button === 0 && event.target.classList.contains('surface')) {
+    event.preventDefault();
     setCurrentSurface(event.target);
     setCursorPosition({
-      x: pxToGridX(event.offsetX),
-      y: pxToGridY(event.offsetY),
+      x: pxToGridX(surface.scrollLeft + event.offsetX),
+      y: pxToGridY(surface.scrollTop  + event.offsetY),
     });
     selectionBox.classList.add('hidden');
 
@@ -223,11 +227,11 @@ function handlePointerDownForSurface(event) {
     handlePointerDrag(event, {
       onmove: function(cursor) {
         document.body.classList.add('dragging-selection-box');
-        var cursorPosition = {x: pxToGridX(cursor.positionOffset.x), y: pxToGridY(cursor.positionOffset.y)};
+        var cursorPosition = {x: pxToGridX(cursor.positionOnTarget.x), y: pxToGridY(cursor.positionOnTarget.y)};
         if (cursorPosition.x < 0) cursorPosition.x = 0;
         if (cursorPosition.y < 0) cursorPosition.y = 0;
         if (!selectionBox.anchorPosition) {
-          selectionBox.anchorPosition = {x: pxToGridX(cursorPositionOffsetOnMouseDragStart.x), y: pxToGridY(cursorPositionOffsetOnMouseDragStart.y)};
+          selectionBox.anchorPosition = {x: pxToGridX(cursorOnTargetPositionStart.x), y: pxToGridY(cursorOnTargetPositionStart.y)};
         }
         setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition), selectedNodesToPreserve);
         selectionBox.classList.remove('hidden');
@@ -257,7 +261,7 @@ function handlePointerDownForSurface(event) {
         }
         window.removeEventListener('mouseover', handleMouseover);
       },
-      target: null
+      target: surface
     });
     function handleMouseover(event) {
       if (event.target.classList.contains('node') && ![link.from, link.via, link.to].includes(event.target)) {
@@ -292,11 +296,6 @@ function handlePointerDownForSurface(event) {
       event.target.classList.add('selected');
     }
     return false;
-  }
-
-  // Mouse button down on surface
-  if (event.target.classList.contains('surface')) {
-    handleBackgroundMousedownForSelectionBox(event);
   }
 };
 

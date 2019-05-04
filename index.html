@@ -25,168 +25,176 @@
     <div id="name-match-panel">
     </div>
 
-    <div id="main-surface" class="surface current">
-      <div class="nodes"></div>
-      <svg class="links"></svg>
-      <div class="selection-box hidden"></div>
-      <div class="cursor blinking" style="left: 0px; top: 0px;"></div>
+    <div id="primary-surfaces">
+      <div id="main-surface" class="surface current">
+        <div class="nodes"></div>
+        <svg class="links"></svg>
+        <div class="selection-box hidden"></div>
+        <div class="cursor blinking" style="left: 0px; top: 0px;"></div>
+      </div>
+
+      <div class="panels-container bottom">
+        <div class="headers">
+          <button data-panel="find">🔍 Find (Ctrl+F)</button>
+        </div>
+        <div class="panels">
+          <div class="panel surface" data-panel="find">
+            <div class="nodes"></div>
+            <svg class="links"></svg>
+            <div class="selection-box hidden"></div>
+            <div class="cursor" style="left: 0px; top: 0px;"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div id="find-panel" class="panel surface hidden">
-      <div class="nodes"></div>
-      <svg class="links"></svg>
-      <div class="selection-box hidden"></div>
-      <div class="cursor" style="left: 0px; top: 0px;"></div>
+    <div class="panels-container right">
+      <div class="headers">
+        <button data-panel="commands">Commands</button>
+        <button data-panel="help">Help</button>
+      </div>
+      <div class="panels">
+        <div class="panel" data-panel="commands">
+          <table>
+            <tr><td class="category-title" colspan="2">Create/Erase</td></tr>
+
+            <tr data-command="execute_link_mode" ><td>Execute link mode</td> <td><span>Tab</span></td></tr>
+
+            <tr data-command="create_instance_left" ><td>Create instance left </td> <td><span>Ctrl</span><span>Alt</span><span>←</span></td></tr>
+            <tr data-command="create_instance_right"><td>Create instance right</td> <td><span>Ctrl</span><span>Alt</span><span>→</span></td></tr>
+            <tr data-command="create_instance_up"   ><td>Create instance up   </td> <td><span>Ctrl</span><span>Alt</span><span>↑</span></td></tr>
+            <tr data-command="create_instance_down" ><td>Create instance down </td> <td><span>Ctrl</span><span>Alt</span><span>↓</span></td></tr>
+
+            <tr data-command="create_node_down" ><td>Create node<div><em>(down) </em></div></td> <td><span>Enter</span></td></tr>
+            <tr data-command="create_node_right"><td>Create node<div><em>(right)</em></div></td> <td><span>spacebar</span></td></tr>
+
+            <tr data-command="delete"    ><td>Delete   </td> <td><span>Del      </span></td></tr>
+            <tr data-command="backspace" ><td>Backspace</td> <td><span>Backspace</span></td></tr>
+
+            <tr data-command="cancel"><td>Cancel</td> <td><span>Esc</span></td></tr>
+
+            <tr data-command="make_unique"><td>Make node unique</td> <td><span>Ctrl</span><span>D</span></td></tr>
+
+            <tr data-command="isolate_selection"><td>Isolate selection</td> <td><span>Ctrl</span><span>E</span></td></tr>
+
+            <tr data-command="select_name_match_up"  ><td>Select name match (up)  </td> <td><span>PageUp  </span></td></tr>
+            <tr data-command="select_name_match_down"><td>Select name match (down)</td> <td><span>PageDown</span></td></tr>
+
+            <tr><td class="category-title" colspan="2">File</td></tr>
+
+            <tr data-command="save"    ><td>Save    </td> <td><span>Ctrl</span><span>S</span></td></tr>
+            <tr data-command="download"><td>Download</td> <td><span>Ctrl</span><span>Shift</span><span>S</span></td></tr>
+
+            <tr data-command="undo"><td>Undo</td> <td><span>Ctrl</span><span>Z</span></td></tr>
+            <tr data-command="redo"><td>Redo</td> <td><span>Ctrl</span><span>Shift</span><span>Z</span></td></tr>
+
+            <tr><td class="category-title" colspan="2">Clipboard</td></tr>
+
+            <tr data-command="copy"><td>Copy</td> <td><span>Ctrl</span><span>C</span></td></tr>
+            <tr data-command="cut" ><td>Cut </td> <td><span>Ctrl</span><span>X</span></td></tr>
+
+            <tr><td class="category-title" colspan="2">Cursor</td></tr>
+            
+            <tr data-command="move_cursor_left" > <td>Move cursor left </td> <td><span>←</span></td> </tr>
+            <tr data-command="move_cursor_right"> <td>Move cursor right</td> <td><span>→</span></td> </tr>
+            <tr data-command="move_cursor_up"   > <td>Move cursor up   </td> <td><span>↑</span></td> </tr>
+            <tr data-command="move_cursor_down" > <td>Move cursor down </td> <td><span>↓</span></td> </tr>
+            
+            <tr data-command="move_cursor_left_select" > <td>Move cursor left  <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>←</span></td> </tr>
+            <tr data-command="move_cursor_right_select"> <td>Move cursor right <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>→</span></td> </tr>
+            <tr data-command="move_cursor_up_select"   > <td>Move cursor up    <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>↑</span></td> </tr>
+            <tr data-command="move_cursor_down_select" > <td>Move cursor down  <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>↓</span></td> </tr>
+            
+            <tr data-command="move_cursor_left_block" ><td><div>Move cursor left</div><div><em>(block)</em></div></td> <td><span>Home</span></td></tr>
+            <tr data-command="move_cursor_right_block"><td><div>Move cursor right</div><div><em>(block)</em></div></td> <td><span>End</span></td></tr>
+            <tr data-command="move_cursor_left_block_select" ><td><div>Move cursor left  </div><div><em>(block, select)</em></div></td> <td><span>Shift</span><span>Home</span></td></tr>
+            <tr data-command="move_cursor_right_block_select"><td><div>Move cursor right </div><div><em>(block, select)</em></div></td> <td><span>Shift</span><span>End</span></td></tr>
+
+            <tr data-command="move_cursor_origin"><td><div>Move cursor to origin </div></td> <td><span>Ctrl</span><span>Home</span></td></tr>
+
+            <tr><td class="category-title" colspan="2">Selection</td></tr>
+
+            <tr data-command="select_all"  ><td>Select all  </td> <td><span>Ctrl</span><span>A</span></td></tr>
+            <tr data-command="deselect_all"><td>Deselect all</td> <td><span>Ctrl</span><span>Shift</span><span>A</span></td></tr>
+            <tr data-command="select_connected_at_cursor"><td>Select connected at cursor</td> <td><span>Ctrl</span><span>G</span></td></tr>
+            <tr data-command="select_instances_at_cursor"><td>Select instances at cursor</td> <td><span>Ctrl</span><span>Shift</span><span>I</span></td></tr>
+            <tr data-command="select_instances_at_cursor_connected"><td>Select instances at cursor<div><em>(connected)</em></div></td> <td><span>Ctrl</span><span>I</span></td></tr>
+            
+            <tr data-command="move_selection_left"  > <td>Move selection left  </td> <td><span>Ctrl</span><span>←</span></td> </tr>
+            <tr data-command="move_selection_right" > <td>Move selection right </td> <td><span>Ctrl</span><span>→</span></td> </tr>
+            <tr data-command="move_selection_up"    > <td>Move selection up    </td> <td><span>Ctrl</span><span>↑</span></td> </tr>
+            <tr data-command="move_selection_down"  > <td>Move selection down  </td> <td><span>Ctrl</span><span>↓</span></td> </tr>
+
+            <tr><td class="category-title" colspan="2">Find</td></tr>
+
+            <tr data-command="open_find_panel"> <td>Open find panel</td> <td><span>Ctrl</span><span>F</span></td> </tr>
+            <tr data-command="select_queried_nodes"> <td>Select queried nodes</td> <td><span>Ctrl</span><span>Enter</span></td> </tr>
+
+            <tr><td class="category-title" colspan="2">View</td></tr>
+
+            <tr data-command="move_view_left" > <td>Move view left </td> <td><span>Alt</span><span>←</span></td> </tr>
+            <tr data-command="move_view_right"> <td>Move view right</td> <td><span>Alt</span><span>→</span></td> </tr>
+            <tr data-command="move_view_up"   > <td>Move view up   </td> <td><span>Alt</span><span>↑</span></td> </tr>
+            <tr data-command="move_view_down" > <td>Move view down </td> <td><span>Alt</span><span>↓</span></td> </tr>
+
+            <tr><td class="category-title" colspan="2">Javascript transpiler</td></tr>
+
+            <tr data-command="log_js_source">  <td>Log JS source at cursor</td> <td><span>F8</span></td> </tr>
+            <tr data-command="run_js">         <td>Run JS at cursor       </td> <td><span>F9</span></td> </tr>
+            <tr data-command="run_js_and_log"> <td>Run JS at cursor <div><em>(and log)</em></div></td> <td><span>F10</span></td> </tr>
+
+            <tr><td class="category-title" colspan="2">HTML transpiler</td></tr>
+
+            <tr data-command="log_html">    <td>Log HTML at cursor   </td> <td><span>F6</span></td> </tr>
+            <tr data-command="launch_html"> <td>Launch HTML at cursor</td> <td><span>F7</span></td> </tr>
+          </table>
+        </div>
+        <div class="panel" data-panel="help">
+          <h1><img src="icon.svg">Yarnball</h1>
+          <p>
+            Yarnball is a semantic network editor. Like a text editor allows writing and manipulating text, Yarnball operates on semantic networks.
+          </p>
+<!--          <p>
+            Why is plain text so ubiquitous in computing? It's used as the basis for most data representations such as in configuration, markup languages, programming languages, raw data structures (like JSON) etc. What if semantic networks were used in place of text for these use-cases? Yarnball attempts to create a familiar and fast editing interface for semantic networks like text editors do for text.
+          </p>
+          <p>
+            There are many other ways of representing information on a computer, made especially possible by the massive graphical horsepower of modern computers.
+          </p>
+          <p>
+            The use of plain text allows the structure and meaning of the data to be seen by people regardless of which text editing software is being used. However, the structure of the data cannot be understood by the editing software unless it parses whatever higher-level syntax the text is written in. A semantic network directly encodes the structure of information.
+          </p>
+          <ul>
+            <li>You don't need a JSON editor to edit JSON; you can read and write it with any text editor.</li>
+            <li>You don't need a Javascript editor to edit Javascript; you can read and write it with any text editor.</li>
+            <li>You don't need an HTML editor to edit HTML; you can read and write it with any text editor.</li>
+          </ul>
+          <p>
+            Plain text is the simple and ubiquitous basis for all these syntaxes. There are many universally applicable operations that can be performed with text editors regardless of the syntax, like copying and pasting, searching, replacing, reordering lines etc. But many useful operations require knowledge of the syntax, like:
+          </p>
+          <ul>
+            <li>Select all child HTML elements that have two given classes.</li>
+            <li>Rename a Javascript function and all references to it.</li>
+            <li>Transform a JSON array of key-value pairs into an object.</li>
+          </ul>
+          <p>
+            It is possible for text editors to support these kinds of operations if they parse the respective syntaxes, but this is not universally applicable like copy-paste or reordering of lines. A semantic network can directly encode the structure of information without it having to be interpreted by a specific syntax.
+          </p>
+          <p>
+            Yarnball operates on a very simplified semantic network structure, in an attempt to replicate the simplicity of raw text.
+          </p>
+          <p>
+            To create a familiar user experience, many UI conventions of text editors are borrowed, such as a cursor/caret, immediate writing with alphanumeric keys, backspace behavior etc.
+          </p>-->
+        </div>
+      </div>
     </div>
-
-    <button id="export-button" draggable="true" title="Export">⤵</button>
-
-    <button id="help-button" title="Help"></button>
-    <div id="help-screen" class="hidden">
-      <h1><img src="icon.svg">Yarnball</h1>
-      <table>
-        <tr>
-          <td><span class="help-key spacebar">spacebar</span></td>
-          <td>New unnamed node to right of cursor</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">enter↲</span></td>
-          <td>New unnamed node downward</td>
-        </tr>
-        <tr>
-          <td>(start typing alphanumeric)</td>
-          <td>Overwrites name of node under cursor, or creates node</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">del</span></td>
-          <td>Delete node at cursor</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">tab</span></td>
-          <td>Toggle link creation mode (and applies current node under cursor to new link)</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> +
-            (
-              <span class="help-key">←</span>
-              <span class="help-key">→</span>
-              <span class="help-key">↑</span>
-              <span class="help-key">↓</span>
-            )
-          </td>
-          <td>
-            Move selected nodes
-          </td>
-        </tr>
-        <tr>
-          <td><span class="help-key">shift</span> +
-            (
-              <span class="help-key">←</span>
-              <span class="help-key">→</span>
-              <span class="help-key">↑</span>
-              <span class="help-key">↓</span>
-            )
-          </td>
-          <td>
-            Drag selection box
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <span class="help-key">ctrl</span> +
-            <span class="help-key">alt</span>  +
-            (
-              <span class="help-key">←</span>
-              <span class="help-key">→</span>
-              <span class="help-key">↑</span>
-              <span class="help-key">↓</span>
-            )
-          </td>
-          <td>
-            Create instance of node at cursor in given direction
-          </td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">D</span></td>
-          <td>Make node at cursor unique</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">E</span></td>
-          <td>Isolate selection</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">home</span></td>
-          <td>Move cursor left to nearest edge of connected block of nodes</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">end</span></td>
-          <td>Move cursor right to nearest edge of connected block of nodes</td>
-        </tr>
-        <tr></tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">A</span></td>
-          <td>Select all</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + click (on node)</td>
-          <td>Select all instances in connected group</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + double click (on node)</td>
-          <td>Select all instances</td>
-        </tr>
-        <tr>
-          <td>double click</td>
-          <td>Select nearest group of connected nodes</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">G</span></td>
-          <td>Select all nodes connected to the node at the cursor</td>
-        </tr>
-        <tr></tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">C</span></td>
-          <td>Copy selected nodes/links</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">V</span></td>
-          <td>Paste nodes/links</td>
-        </tr>
-        <tr></tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">S</span></td>
-          <td>Save to local storage</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">shift</span> + <span class="help-key">S</span></td>
-          <td>Save to file (download)</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">Z</span></td>
-          <td>Undo</td>
-        </tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">shift</span> + <span class="help-key">Z</span></td>
-          <td>Redo</td>
-        </tr>
-        <tr></tr>
-        <tr>
-          <td><span class="help-key">ctrl</span> + <span class="help-key">F</span></td>
-          <td>Show find panel</td>
-        </tr>
-        <tr>
-          <td>(middle mouse button drag)</td>
-          <td>Scroll/pan view</td>
-        </tr>
-      </table>
-    </div>
-
+    
     <script src="main.js">             </script>
     <script src="graph.js">            </script>
     <script src="actions.js">          </script>
-    <script src="keyboard_handler.js"> </script>
+    <script src="commands.js">         </script>
     <script src="mouse_handler.js">    </script>
-    <script src="js_transpiler.js"     async="true"></script>
+    <script src="js_transpiler.js"   async="true"></script>
     <script src="html_transpiler.js" async="true"></script>
     <script src="css_transpiler.js"  async="true"></script>
   </body>
