@@ -1,28 +1,66 @@
 'use strict';
 
-function logJsSourceAtCursor() {
-  var node = getNodeAtCursor();
-  if (!node) return;
-  var compiledStatements = compileStatements(node.dataset.id);
-  console.log(compiledStatements);
-}
+document.addEventListener('cursorPositionEvaluated', event => {
+  const nodeAtCursor = getNodeAtCursor();
+  const javascriptSourceElement = document.querySelector('.panel[data-panel="javascript"] .source');
+  if (nodeAtCursor) {
+    const compiledStatements = compileStatements(nodeAtCursor.dataset.id);
+    javascriptSourceElement.textContent = compiledStatements;
+    hljs.highlightBlock(javascriptSourceElement);
+  } else {
+    javascriptSourceElement.textContent = '';
+  }
+});
 
-function logJsAtCursor() {
-  var node = getNodeAtCursor();
-  if (!node) return;
-  var compiledStatement = compileStatement(node.dataset.id);
-  var f = new Function('return ' + compiledStatement);
-  var returnValue = f();
-  console.log(returnValue);
-}
+function runJavascriptAtCursor() {
+  const javascriptResultElement = document.querySelector('.panel[data-panel="javascript"] .result');
+  let javascriptSourceAtCursor = null;
+  const nodeAtCursor = getNodeAtCursor();
+  if (nodeAtCursor) {
+    let statements = graph.followListNodes(nodeAtCursor.dataset.id, _nextStatement).map(compileStatement);
+    statements = statements.filter(statement => statement !== '');
+    for (let i=0; i<statements.length; i++) statements[i] += ';';
+    if (statements.length > 0) {
+      statements[statements.length-1] = 'return ' + statements[statements.length-1];
+      javascriptSourceAtCursor = statements.join('\n');
+    }
+  }
 
-function runJsAtCursor() {
-  var node = getNodeAtCursor();
-  if (!node) return;
-  var compiledStatements = compileStatements(node.dataset.id);
-  var f = new Function(compiledStatements);
-  f();
+  if (javascriptSourceAtCursor) {
+    try {
+      var f = new Function(javascriptSourceAtCursor);
+    } catch(error) {
+      javascriptResultElement.textContent = error;
+      javascriptResultElement.classList.add('error');
+      return;
+    }
+    try {
+      var returnValue = f();
+    } catch(error) {
+      javascriptResultElement.textContent = error;
+      javascriptResultElement.classList.add('error');
+      return;
+    }
+    Promise.resolve(returnValue).then(
+      result => {
+        if (['object', 'string', 'number', 'boolean'].includes(typeof result)) {
+          result = JSON.stringify(result);
+        }
+        javascriptResultElement.textContent = result;
+        javascriptResultElement.classList.remove('error');
+        hljs.highlightBlock(javascriptResultElement);
+      },
+      error => {
+        javascriptResultElement.textContent = error;
+        javascriptResultElement.classList.add('error');
+      }
+    );
+  } else {
+    javascriptResultElement.textContent = '';
+    javascriptResultElement.classList.remove('error');
+  }
 }
+document.getElementById('run_javascript_button').addEventListener('click', runJavascriptAtCursor);
 
 const _nextStatement  = 'a31cd1de77937a195c661c6e31411ed3'; builtinNameMatches.push({name: ';',        id: _nextStatement});
 const _calls          = 'd7c64660b917a006d7ee44d9a63f4a30'; builtinNameMatches.push({name: 'calls',    id: _calls});
@@ -37,8 +75,11 @@ const _keyValue       = 'f14cf1dee906242cb05c851806d09403'; builtinNameMatches.p
 const _for            = 'f25ba8820a24770336a7db493a669698'; builtinNameMatches.push({name: 'for',      id: _for});
 const _forof          = '6ab17eed66f42d3c61b0fc6332b9fae4'; builtinNameMatches.push({name: 'forof',    id: _forof});
 const _var            = 'c25841503f6300d1a1596d7857f15577'; builtinNameMatches.push({name: 'var',      id: _var});
+const _let            = '0f6ef32eb4d534de373d66b3387e8f2b'; builtinNameMatches.push({name: 'let',      id: _let});
 const _varAssign      = '9876d4cc0671d98029499a89eeee403e'; builtinNameMatches.push({name: 'var=',     id: _varAssign});
-const _varAssignArray = '587daf98eb42f8c35c175ebcc25bfd48'; builtinNameMatches.push({name: 'var=[]',  id: _varAssignArray});
+const _letAssign      = '56040161aa754b637ff37c30323567f7'; builtinNameMatches.push({name: 'let=',     id: _letAssign});
+const _constAssign    = 'd88f68821bf39afc7c12248cfbe835e9'; builtinNameMatches.push({name: 'const=',   id: _constAssign});
+const _varAssignArray = '587daf98eb42f8c35c175ebcc25bfd48'; builtinNameMatches.push({name: 'var=[]',   id: _varAssignArray});
 const _assign         = 'f91505880c0d564484651c082ec8ac91'; builtinNameMatches.push({name: '=',        id: _assign});
 const _of             = '5b4a607c62dd9796a9201f7667be2d31'; builtinNameMatches.push({name: 'of',       id: _of});
 const _do             = 'ca9a572f8076df24642f743201a29f22'; builtinNameMatches.push({name: 'do',       id: _do});
@@ -65,8 +106,12 @@ const _yarnballGetName = '114dd6a9f611a288c8d360f7f9ba3d3e'; builtinNameMatches.
 const _yarnballSetName = '5f56351aba5c581fb5ca329049ac4b0a'; builtinNameMatches.push({name: 'name',    id: _yarnballSetName});
 const _yarnballClick  = 'd91e6d8da5d91ce3b0a45594cbf5711e'; builtinNameMatches.push({name: 'click',    id: _yarnballClick});
 
+
 function compileStatements(id) {
-  return graph.followListNodes(id, _nextStatement).map(compileStatement).join(';');
+  let statements = graph.followListNodes(id, _nextStatement).map(compileStatement);
+  statements = statements.filter(statement => statement !== '');
+  for (let i=0; i<statements.length; i++) statements[i] += ';';
+  return statements.join('\n');
 }
 
 function compileStatement(node) {
@@ -77,6 +122,8 @@ function compileStatement(node) {
   if (statement = compileForLoop(node))            return statement;
   if (statement = compileForofLoop(node))          return statement;
   if (statement = compileVarAssignment(node))      return statement;
+  if (statement = compileLetAssignment(node))      return statement;
+  if (statement = compileConstAssignment(node))      return statement;
   if (statement = compileVarArrayAssignment(node)) return statement;
   if (statement = compileIfStatement(node))        return statement;
   if (statement = compileIncrement(node))          return statement;
@@ -84,14 +131,14 @@ function compileStatement(node) {
 
   var return_ = graph.findNodeVia(node, _return);
   if (return_) {
-    return 'return ' + compileStatement(return_);
+    return 'return ' + compileExpression(return_);
   }
 
   return compileExpression(node);
 }
 
 function compileExpression(node) {
-  var constants = {
+  const constants = {
     _true:     'true',
     _false:    'false',
     _null:     'null',
@@ -119,12 +166,16 @@ function compileExpression(node) {
   if (expression = compileYarnballGetName(node))    return expression;
   if (expression = compileYarnballSetName(node))    return expression;
 
-  var is = graph.findNodeVia(node, _is);
+  const is = graph.findNodeVia(node, _is);
   if (is) {
     return graph.getNameForId(is);
   }
 
   return graph.getNameForId(node);
+}
+
+function addIndentation(string) {
+  return string.split('\n').map(line => '  ' + line).join('\n');
 }
 
 function compileObjectLookup(node) {
@@ -203,32 +254,48 @@ function compileObject(node) {
 }
 
 function compileAddition(node) {
-  var operands = graph.findNodesVia(node, _plus);
+  const operands = graph.findNodesVia(node, _plus);
   if (operands.length === 0) return null;
-  return operands.map(operand => '(' + compileStatement(operand) + ')').join('+');
+  return operands.map(operand => '(' + compileExpression(operand) + ')').join('+');
 }
 
 function compileMultiplication(node) {
-  var operands = graph.findNodesVia(node, _multiply);
+  const operands = graph.findNodesVia(node, _multiply);
   if (operands.length === 0) return null;
-  return operands.map(operand => '(' + compileStatement(operand) + ')').join('*');
+  return operands.map(operand => '(' + compileExpression(operand) + ')').join('*');
 }
 
 function compileArrowFunction(node) {
   var body = graph.findNodeVia(node, _arrowFunction);
   if (!body) return null;
-  var arg0 = graph.findNodeVia(node, _arg0);
-  if (arg0) {
-    return '(' + graph.getNameForId(arg0) + ')=>{' + compileStatements(body) + '}';
+  const arg0 = graph.findNodeVia(node, _arg0);
+  const arg0name = arg0 ? graph.getNameForId(arg0) : '';
+  let statements = graph.followListNodes(body, _nextStatement).map(compileStatement);
+  if (statements.length > 1) {
+    return `(${arg0name}) => {\n${addIndentation(statements.map(statement => statement + ';').join('\n'))}\n}`;
+  } else if (statements.length === 1) {
+    return `(${arg0name}) => ${statements[0]}`;
   } else {
-    return '()=>{' + compileStatements(body) + '}';
+    return `(${arg0name}) => {}`;
   }
 }
 
 function compileVarAssignment(node) {
   var varAssignTo = graph.findNodeVia(node, _varAssign);
   if (!varAssignTo) return null;
-  return 'var ' + graph.getNameForId(node) + ' = ' + compileExpression(varAssignTo);
+  return `var ${graph.getNameForId(node)} = ${compileExpression(varAssignTo)}`;
+}
+
+function compileLetAssignment(node) {
+  var letAssignTo = graph.findNodeVia(node, _letAssign);
+  if (!letAssignTo) return null;
+  return `let ${graph.getNameForId(node)} = ${compileExpression(letAssignTo)}`;
+}
+
+function compileConstAssignment(node) {
+  var constAssignTo = graph.findNodeVia(node, _constAssign);
+  if (!constAssignTo) return null;
+  return `const ${graph.getNameForId(node)} = ${compileExpression(constAssignTo)}`;
 }
 
 function compileVarArrayAssignment(node) {
@@ -281,7 +348,7 @@ function compileFunction(node) {
       args += ', ' + graph.getNameForId(arg1);
     }
   }
-  return `function ${graph.getNameForId(node)}(${args}){${compileStatements(body)};}`;
+  return `function ${graph.getNameForId(node)}(${args}){\n${addIndentation(compileStatements(body))}\n}`;
 }
 
 function compileLessThan(node) {

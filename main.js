@@ -80,14 +80,15 @@ function moveCursorToNode(node) {
   setCursorPosition({x: parseInt(node.style.left), y: parseInt(node.style.top)});
 }
 function evaluateCursorPosition() {
-  var nodeUnderCursor = getNodeAtCursor();
-  if (nodeUnderCursor) {
-    nodeUnderCursor.focus();
-    nodeUnderCursor.select();
+  const nodeAtCursor = getNodeAtCursor();
+  if (nodeAtCursor) {
+    nodeAtCursor.focus();
+    nodeAtCursor.select();
   }
   for (let node of document.getElementsByClassName('node')) {
-    node.classList.toggle('cursor-at-instance', nodeUnderCursor && node.dataset.id === nodeUnderCursor.dataset.id);
+    node.classList.toggle('cursor-at-instance', nodeAtCursor && node.dataset.id === nodeAtCursor.dataset.id);
   }
+  document.dispatchEvent(new Event('cursorPositionEvaluated'));
 }
 function resetCursorBlink() {
   cursor.classList.remove('blinking');
@@ -225,21 +226,24 @@ function createNode(options) {
 
 function createLink(options) {
   var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  link.classList.add('link');
   currentSurface.getElementsByClassName('links')[0].appendChild(link);
-  if (options) {
-    if (options.from) {
-      link.from = options.from;
-      options.from.links.add(link);
-    }
-    if (options.via) {
-      link.via = options.via;
-      options.via.links.add(link);
-    }
-    if (options.to) {
-      link.to = options.to;
-      options.to.links.add(link);
-    }
+  options = options || {};
+  if (options.from) {
+    link.from = options.from;
+    options.from.links.add(link);
+  }
+  if (options.via) {
+    link.via = options.via;
+    options.via.links.add(link);
+  }
+  if (options.to) {
+    link.to = options.to;
+    options.to.links.add(link);
+  }
+  if (options.from && options.via && options.to) {
+    link.classList.add('link');
+  } else {
+    link.classList.add('unfinished-link');
   }
   return link;
 }
@@ -249,31 +253,31 @@ function useNodeForLinkCreationMode(node) {
   if (linkBeingCreated) {
     if (!linkBeingCreated.from) {
       linkBeingCreated.from = node;
-      linkBeingCreated.from.links.add(linkBeingCreated);
     } else if (!linkBeingCreated.via) {
       if (linkBeingCreated.from === node) return;
       linkBeingCreated.via = node;
-      linkBeingCreated.via.links.add(linkBeingCreated);
       layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
     } else if (!linkBeingCreated.to) {
       if (linkBeingCreated.from === node || linkBeingCreated.via === node) return;
-      var existingLink = Array.from(currentSurface.getElementsByClassName('link')).find(link => {
+      const existingLink = [...currentSurface.getElementsByClassName('link')].find(link => {
         return link.from === linkBeingCreated.from &&
                link.via  === linkBeingCreated.via  &&
                link.to   === node;
       });
       if (existingLink) {
         deleteElements([existingLink]);
-        linkBeingCreated.from.links.delete(linkBeingCreated);
-        linkBeingCreated.via.links.delete(linkBeingCreated);
         linkBeingCreated.remove();
         recordAction(new deleteElementsAction([existingLink]));
       } else {
         linkBeingCreated.to = node;
+        linkBeingCreated.from.links.add(linkBeingCreated);
+        linkBeingCreated.via.links.add(linkBeingCreated);
         linkBeingCreated.to.links.add(linkBeingCreated);
+        linkBeingCreated.classList.add('link');
+        linkBeingCreated.classList.remove('unfinished-link');
         layoutLink(linkBeingCreated);
       }
-      var createdLink = linkBeingCreated;
+      const createdLink = linkBeingCreated;
       linkBeingCreated = null;
       cursor.classList.remove('insert-mode');
       resetCursorBlink();
@@ -306,9 +310,6 @@ function executeLinkMode() {
 }
 function cancelLinkMode() {
   if (linkBeingCreated) {
-    if (linkBeingCreated.from) linkBeingCreated.from.links.delete(linkBeingCreated);
-    if (linkBeingCreated.via)  linkBeingCreated.via.links.delete(linkBeingCreated);
-    if (linkBeingCreated.to)   linkBeingCreated.to.links.delete(linkBeingCreated);
     linkBeingCreated.remove();
     linkBeingCreated = null;
   }

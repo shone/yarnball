@@ -11,6 +11,8 @@
     <link href="html_styling.css" rel="stylesheet">
     <link href="css_styling.css"  rel="stylesheet">
     <link href="deutsche_styling.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/default.min.css">
   </head>
 
   <body>
@@ -52,6 +54,7 @@
       <div class="headers">
         <button data-panel="commands">Commands</button>
         <button data-panel="help">Help</button>
+        <button data-panel="javascript">Javascript</button>
       </div>
       <div class="panels">
         <div class="panel" data-panel="commands">
@@ -127,7 +130,7 @@
 
             <tr><td class="category-title" colspan="2">Find</td></tr>
 
-            <tr data-command="open_find_panel"> <td>Open find panel</td> <td><span>Ctrl</span><span>F</span></td> </tr>
+            <tr data-command="open_find_panel">      <td>Open find panel     </td> <td><span>Ctrl</span><span>F</span>    </td> </tr>
             <tr data-command="select_queried_nodes"> <td>Select queried nodes</td> <td><span>Ctrl</span><span>Enter</span></td> </tr>
 
             <tr><td class="category-title" colspan="2">View</td></tr>
@@ -139,9 +142,7 @@
 
             <tr><td class="category-title" colspan="2">Javascript transpiler</td></tr>
 
-            <tr data-command="log_js_source">  <td>Log JS source at cursor</td> <td><span>F8</span></td> </tr>
-            <tr data-command="run_js">         <td>Run JS at cursor       </td> <td><span>F9</span></td> </tr>
-            <tr data-command="run_js_and_log"> <td>Run JS at cursor <div><em>(and log)</em></div></td> <td><span>F10</span></td> </tr>
+            <tr data-command="log_js_source">  <td>Run JS at cursor</td> <td><span>F8</span></td> </tr>
 
             <tr><td class="category-title" colspan="2">HTML transpiler</td></tr>
 
@@ -154,37 +155,13 @@
           <p>
             Yarnball is a semantic network editor. Like a text editor allows writing and manipulating text, Yarnball operates on semantic networks.
           </p>
-<!--          <p>
-            Why is plain text so ubiquitous in computing? It's used as the basis for most data representations such as in configuration, markup languages, programming languages, raw data structures (like JSON) etc. What if semantic networks were used in place of text for these use-cases? Yarnball attempts to create a familiar and fast editing interface for semantic networks like text editors do for text.
-          </p>
-          <p>
-            There are many other ways of representing information on a computer, made especially possible by the massive graphical horsepower of modern computers.
-          </p>
-          <p>
-            The use of plain text allows the structure and meaning of the data to be seen by people regardless of which text editing software is being used. However, the structure of the data cannot be understood by the editing software unless it parses whatever higher-level syntax the text is written in. A semantic network directly encodes the structure of information.
-          </p>
-          <ul>
-            <li>You don't need a JSON editor to edit JSON; you can read and write it with any text editor.</li>
-            <li>You don't need a Javascript editor to edit Javascript; you can read and write it with any text editor.</li>
-            <li>You don't need an HTML editor to edit HTML; you can read and write it with any text editor.</li>
-          </ul>
-          <p>
-            Plain text is the simple and ubiquitous basis for all these syntaxes. There are many universally applicable operations that can be performed with text editors regardless of the syntax, like copying and pasting, searching, replacing, reordering lines etc. But many useful operations require knowledge of the syntax, like:
-          </p>
-          <ul>
-            <li>Select all child HTML elements that have two given classes.</li>
-            <li>Rename a Javascript function and all references to it.</li>
-            <li>Transform a JSON array of key-value pairs into an object.</li>
-          </ul>
-          <p>
-            It is possible for text editors to support these kinds of operations if they parse the respective syntaxes, but this is not universally applicable like copy-paste or reordering of lines. A semantic network can directly encode the structure of information without it having to be interpreted by a specific syntax.
-          </p>
-          <p>
-            Yarnball operates on a very simplified semantic network structure, in an attempt to replicate the simplicity of raw text.
-          </p>
-          <p>
-            To create a familiar user experience, many UI conventions of text editors are borrowed, such as a cursor/caret, immediate writing with alphanumeric keys, backspace behavior etc.
-          </p>-->
+        </div>
+        <div class="panel" data-panel="javascript">
+          <h2>Source at cursor:</h2>
+          <pre class="source"></pre>
+          <button id="run_javascript_button">Run (F8)</button>
+          <h2>Result:</h2>
+          <pre class="result"></pre>
         </div>
       </div>
     </div>
@@ -197,5 +174,7 @@
     <script src="js_transpiler.js"   async="true"></script>
     <script src="html_transpiler.js" async="true"></script>
     <script src="css_transpiler.js"  async="true"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
   </body>
 </html>

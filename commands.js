@@ -69,9 +69,7 @@ var commands = {
   log_html:                             ['F6',                event => transpileHtmlAtCursor()],
   launch_html:                          ['F7',                event => launchHtmlAtCursor()],
 
-  log_js_source:                        ['F8',                event => logJsSourceAtCursor()],
-  run_js:                               ['F9',                event => runJsAtCursor()],
-  run_js_and_log:                       ['F10',               event => logJsAtCursor()],
+  log_js_source:                        ['F8',                event => runJavascriptAtCursor()],
 }
 
 let keyboard_handlers = [];

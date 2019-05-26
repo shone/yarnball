@@ -7,7 +7,7 @@ var cursorPositionOnLastDragMousemove       = null;
 var cursorScreenPositionOnLastDragMousemove = null;
 
 function handlePointerDrag(event, options) {
-  var target = options.target !== undefined ? options.target : event.target;
+  const target = options.target || event.target;
   cursorPositionOnMouseDragStart          = { x: event.pageX,   y: event.pageY   };
   cursorPositionOffsetOnMouseDragStart    = { x: event.offsetX, y: event.offsetY };
   cursorOnTargetPositionStart             = { x: target.scrollLeft + event.offsetX, y: target.scrollTop + event.offsetY };
@@ -43,8 +43,8 @@ function handlePointerDrag(event, options) {
     }
     lastCursorClientPosition = cursorClientPosition;
   }
-  var pointerId = event.pointerId;
-  if (target) {
+  const pointerId = event.pointerId;
+  if (options.capturePointer !== false) {
     target.setPointerCapture(pointerId);
   }
   window.addEventListener('pointermove', handlePointermove);
@@ -52,7 +52,7 @@ function handlePointerDrag(event, options) {
     'pointerup',
     event => {
       window.removeEventListener('pointermove', handlePointermove);
-      if (target) {
+      if (options.capturePointer !== false) {
         target.releasePointerCapture(pointerId);
       }
       if (options.onup) {
@@ -186,7 +186,7 @@ function handleContextMenuForSurface(event) {
 }
 
 function handlePointerDownForSurface(event) {
-  let surface = event.target.closest('.surface');
+  const surface = event.target.closest('.surface');
   if (surface) {
     setCurrentSurface(surface);
   }
@@ -248,9 +248,9 @@ function handlePointerDownForSurface(event) {
   // Right mouse button down on node
   if (event.button === 2 && event.target.classList.contains('node')) {
     event.preventDefault();
-    var link = createLink();
+    const link = createLink();
     link.from = event.target;
-    var fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
+    const fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
     handlePointerDrag(event, {
       onmove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       onup: function(event) {
@@ -259,25 +259,29 @@ function handlePointerDownForSurface(event) {
         } else {
           link.remove();
         }
-        window.removeEventListener('mouseover', handleMouseover);
+        surface.removeEventListener('mouseover', handleMouseover);
       },
-      target: surface
+      target: surface,
+      capturePointer: false,
     });
     function handleMouseover(event) {
       if (event.target.classList.contains('node') && ![link.from, link.via, link.to].includes(event.target)) {
         if (!link.via) {
           link.via = event.target;
+          layoutLink(link);
         } else if (!link.to) {
           link.to = event.target;
-          window.removeEventListener('mouseover', handleMouseover);
+          surface.removeEventListener('mouseover', handleMouseover);
           layoutLink(link);
           link.from.links.add(link);
           link.via.links.add(link);
           link.to.links.add(link);
+          link.classList.add('link');
+          link.classList.remove('unfinished-link');
         }
       }
     }
-    window.addEventListener('mouseover', handleMouseover);
+    surface.addEventListener('mouseover', handleMouseover);
     return false;
   }
 
