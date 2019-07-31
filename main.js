@@ -1039,10 +1039,13 @@ function moveNameMatchSelection(direction) {
 
 function applyCurrentNameMatchSelection(nameMatch) {
   nameMatch = nameMatch || nameMatchPanel.getElementsByClassName('selected')[0];
-  var node = getNodeAtCursor();
+  if (!nameMatch) {
+    return;
+  }
+  const node = getNodeAtCursor();
   if (node.dataset.id !== nameMatch.dataset.id) {
-    var oldId = node.dataset.id;
-    var oldName = node.value;
+    const oldId = node.dataset.id;
+    const oldName = node.value;
     node.setAttribute('data-id', nameMatch.dataset.id);
     setNodeName(node, nameMatch.textContent);
     lastFocusedNodeOriginalName = nameMatch.textContent;

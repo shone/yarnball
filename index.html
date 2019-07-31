@@ -2,10 +2,10 @@
 <html>
   <head>
     <title>Yarnball</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="style.css" rel="stylesheet">
-    <link rel="preload" href="fonts/hack-regular-subset.woff2?sha=3114f1256" as="font"/>
-    <link rel="preload" href="fonts/hack-bold-subset.woff2?sha=3114f1256"    as="font"/>
+    <link rel="preload" href="fonts/hack-regular-subset.woff2?sha=3114f1256" as="font" crossorigin="anonymous">
+    <link rel="preload" href="fonts/hack-bold-subset.woff2?sha=3114f1256"    as="font" crossorigin="anonymous">
     <link rel="shortcut icon" href="favicon.png">
     <link href="js_styling.css"   rel="stylesheet">
     <link href="html_styling.css" rel="stylesheet">
@@ -55,6 +55,7 @@
         <button data-panel="commands">Commands</button>
         <button data-panel="help">Help</button>
         <button data-panel="javascript">Javascript</button>
+        <button data-panel="html">HTML</button>
       </div>
       <div class="panels">
         <div class="panel" data-panel="commands">
@@ -158,17 +159,22 @@
         </div>
         <div class="panel" data-panel="javascript">
           <h2>Source at cursor:</h2>
-          <pre class="source"></pre>
+          <pre class="source javascript"></pre>
           <button id="run_javascript_button">Run (F8)</button>
           <h2>Result:</h2>
           <pre class="result"></pre>
+        </div>
+        <div class="panel" data-panel="html">
+          <h2>Source at cursor:</h2>
+          <pre class="source html"></pre>
+          <button id="launch_html_button">Launch in new window (F7)</button>
         </div>
       </div>
     </div>
     
     <script src="main.js">             </script>
     <script src="graph.js">            </script>
-    <script src="actions.js">          </script>
+    <script src="undo_redo.js">          </script>
     <script src="commands.js">         </script>
     <script src="mouse_handler.js">    </script>
     <script src="js_transpiler.js"   async="true"></script>

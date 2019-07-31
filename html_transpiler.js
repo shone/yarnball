@@ -22,7 +22,7 @@ function transpileHtmlAtCursor() {
   }
 }
 
-function launchHtmlAtCursor(node) {
+function launchHtmlAtCursor() {
   var nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     var html = transpileHtml(nodeAtCursor.dataset.id);
@@ -35,8 +35,28 @@ function launchHtmlAtCursor(node) {
   }
 }
 
+document.addEventListener('cursorPositionEvaluated', event => {
+  const nodeAtCursor = getNodeAtCursor();
+  const htmlSourceElement = document.querySelector('.panel[data-panel="html"] .source');
+  if (nodeAtCursor) {
+    const html = transpileHtml(nodeAtCursor.dataset.id);
+    htmlSourceElement.textContent = html;
+    hljs.highlightBlock(htmlSourceElement);
+  } else {
+    htmlSourceElement.textContent = '';
+  }
+});
+
+document.getElementById('launch_html_button').addEventListener('click', event => {
+  launchHtmlAtCursor();
+});
+
+function addIndentation(string) {
+  return string.split('\n').map(line => '  ' + line).join('\n');
+}
+
 function transpileHtml(node) {
-  return graph.followListNodes(node, _sibling).map(transpileElement).join('');
+  return graph.followListNodes(node, _sibling).map(transpileElement).join('\n');
 }
 
 function transpileElement(node) {
@@ -104,5 +124,17 @@ function transpileElement(node) {
     attributesText = ' ' + [...attributes.entries()].map(i => `${i[0]}="${i[1]}"`).join(' ');
   }
 
-  return `<${tagName}${attributesText}>${textContent}${content}</${tagName}>`;
+  if (textContent && content) {
+    return `<${tagName}${attributesText}>\n${addIndentation(textContent)}\n${addIndentation(content)}\n</${tagName}>`;
+  } else if (textContent) {
+    if (textContent.includes('\n')) {
+      return `<${tagName}${attributesText}>\n${addIndentation(textContent)}\n</${tagName}>`;
+    } else {
+      return `<${tagName}${attributesText}>${textContent}</${tagName}>`;
+    }
+  } else if (content) {
+    return `<${tagName}${attributesText}>\n${addIndentation(content)}\n</${tagName}>`;
+  } else {
+    return `<${tagName}${attributesText}></${tagName}>`;
+  }
 }

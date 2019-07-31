@@ -305,15 +305,15 @@ function compileVarArrayAssignment(node) {
 }
 
 function compileIfStatement(node) {
-  var if_ = graph.findNodeVia(node, _if);
-  var then = graph.findNodeVia(node, _then);
+  const if_ = graph.findNodeVia(node, _if);
+  const then = graph.findNodeVia(node, _then);
   if (if_ && then) {
-    var block = "if(" + compileStatement(if_) + "){" + compileStatements(then) + "}";
-    var else_ = graph.findNodeVia(node, _else);
+    const else_ = graph.findNodeVia(node, _else);
     if (else_) {
-      block += 'else{' + compileStatements(else_) + '}';
+      return `if (${compileExpression(if_)}) {\n${addIndentation(compileStatements(then))}\n} else {\n${addIndentation(compileStatements(else_))}\n}`;
+    } else {
+      return `if (${compileExpression(if_)}) {\n${addIndentation(compileStatements(then))}\n}`;
     }
-    return block;
   } else {
     return null;
   }

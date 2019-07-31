@@ -1,6 +1,6 @@
 'use strict';
 
-var commands = {
+const commands = {
   move_cursor_left_block:               ['HOME',              event => moveCursorToBlockEdge('left')],
   move_cursor_right_block:              ['END',               event => moveCursorToBlockEdge('right')],
   move_cursor_left_block_select:        ['ShiftHOME',         event => moveCursorToBlockEdge('left',  {dragSelectionBox: true})],
@@ -72,36 +72,32 @@ var commands = {
   log_js_source:                        ['F8',                event => runJavascriptAtCursor()],
 }
 
-let keyboard_handlers = [];
+const keyboard_handlers = {};
 for (let name in commands) {
-  let key = commands[name][0];
-  let handler = commands[name][1];
+  const [key, handler] = commands[name];
   keyboard_handlers[key] = handler;
 }
 
-let commandsPanel = document.querySelector('.panel[data-panel="commands"]');
+const commandsPanel = document.querySelector('.panel[data-panel="commands"]');
 commandsPanel.addEventListener('mousedown', event => {
   event.preventDefault();
   return false;
 });
 commandsPanel.addEventListener('click', event => {
   event.preventDefault();
-  let tr = event.target.closest('tr');
-  if (tr && tr.dataset.command) {
-    let command = commands[tr.dataset.command];
-    if (command) {
-      command[1]();
-    }
+  const tr = event.target.closest('tr');
+  if (tr && tr.dataset.command in commands) {
+    commands[tr.dataset.command][1]();
   }
   return false;
 });
 
 document.body.addEventListener('keydown', event => {
 
-  var keyWithModifiers = (event.ctrlKey  ? 'Ctrl'  : '') +
-                         (event.altKey   ? 'Alt'   : '') +
-                         (event.shiftKey ? 'Shift' : '') +
-                         event.key.toUpperCase();
+  const keyWithModifiers = (event.ctrlKey  ? 'Ctrl'  : '') +
+                           (event.altKey   ? 'Alt'   : '') +
+                           (event.shiftKey ? 'Shift' : '') +
+                           event.key.toUpperCase();
   if (keyWithModifiers in keyboard_handlers) {
     event.preventDefault();
     if (isActionInProgress) {
@@ -114,12 +110,12 @@ document.body.addEventListener('keydown', event => {
 
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
-    var newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
+    const newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
     newNode.focus();
     selectionBox.classList.add('hidden');
-    var createdElements = [newNode];
+    const createdElements = [newNode];
     if (linkBeingCreated) {
-      var createdLink = useNodeForLinkCreationMode(newNode);
+      const createdLink = useNodeForLinkCreationMode(newNode);
       if (createdLink) {
         createdElements.push(createdLink);
       }

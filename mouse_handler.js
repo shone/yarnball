@@ -94,24 +94,24 @@ function handleNodeMousedown(event) {
     return false;
   }
   // Node dragging
-  var nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
-  nodesToDrag.add(document.activeElement);
+  const nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
+  nodesToDrag.add(node);
   for (let node of nodesToDrag) {
     node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
   }
-  var nodesNotBeingDragged = new Set(currentSurface.getElementsByClassName('node'));
+  let nodesNotBeingDragged = new Set(currentSurface.getElementsByClassName('node'));
   for (let node of nodesToDrag) nodesNotBeingDragged.delete(node);
-  var cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
-  var selectionBoxStartPosition = getSelectionBox();
+  const cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+  const selectionBoxStartPosition = getSelectionBox();
   isActionInProgress = true;
   handlePointerDrag(event, {
     onmove: function(mouse) {
       document.body.classList.add('dragging');
-      var cursorPosition = {
+      const cursorPosition = {
         x: cursorStartPosition.x + pxToGridX(mouse.deltaTotal.x),
         y: cursorStartPosition.y + pxToGridY(mouse.deltaTotal.y),
       }
-      var cursorDelta = {
+      const cursorDelta = {
         x: cursorPosition.x - cursorStartPosition.x,
         y: cursorPosition.y - cursorStartPosition.y,
       }
@@ -128,12 +128,12 @@ function handleNodeMousedown(event) {
       }
       // Don't allow dragging to where nodes would overlap with other nodes
       for (let node of [...nodesToDrag]) {
-        var newNodeBoundingBox = {
+        const newNodeBoundingBox = {
           left:   node.dragStartPosition.x + cursorDelta.x,
           top:    node.dragStartPosition.y + cursorDelta.y,
           right:  node.dragStartPosition.x + cursorDelta.x + parseInt(node.style.width),
           bottom: node.dragStartPosition.y + cursorDelta.y + 20,
-        }
+        };
         if (getNodesIntersectingBox(newNodeBoundingBox, [...nodesNotBeingDragged]).length !== 0) {
           return;
         }
