@@ -93,7 +93,6 @@ commandsPanel.addEventListener('click', event => {
 });
 
 document.body.addEventListener('keydown', event => {
-
   const keyWithModifiers = (event.ctrlKey  ? 'Ctrl'  : '') +
                            (event.altKey   ? 'Alt'   : '') +
                            (event.shiftKey ? 'Shift' : '') +

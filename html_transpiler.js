@@ -36,14 +36,16 @@ function launchHtmlAtCursor() {
 }
 
 document.addEventListener('cursorPositionEvaluated', event => {
-  const nodeAtCursor = getNodeAtCursor();
-  const htmlSourceElement = document.querySelector('.panel[data-panel="html"] .source');
-  if (nodeAtCursor) {
-    const html = transpileHtml(nodeAtCursor.dataset.id);
-    htmlSourceElement.textContent = html;
-    hljs.highlightBlock(htmlSourceElement);
-  } else {
-    htmlSourceElement.textContent = '';
+  if (currentSurface === mainSurface) {
+    const nodeAtCursor = getNodeAtCursor();
+    const htmlSourceElement = document.querySelector('.panel[data-panel="html"] .source');
+    if (nodeAtCursor) {
+      const html = transpileHtml(nodeAtCursor.dataset.id);
+      htmlSourceElement.textContent = html;
+      hljs.highlightBlock(htmlSourceElement);
+    } else {
+      htmlSourceElement.textContent = '';
+    }
   }
 });
 

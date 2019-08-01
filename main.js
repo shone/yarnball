@@ -18,7 +18,7 @@ if (localStorage.saved_state) {
   replaceSurfaceFromHtml(localStorage.saved_state);
 }
 
-let bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
+const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
 
 // Cursor
 
@@ -43,14 +43,14 @@ function setCursorPosition(position) {
     layoutLink(linkBeingCreated, {x: position.x + 32, y: position.y + 16});
   }
 
-  var nodeUnderCursor = getNodeAtCursor();
+  const nodeUnderCursor = getNodeAtCursor();
 
   // Highlighting
   for (const element of [...currentSurface.getElementsByClassName('highlight-for-connected')]) {
     element.classList.remove('highlight-for-connected');
   }
   if (nodeUnderCursor) {
-    var nodesToHighlight = new Set();
+    const nodesToHighlight = new Set();
     for (const link of nodeUnderCursor.links) {
       link.classList.add('highlight-for-connected');
       link.parentElement.appendChild(link); // Bring to front
@@ -95,10 +95,9 @@ function resetCursorBlink() {
   cursor.offsetHeight;
   cursor.classList.add('blinking');
 }
-function getNodeAtCursor(surface) {
-  surface = surface || currentSurface;
-  var cursor_ = surface.getElementsByClassName('cursor')[0];
-  return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
+function getNodeAtCursor(surface = currentSurface) {
+  const cursor_ = surface.getElementsByClassName('cursor')[0];
+  return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)}, surface);
 }
 function moveCursorToBlockEdge(direction, options) {
   options = options || {};
@@ -156,17 +155,16 @@ function moveCursorToBlockEdge(direction, options) {
 }
 
 function getBoundingBoxForPoints(pointA, pointB) {
-  var left   = Math.min(pointA.x, pointB.x);
-  var top    = Math.min(pointA.y, pointB.y);
-  var right  = Math.max(pointA.x, pointB.x);
-  var bottom = Math.max(pointA.y, pointB.y);
-  var width  = right - left;
-  var height = bottom - top;
+  const left   = Math.min(pointA.x, pointB.x);
+  const top    = Math.min(pointA.y, pointB.y);
+  const right  = Math.max(pointA.x, pointB.x);
+  const bottom = Math.max(pointA.y, pointB.y);
+  const width  = right - left;
+  const height = bottom - top;
   return {left, top, right, bottom, width, height};
 }
 
-function getNodeAtPosition(position, surface) {
-  surface = surface || currentSurface;
+function getNodeAtPosition(position, surface = currentSurface) {
   for (let node of surface.getElementsByClassName('node')) {
     if ((position.y === parseInt(node.style.top)) &&
       (position.x >= parseInt(node.style.left)) && (position.x < (parseInt(node.style.left) + parseInt(node.style.width)))) {
@@ -176,10 +174,9 @@ function getNodeAtPosition(position, surface) {
   return null;
 }
 
-function getNodeClosestToPosition(position, surface) {
-  surface = surface || currentSurface;
-  var closestNode = null;
-  var closestDistance = null;
+function getNodeClosestToPosition(position, surface = currentSurface) {
+  let closestNode = null;
+  let closestDistance = null;
   for (let node of surface.getElementsByClassName('node')) {
     var deltaX = parseInt(node.style.left) - position.x;
     var deltaY = parseInt(node.style.top)  - position.y;
@@ -192,22 +189,22 @@ function getNodeClosestToPosition(position, surface) {
   return closestNode;
 }
 
-var pxToGridX = px => Math.round(px / 64) * 64;
-var pxToGridY = px => Math.round(px / 32) * 32;
+const pxToGridX = px => Math.round(px / 64) * 64;
+const pxToGridY = px => Math.round(px / 32) * 32;
 
 
 
 function makeUuid() {
-  var uints = window.crypto.getRandomValues(new Uint8Array(16));
+  const uints = window.crypto.getRandomValues(new Uint8Array(16));
   return Array.prototype.map.call(uints, i => ('00' + i.toString(16)).slice(-2)).join('');
 }
 
-function createNode(options) {
-  var node = document.createElement('input');
+function createNode(options = {}) {
+  const node = document.createElement('input');
   node.classList.add('node');
   node.setAttribute('data-id', makeUuid());
-  if (options && options.text) node.value = text;
-  if (options && options.position) {
+  if (options.text) node.value = text;
+  if (options.position) {
     node.style.left = String(options.position.x) + 'px';
     node.style.top  = String(options.position.y) + 'px';
   } else {
@@ -216,7 +213,7 @@ function createNode(options) {
   }
   node.style.width = '50px';
   node.links = new Set();
-  if (options && options.parent) {
+  if (options.parent) {
     options.parent.appendChild(node);
   } else {
     currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
@@ -224,10 +221,9 @@ function createNode(options) {
   return node;
 }
 
-function createLink(options) {
-  var link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+function createLink(options = {}) {
+  const link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
   currentSurface.getElementsByClassName('links')[0].appendChild(link);
-  options = options || {};
   if (options.from) {
     link.from = options.from;
     options.from.links.add(link);
@@ -405,14 +401,13 @@ function cancelCurrentModeOrOperation() {
   }
 }
 
-function selectionToClipboard(options) {
-  options = options || {};
-  var selectedNodes = new Set([...currentSurface.querySelectorAll('.node.selected')]);
+function selectionToClipboard(options = {}) {
+  const selectedNodes = new Set([...currentSurface.querySelectorAll('.node.selected')]);
   if (document.activeElement && document.activeElement.classList.contains('node')) {
     selectedNodes.add(document.activeElement);
   }
   if (selectedNodes.size === 0) return;
-  var affectedLinks = new Set();
+  const affectedLinks = new Set();
   for (let node of selectedNodes) {
     for (let link of node.links) {
       if (
@@ -422,9 +417,9 @@ function selectionToClipboard(options) {
       ) affectedLinks.add(link);
     }
   }
-  var html = getNodesAndLinksAsHtml(selectedNodes, affectedLinks);
-  var previouslyFocusedElement = document.activeElement;
-  var temporaryInput = document.createElement('input');
+  const html = getNodesAndLinksAsHtml(selectedNodes, affectedLinks);
+  const previouslyFocusedElement = document.activeElement;
+  const temporaryInput = document.createElement('input');
   temporaryInput.value = html;
   document.body.appendChild(temporaryInput);
   temporaryInput.select();
@@ -432,7 +427,7 @@ function selectionToClipboard(options) {
   temporaryInput.remove();
   if (options.cut) {
     // Don't delete nodes that have links to unselected nodes
-    var nodesToDelete = new Set([...selectedNodes].filter(node =>
+    const nodesToDelete = new Set([...selectedNodes].filter(node =>
       [...node.links].every(link =>
         selectedNodes.has(link.from) &&
         selectedNodes.has(link.via)  &&
@@ -440,7 +435,7 @@ function selectionToClipboard(options) {
       )
     ));
     if (nodesToDelete.size > 0 || affectedLinks.size > 0) {
-      var elements = [...nodesToDelete, ...affectedLinks];
+      const elements = [...nodesToDelete, ...affectedLinks];
       deleteElements(elements);
       recordAction(new deleteElementsAction(elements));
     }
@@ -449,14 +444,13 @@ function selectionToClipboard(options) {
   }
 }
 
-function getClosestNodeTo(position, nodes) {
-  nodes = nodes || currentSurface.getElementsByClassName('node');
-  var closestNode = null;
-  var closestNodeDistance = null;
+function getClosestNodeTo(position, nodes = currentSurface.getElementsByClassName('node')) {
+  let closestNode = null;
+  let closestNodeDistance = null;
   for (let node of nodes) {
-    var nodePosition = { x: parseInt(node.style.left),   y: parseInt(node.style.top)    };
-    var delta        = { x: position.x - nodePosition.x, y: position.y - nodePosition.y };
-    var distance = (delta.x * delta.x) + (delta.y * delta.y);
+    const nodePosition = { x: parseInt(node.style.left),   y: parseInt(node.style.top)    };
+    const delta        = { x: position.x - nodePosition.x, y: position.y - nodePosition.y };
+    const distance = (delta.x * delta.x) + (delta.y * delta.y);
     if (!closestNode || distance < closestNodeDistance) {
       closestNode = node;
       closestNodeDistance = distance;
@@ -616,8 +610,8 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
         column.sort((a,b) => parseInt(a.style.top) - parseInt(b.style.top));
       }
     }
-    var maxY = Math.max(...columns.filter(column => column).map(column => parseInt((direction === 'down' ? column[column.length-1] : column[0]).style.top)));
-    var rowCount = (maxY + 32) / 32;
+    const maxY = Math.max(...columns.filter(column => column).map(column => parseInt((direction === 'down' ? column[column.length-1] : column[0]).style.top)));
+    const rowCount = (maxY + 32) / 32;
     for (let row = 0; row < rowCount; row++) {
       var normalizedRow = direction === 'down' ? row : (rowCount - row);
       var rowPx = (normalizedRow * 32) + 'px';
@@ -642,27 +636,21 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
 }
 
 function getNodeGroups() {
-  var visitedNodes = new Set();
-  var groups = [];
+  const visitedNodes = new Set();
+  const groups = [];
   for (const node of currentSurface.getElementsByClassName('node')) {
     if (!visitedNodes.has(node)) {
-      var group = new Set();
-      var nodesToVisit = new Set([node]);
+      const group = new Set();
+      const nodesToVisit = new Set([node]);
       while (nodesToVisit.size > 0) {
-        var visitingNode = nodesToVisit.values().next().value;
+        const visitingNode = nodesToVisit.values().next().value;
         nodesToVisit.delete(visitingNode);
         group.add(visitingNode);
         visitedNodes.add(visitingNode);
         for (let link of visitingNode.links) {
-          if (!group.has(link.from)) {
-            nodesToVisit.add(link.from);
-          }
-          if (!group.has(link.via)) {
-            nodesToVisit.add(link.via);
-          }
-          if (!group.has(link.to)) {
-            nodesToVisit.add(link.to);
-          }
+          if (!group.has(link.from)) nodesToVisit.add(link.from);
+          if (!group.has(link.via))  nodesToVisit.add(link.via);
+          if (!group.has(link.to))   nodesToVisit.add(link.to);
         }
       }
       groups.push(group);
@@ -672,11 +660,11 @@ function getNodeGroups() {
 }
 
 function getGroupsOrganizedIntoRows(groups) {
-  var rows = [];
+  const rows = [];
   for (const group of groups) {
     for (const node of group) {
-      var nodeY = parseInt(node.style.top);
-      var row = nodeY / 32;
+      const nodeY = parseInt(node.style.top);
+      const row = nodeY / 32;
       rows[row] = rows[row] || [];
       rows[row].push({group, node});
     }
@@ -685,13 +673,13 @@ function getGroupsOrganizedIntoRows(groups) {
 }
 
 function getGroupsOrganizedIntoColumns(groups) {
-  var columns = [];
+  const columns = [];
   for (const group of groups) {
     for (const node of group) {
-      var nodeX = parseInt(node.style.left);
-      var nodeWidth = parseInt(node.style.width);
-      var column = nodeX / 64;
-      var columnCount = pxToGridX(nodeWidth) / 64;
+      const nodeX = parseInt(node.style.left);
+      const nodeWidth = parseInt(node.style.width);
+      const column = nodeX / 64;
+      const columnCount = pxToGridX(nodeWidth) / 64;
       for (let c=0; c < columnCount; c++) {
         columns[column+c] = columns[column+c] || [];
         columns[column+c].push({group, node});
@@ -701,11 +689,9 @@ function getGroupsOrganizedIntoColumns(groups) {
   return columns;
 }
 
-function getTouchingGroupsInDirection(sourceNodes, direction, groups) {
-  groups = groups || getNodeGroups();
-
+function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGroups()) {
   if (direction === 'left' || direction === 'right') {
-    var rows = getGroupsOrganizedIntoRows(groups);
+    const rows = getGroupsOrganizedIntoRows(groups);
 
     for (const row of rows) {
       if (!row) {
@@ -782,30 +768,29 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups) {
 
 function doGroupsTouch(groupA, groupB, direction) {
   if (direction === 'left'/* || direction === 'right'*/) {
-    var groupAMinY = Math.min(...[...groupA].map(node => parseInt(node.style.top)));
-    var groupAMaxY = Math.max(...[...groupA].map(node => parseInt(node.style.top) + 32));
+    const groupAMinY = Math.min(...[...groupA].map(node => parseInt(node.style.top)));
+    const groupAMaxY = Math.max(...[...groupA].map(node => parseInt(node.style.top) + 32));
 
-    var groupBMinY = Math.min(...[...groupB].map(node => parseInt(node.style.top)));
-    var groupBMaxY = Math.max(...[...groupB].map(node => parseInt(node.style.top) + 32));
+    const groupBMinY = Math.min(...[...groupB].map(node => parseInt(node.style.top)));
+    const groupBMaxY = Math.max(...[...groupB].map(node => parseInt(node.style.top) + 32));
 
     if ((groupAMinY > groupBMaxY) || (groupAMaxY < groupBMinY)) {
       return false;
     }
 
-    var minY = Math.min(groupAMinY, groupBMinY);
-    var maxY = Math.max(groupAMaxY, groupBMaxY);
-    var rowCount = (maxY - minY) / 32;
-    var rows = [];
+    const minY = Math.min(groupAMinY, groupBMinY);
+    const maxY = Math.max(groupAMaxY, groupBMaxY);
+    const rows = [];
 
     for (let node of groupA) {
-      var nodeY = parseInt(node.style.top);
-      var row = (nodeY - minY) / 32;
+      const nodeY = parseInt(node.style.top);
+      const row = (nodeY - minY) / 32;
       rows[row] = rows[row] || [];
       rows[row].push({group: 'a', node: node});
     }
     for (let node of groupB) {
-      var nodeY = parseInt(node.style.top);
-      var row = (nodeY - minY) / 32;
+      const nodeY = parseInt(node.style.top);
+      const row = (nodeY - minY) / 32;
       rows[row] = rows[row] || [];
       rows[row].push({group: 'b', node: node});
     }
@@ -831,8 +816,7 @@ function doGroupsTouch(groupA, groupB, direction) {
   return false;
 }
 
-function getNodesIntersectingBox(box, nodes) {
-  nodes = nodes || [...currentSurface.getElementsByClassName('node')];
+function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByClassName('node')]) {
   return nodes.filter(node => {
     return !(
       ((parseInt(node.style.left) + node.offsetWidth)  <  box.left)  ||
@@ -854,7 +838,7 @@ function setSelectionBox(position, selectedNodesToPreserve) {
   selectionBox.style.top    = position.top    + 'px';
   selectionBox.style.width  = position.width  + 'px';
   selectionBox.style.height = position.height + 'px';
-  var intersectingNodes = new Set(getNodesIntersectingBox(position));
+  const intersectingNodes = new Set(getNodesIntersectingBox(position));
   for (let node of [...currentSurface.getElementsByClassName('node')]) {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
     node.classList.toggle('selected', intersectingNodes.has(node));
@@ -910,14 +894,11 @@ document.addEventListener('focusout', event => {
 
 document.addEventListener('input', event => {
   if (event.target.classList.contains('node')) {
-    var node = event.target;
+    const node = event.target;
     setNodeName(node, node.value);
-    if (event.target.closest('#find-panel')) {
-      highlightQueriedNodes();
-    }
     while (nameMatchPanel.firstChild) nameMatchPanel.removeChild(nameMatchPanel.firstChild);
     if (event.target.value !== '') {
-      var ids = new Map();
+      const ids = new Map();
       for (let node of mainSurface.getElementsByClassName('node')) {
         if (node != event.target && node.value.startsWith(event.target.value)) {
           ids.set(node.dataset.id, node.value);
@@ -930,7 +911,7 @@ document.addEventListener('input', event => {
       }
       if (ids.size > 0) {
         for (let [id, name] of ids) {
-          var match = document.createElement('div');
+          const match = document.createElement('div');
           match.classList.add('name-match');
           match.setAttribute('data-id', id);
           match.textContent = name;
@@ -949,7 +930,7 @@ document.addEventListener('input', event => {
 });
 
 function setNodeName(node, name) {
-  var instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
+  const instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
   for (let instance of instances) {
     instance.value = name;
     instance.setAttribute('value', name);
@@ -958,6 +939,9 @@ function setNodeName(node, name) {
       instance.style.width = width + 'px';
       for (let link of node.links) layoutLink(link);
     }
+  }
+  if (node.closest('[data-panel="find"]')) {
+    highlightQueriedNodes();
   }
 }
 
@@ -976,12 +960,12 @@ function moveNodesToPosition(nodes, position) {
 }
 
 function makeNodeAtCursorUnique() {
-  var node = getNodeAtCursor();
+  const node = getNodeAtCursor();
   if (!node) {
     return;
   }
-  var oldId = node.dataset.id;
-  var newId = makeUuid();
+  const oldId = node.dataset.id;
+  const newId = makeUuid();
   node.setAttribute('data-id', newId);
   evaluateCursorPosition();
   recordAction(new changeIdAction(node, {id: oldId}, {id: newId}));
@@ -1008,9 +992,9 @@ function isolateSelection() {
 
 // Name match panel
 
-var nameMatchPanel = document.getElementById('name-match-panel');
+const nameMatchPanel = document.getElementById('name-match-panel');
 
-var builtinNameMatches = [];
+const builtinNameMatches = [];
 
 function moveNameMatchSelection(direction) {
   var matches = nameMatchPanel.getElementsByClassName('name-match');
@@ -1037,8 +1021,7 @@ function moveNameMatchSelection(direction) {
   }
 }
 
-function applyCurrentNameMatchSelection(nameMatch) {
-  nameMatch = nameMatch || nameMatchPanel.getElementsByClassName('selected')[0];
+function applyCurrentNameMatchSelection(nameMatch = nameMatchPanel.getElementsByClassName('selected')[0]) {
   if (!nameMatch) {
     return;
   }
@@ -1131,17 +1114,6 @@ for (let panelContainer of document.getElementsByClassName('panels-container')) 
         panelContainer.dataset.panel = '';
         panelContainer.classList.remove('expanded');
       }
-//       let panels = panelContainer.querySelectorAll('.panel');
-//       for (let panel of panels) {
-//         let isClickedPanel = panel.dataset.panel === panelHeader.dataset.panel;
-//         if (isClickedPanel) {
-//           panel.classList.toggle('expanded');
-//           panelContainer.querySelector(`.headers [data-panel='${panel.dataset.panel}']`).classList.toggle('expanded');
-//         } else {
-//           panel.classList.toggle('expanded', isClickedPanel);
-//           panelContainer.querySelector(`.headers [data-panel='${panel.dataset.panel}']`).classList.toggle('expanded', isClickedPanel);
-//         }
-//       }
     });
   }
 }
@@ -1149,7 +1121,7 @@ for (let panelContainer of document.getElementsByClassName('panels-container')) 
 
 // Find panel
 
-var findPanel = document.querySelectorAll('.panel[data-panel="find"]')[0];
+const findPanel = document.querySelectorAll('.panel[data-panel="find"]')[0];
 
 function testNodesFindMatch(findNode, targetNode) {
   return !findNode.value ||
@@ -1158,27 +1130,25 @@ function testNodesFindMatch(findNode, targetNode) {
          (findNode.value === '$' && (targetNode.classList.contains('selected') || (targetNode === getNodeAtCursor(mainSurface))));
 }
 function getQueriedNodes() {
-  var findPanelNodes = [...findPanel.getElementsByClassName('node')];
+  const findPanelNodes = [...findPanel.getElementsByClassName('node')];
   if (findPanelNodes.length === 1) {
     if (findPanelNodes[0].value) {
-      return new Set([...mainSurface.getElementsByClassName('node')].filter(node => {
-        return node.value && node.value === findPanelNodes[0].value;
-      }));
+      return new Set([...mainSurface.getElementsByClassName('node')].filter(node => testNodesFindMatch(findPanelNodes[0], node)));
     } else {
       return new Set();
     }
   } else {
-    var findPanelLinks = [...findPanel.getElementsByClassName('link')].filter(link => link.from && link.via && link.to);
+    const findPanelLinks = [...findPanel.getElementsByClassName('link')].filter(link => link.from && link.via && link.to);
     if (findPanelLinks.length === 0) return new Set();
 
-    var findLink = findPanelLinks[0];
-    var correspondences = [];
+    const findLink = findPanelLinks[0];
+    let correspondences = [];
     for (let link of mainSurface.getElementsByClassName('link')) {
-      var match = testNodesFindMatch(findLink.from, link.from) &&
-                  testNodesFindMatch(findLink.via,  link.via)  &&
-                  testNodesFindMatch(findLink.to,   link.to);
+      const match = testNodesFindMatch(findLink.from, link.from) &&
+                    testNodesFindMatch(findLink.via,  link.via)  &&
+                    testNodesFindMatch(findLink.to,   link.to);
       if (match) {
-        var correspondence = new Map();
+        const correspondence = new Map();
         correspondence.set(link.from, findLink.from);
         correspondence.set(link.via,  findLink.via);
         correspondence.set(link.to,   findLink.to);
@@ -1206,11 +1176,11 @@ function getQueriedNodes() {
         return hasMatchingLink;
       });
     }
-    var queryResult = new Set();
+    const queryResult = new Set();
     for (let correspondence of correspondences) {
       correspondence.forEach((queryNode, targetNode) => {
         if (queryNode.value === '*') {
-          var instances = mainSurface.querySelectorAll(`.node[data-id='${targetNode.dataset.id}']`);
+          const instances = mainSurface.querySelectorAll(`.node[data-id='${targetNode.dataset.id}']`);
           for (let instance of instances) queryResult.add(instance);
         }
       });
@@ -1221,7 +1191,7 @@ function getQueriedNodes() {
 function openFindPanel() {
   bottomPanelContainer.dataset.panel = 'find';
   bottomPanelContainer.classList.add('expanded');
-  var findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
+  const findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
   if (findPanelNodes.getElementsByClassName('node').length === 0) {
     createNode({position: {x: 0, y: 0}, parent: findPanelNodes});
   } else {
@@ -1229,19 +1199,19 @@ function openFindPanel() {
   }
   setCurrentSurface(findPanel);
   resetCursorBlink();
-  var nodeUnderCursor = getNodeAtCursor();
+  const nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
   }
 }
 function highlightQueriedNodes() {
-  var queriedNodes = getQueriedNodes();
+  const queriedNodes = getQueriedNodes();
   for (let node of mainSurface.getElementsByClassName('node')) {
     node.classList.toggle('highlighted', queriedNodes.has(node));
   }
 }
 function moveSelectionToQueriedNodes() {
-  var queriedNodes = getQueriedNodes();
+  const queriedNodes = getQueriedNodes();
   for (let node of mainSurface.getElementsByClassName('node')) {
     node.classList.toggle('highlighted', queriedNodes.has(node));
     node.classList.toggle('selected',    queriedNodes.has(node) || (event.shiftKey && node.classList.contains('selected')));
@@ -1257,16 +1227,16 @@ function moveSelectionToQueriedNodes() {
 
 function moveSelectionInDirection(direction) {
   resetCursorBlink();
-  var nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
-  var nodeUnderCursor = getNodeAtCursor();
+  let nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
+  const nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodesToMove.add(nodeUnderCursor);
   }
   if (nodesToMove.size === 0) return;
 
-  var affectedLinks = new Set();
+  const affectedLinks = new Set();
 
-  var groups = getNodeGroups();
+  const groups = getNodeGroups();
 
   var selectedGroups = groups.filter(group => [...group].some(node => node.classList.contains('selected') || document.activeElement === node));
   var selectedGroupsNodes = [];
@@ -1346,7 +1316,7 @@ function moveSelectionInDirection(direction) {
 }
 
 function createInstanceInDirection(direction) {
-  let node = getNodeAtCursor();
+  const node = getNodeAtCursor();
   if (!node) {
     return;
   }
@@ -1355,7 +1325,7 @@ function createInstanceInDirection(direction) {
     return;
   }
 
-  var instance = document.createElement('input');
+  const instance = document.createElement('input');
   instance.classList.add('node');
   instance.setAttribute('data-id', node.dataset.id);
   instance.value = node.value;
@@ -1435,8 +1405,7 @@ function insertNodeAtCursor(options) {
   return newNode;
 }
 
-function moveCursorInDirection(direction, options) {
-  options = options || {};
+function moveCursorInDirection(direction, options = {}) {
   var moveDelta = {
     left:  {x: -64, y:   0},
     right: {x:  64, y:   0},

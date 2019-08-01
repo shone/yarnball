@@ -1,14 +1,16 @@
 'use strict';
 
 document.addEventListener('cursorPositionEvaluated', event => {
-  const nodeAtCursor = getNodeAtCursor();
-  const javascriptSourceElement = document.querySelector('.panel[data-panel="javascript"] .source');
-  if (nodeAtCursor) {
-    const compiledStatements = compileStatements(nodeAtCursor.dataset.id);
-    javascriptSourceElement.textContent = compiledStatements;
-    hljs.highlightBlock(javascriptSourceElement);
-  } else {
-    javascriptSourceElement.textContent = '';
+  if (currentSurface === mainSurface) {
+    const nodeAtCursor = getNodeAtCursor();
+    const javascriptSourceElement = document.querySelector('.panel[data-panel="javascript"] .source');
+    if (nodeAtCursor) {
+      const compiledStatements = compileStatements(nodeAtCursor.dataset.id);
+      javascriptSourceElement.textContent = compiledStatements;
+      hljs.highlightBlock(javascriptSourceElement);
+    } else {
+      javascriptSourceElement.textContent = '';
+    }
   }
 });
 
