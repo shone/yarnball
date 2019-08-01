@@ -1,7 +1,10 @@
 'use strict';
 
+const javascriptPanel = document.querySelector('.panel[data-panel="javascript"]');
+
 document.addEventListener('cursorPositionEvaluated', event => {
-  if (currentSurface === mainSurface) {
+  const panelContainer = javascriptPanel.closest('.panels-container');
+  if (currentSurface === mainSurface && panelContainer.classList.contains('expanded') && panelContainer.dataset.panel === 'javascript') {
     const nodeAtCursor = getNodeAtCursor();
     const javascriptSourceElement = document.querySelector('.panel[data-panel="javascript"] .source');
     if (nodeAtCursor) {
@@ -15,7 +18,7 @@ document.addEventListener('cursorPositionEvaluated', event => {
 });
 
 function runJavascriptAtCursor() {
-  const javascriptResultElement = document.querySelector('.panel[data-panel="javascript"] .result');
+  const javascriptResultElement = javascriptPanel.getElementsByClassName('result')[0];
   let javascriptSourceAtCursor = null;
   const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {

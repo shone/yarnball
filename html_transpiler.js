@@ -35,10 +35,13 @@ function launchHtmlAtCursor() {
   }
 }
 
+const htmlPanel = document.querySelector('.panel[data-panel="html"]');
+
 document.addEventListener('cursorPositionEvaluated', event => {
-  if (currentSurface === mainSurface) {
+  const panelContainer = javascriptPanel.closest('.panels-container');
+  if (currentSurface === mainSurface && panelContainer.classList.contains('expanded') && panelContainer.dataset.panel === 'html') {
     const nodeAtCursor = getNodeAtCursor();
-    const htmlSourceElement = document.querySelector('.panel[data-panel="html"] .source');
+    const htmlSourceElement = htmlPanel.getElementsByClassName('source')[0];
     if (nodeAtCursor) {
       const html = transpileHtml(nodeAtCursor.dataset.id);
       htmlSourceElement.textContent = html;

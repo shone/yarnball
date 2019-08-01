@@ -1110,6 +1110,7 @@ for (let panelContainer of document.getElementsByClassName('panels-container')) 
       if (!panelContainer.dataset.panel || panelContainer.dataset.panel !== panelHeader.dataset.panel) {
         panelContainer.dataset.panel = panelHeader.dataset.panel;
         panelContainer.classList.add('expanded');
+        evaluateCursorPosition();
       } else {
         panelContainer.dataset.panel = '';
         panelContainer.classList.remove('expanded');
