@@ -320,16 +320,21 @@ function cancelLinkMode() {
 }
 
 function deleteElements(elements) {
-  var affectedLinks = new Set();
-  for (let element of elements) {
+  const affectedLinks = new Set();
+  for (const element of elements) {
     if (element.classList.contains('node')) {
-      for (let link of element.links) affectedLinks.add(link);
+      for (const link of element.links) affectedLinks.add(link);
+      if (linkBeingCreated) {
+        if (linkBeingCreated.from === element || linkBeingCreated.via === element) {
+          cancelLinkMode();
+        }
+      }
       element.remove();
     } else if (element.classList.contains('link')) {
       affectedLinks.add(element);
     }
   }
-  for (let link of affectedLinks) {
+  for (const link of affectedLinks) {
     link.from.links.delete(link);
     link.via.links.delete(link);
     link.to.links.delete(link);
@@ -340,7 +345,7 @@ function deleteElements(elements) {
 }
 
 function deleteSelection() {
-  var elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
+  const elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
   let nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     elementsToDelete.add(nodeAtCursor);
