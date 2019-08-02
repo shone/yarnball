@@ -15,7 +15,7 @@ function setCurrentSurface(surface) {
 }
 
 if (localStorage.saved_state) {
-  replaceSurfaceFromHtml(localStorage.saved_state);
+  insertNodesAndLinksFromHtml(localStorage.saved_state);
 }
 
 const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
@@ -945,20 +945,6 @@ function setNodeName(node, name) {
   }
 }
 
-function moveNodesToPosition(nodes, position) {
-  var leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-  var topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
-  var deltaX = pxToGridX(parseInt(position.x)) - leftmost;
-  var deltaY = pxToGridY(parseInt(position.y)) - topmost;
-  var affectedLinks = new Set();
-  for (let node of nodes) {
-    node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-    node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
-    for (let link of node.links) affectedLinks.add(link);
-  }
-  for (let link of affectedLinks) layoutLink(link);
-}
-
 function makeNodeAtCursorUnique() {
   const node = getNodeAtCursor();
   if (!node) {
@@ -966,14 +952,14 @@ function makeNodeAtCursorUnique() {
   }
   const oldId = node.dataset.id;
   const newId = makeUuid();
-  node.setAttribute('data-id', newId);
+  node.dataset.id = newId;
   evaluateCursorPosition();
   recordAction(new changeIdAction(node, {id: oldId}, {id: newId}));
 }
 
 function isolateSelection() {
-  var selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
-  var linksToDelete = new Set();
+  const selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
+  const linksToDelete = new Set();
   for (let node of selectedNodes) {
     for (let link of node.links) {
       if (!selectedNodes.has(link.from) ||
@@ -1061,8 +1047,7 @@ document.addEventListener('paste', event => {
   const item = event.clipboardData.items[0];
   if (item.kind !== 'string') return;
   item.getAsString(string => {
-    const inserted = insertNodesAndLinksFromHtml(string);
-    moveNodesToPosition(inserted.nodes, {x: cursor.style.left, y: cursor.style.top});
+    const inserted = insertNodesAndLinksFromHtml(string, {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)});
     for (let node of inserted.nodes) {
       node.classList.add('selected');
     }
@@ -1648,7 +1633,7 @@ function getNodesAndLinksAsHtml(nodes=[...mainSurface.getElementsByClassName('no
   return html;
 }
 
-function insertNodesAndLinksFromHtml(html) {
+function insertNodesAndLinksFromHtml(html, position=null) {
   const fragment = document.createRange().createContextualFragment(html);
   const nodes = [...fragment.querySelectorAll('.node')];
   let   links = [...fragment.querySelectorAll('.link')];
@@ -1660,43 +1645,26 @@ function insertNodesAndLinksFromHtml(html) {
     copiedLink.dataset.from      = link.dataset.from;
     copiedLink.dataset.via       = link.dataset.via;
     copiedLink.dataset.to        = link.dataset.to;
+    copiedLink.setAttribute('points', link.getAttribute('points'));
     currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
     return copiedLink;
   });
   deserialize(nodes, links);
   clearSerialization(nodes, links);
-  const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-  const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
-  const deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
-  const deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
-  for (let node of nodes) {
-    node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-    node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
-    node.classList.add('selected');
+  if (position) {
+    const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
+    const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+    const deltaX = position.x - leftmost;
+    const deltaY = position.y - topmost;
+    for (let node of nodes) {
+      node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+      node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+      node.classList.add('selected');
+    }
+    links.forEach(layoutLink);
   }
-  links.forEach(layoutLink);
   evaluateCursorPosition();
   return {nodes, links};
-}
-
-function replaceSurfaceFromHtml(html) {
-  const originalCursor       = mainSurface.getElementsByClassName('cursor')[0];
-  const originalSelectionBox = mainSurface.getElementsByClassName('selection-box')[0];
-
-  mainSurface.innerHTML = html;
-  const nodes = mainSurface.getElementsByClassName('node');
-  const links = mainSurface.getElementsByClassName('link');
-  deserialize(nodes, links);
-  clearSerialization(nodes, links);
-
-  const newCursor       = mainSurface.appendChild(originalCursor);
-  const newSelectionBox = mainSurface.appendChild(originalSelectionBox);
-  if (currentSurface === mainSurface) {
-    cursor = newCursor;
-    selectionBox = newSelectionBox;
-  }
-
-  evaluateCursorPosition();
 }
 
 function saveToLocalStorage() {
@@ -1709,7 +1677,7 @@ function saveToLocalStorage() {
 }
 
 function download() {
-  var element = document.createElement('a');
+  const element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
   element.setAttribute('download', '');
   element.style.display = 'none';
@@ -1736,22 +1704,17 @@ mainSurface.addEventListener('dragover', event => {
 });
 mainSurface.addEventListener('drop', event => {
   event.preventDefault();
-  var html = event.dataTransfer.getData('text/html');
+  const html = event.dataTransfer.getData('text/html');
+  const cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   if (html) {
-    var inserted = insertNodesAndLinksFromHtml(html);
-    var nodes = inserted.nodes;
-    var links = inserted.links;
-    moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
-    recordAction(new pasteElementsAction(nodes, links));
+    const inserted = insertNodesAndLinksFromHtml(html, cursorPosition);
+    recordAction(new pasteElementsAction(inserted.nodes, inserted.links));
   } else if (event.dataTransfer.files.length > 0) {
-    var file = event.dataTransfer.files[0];
-    var reader = new FileReader();
+    const file = event.dataTransfer.files[0];
+    const reader = new FileReader();
     reader.onload = function(event) {
-      var inserted = insertNodesAndLinksFromHtml(event.target.result);
-      var nodes = inserted.nodes;
-      var links = inserted.links;
-      moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
-      recordAction(new pasteElementsAction(nodes, links));
+      const inserted = insertNodesAndLinksFromHtml(event.target.result, cursorPosition);
+      recordAction(new pasteElementsAction(inserted.nodes, inserted.links));
     };
     reader.readAsText(file);
   }
