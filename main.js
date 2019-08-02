@@ -85,8 +85,14 @@ function evaluateCursorPosition() {
     nodeAtCursor.focus();
     nodeAtCursor.select();
   }
-  for (let node of document.getElementsByClassName('node')) {
-    node.classList.toggle('cursor-at-instance', nodeAtCursor && node.dataset.id === nodeAtCursor.dataset.id);
+  for (const node of document.getElementsByClassName('node')) {
+    const atInstance = nodeAtCursor && node.dataset.id === nodeAtCursor.dataset.id;
+    node.classList.toggle('cursor-at-instance', atInstance);
+    if (node.overflowMap) {
+      for (const nodeShadow of Object.values(node.overflowMap)) {
+        nodeShadow.classList.toggle('cursor-at-instance', atInstance);
+      }
+    }
   }
   document.dispatchEvent(new Event('cursorPositionEvaluated'));
 }
@@ -393,8 +399,13 @@ function cancelCurrentModeOrOperation() {
   if (bottomPanelContainer.classList.contains('expanded')) {
     bottomPanelContainer.classList.remove('expanded');
     bottomPanelContainer.dataset.panel = '';
-    for (let highlighted of [...mainSurface.getElementsByClassName('highlighted')]) {
+    for (const highlighted of [...mainSurface.getElementsByClassName('highlighted')]) {
       highlighted.classList.remove('highlighted');
+      if (highlighted.overflowMap) {
+        for (const nodeShadow of Object.values(highlighted.overflowMap)) {
+          nodeShadow.classList.remove('highlighted');
+        }
+      }
     }
     setCurrentSurface(mainSurface);
     return;
@@ -439,6 +450,7 @@ function selectionToClipboard(options = {}) {
       deleteElements(elements);
       recordAction(new deleteElementsAction(elements));
     }
+    selectionBox.classList.add('hidden');
   } else if (previouslyFocusedElement) {
     previouslyFocusedElement.focus();
   }
@@ -563,8 +575,8 @@ function getNodesOrganizedIntoColumns(nodes) {
 
 function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
   if (direction === 'left' || direction === 'right') {
-    var rows = getNodesOrganizedIntoRows(nodes);
-    var touchingNodes = [];
+    const rows = getNodesOrganizedIntoRows(nodes);
+    const touchingNodes = [];
     for (const row of rows) {
       if (!row) {
         continue;
@@ -574,9 +586,9 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
       } else if (direction === 'right') {
         row.sort((a,b) => parseInt(b.style.left) - parseInt(a.style.left));
       }
-      var lastNodeEdge = null;
-      var lastNodeWasSourceNode = null;
-      var currentBlock = [];
+      let lastNodeEdge = null;
+      let lastNodeWasSourceNode = null;
+      let currentBlock = [];
       for (const node of row) {
         var leftEdge = parseInt(node.style.left);
         var rightEdge = leftEdge + parseInt(node.style.width);
@@ -598,8 +610,8 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
     }
     return touchingNodes;
   } else if (direction === 'up' || direction === 'down') {
-    var touchingNodes = new Set();
-    var columns = getNodesOrganizedIntoColumns(nodes);
+    const touchingNodes = new Set();
+    const columns = getNodesOrganizedIntoColumns(nodes);
     for (const column of columns) {
       if (!column) {
         continue;
@@ -613,16 +625,16 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
     const maxY = Math.max(...columns.filter(column => column).map(column => parseInt((direction === 'down' ? column[column.length-1] : column[0]).style.top)));
     const rowCount = (maxY + 32) / 32;
     for (let row = 0; row < rowCount; row++) {
-      var normalizedRow = direction === 'down' ? row : (rowCount - row);
-      var rowPx = (normalizedRow * 32) + 'px';
+      const normalizedRow = direction === 'down' ? row : (rowCount - row);
+      const rowPx = (normalizedRow * 32) + 'px';
       for (const column of columns) {
         if (!column) {
           continue;
         }
-        var nodeIndex = column.findIndex(node => node.style.top === rowPx);
+        const nodeIndex = column.findIndex(node => node.style.top === rowPx);
         if (nodeIndex >= 1) {
-          var node     = column[nodeIndex];
-          var prevNode = column[nodeIndex-1];
+          const node     = column[nodeIndex];
+          const prevNode = column[nodeIndex-1];
           if (Math.abs(parseInt(prevNode.style.top) - parseInt(node.style.top)) === 32) {
             if (sourceNodes.has(prevNode) || touchingNodes.has(prevNode)) {
               touchingNodes.add(node);
@@ -638,7 +650,7 @@ function getTouchingNodesInDirection(sourceNodes, direction, nodes) {
 function getNodeGroups() {
   const visitedNodes = new Set();
   const groups = [];
-  for (const node of currentSurface.getElementsByClassName('node')) {
+  for (const node of [...currentSurface.getElementsByClassName('node')]) {
     if (!visitedNodes.has(node)) {
       const group = new Set();
       const nodesToVisit = new Set([node]);
@@ -702,12 +714,12 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
       } else if (direction === 'right') {
         row.sort((a,b) => parseInt(b.node.style.left) - parseInt(a.node.style.left));
       }
-      var lastNodeEdge = null;
-      var lastNodeGroup = null;
+      let lastNodeEdge = null;
+      let lastNodeGroup = null;
       for (const entry of row) {
-        var leftEdge = parseInt(entry.node.style.left);
-        var rightEdge = leftEdge + parseInt(entry.node.style.width);
-        var edge = (direction === 'left') ? leftEdge : rightEdge;
+        const leftEdge = parseInt(entry.node.style.left);
+        const rightEdge = leftEdge + parseInt(entry.node.style.width);
+        const edge = (direction === 'left') ? leftEdge : rightEdge;
         if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
           if (Math.abs(edge - lastNodeEdge) < 20) {
             entry.group.touches = entry.group.touches || new Set();
@@ -719,7 +731,7 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
       }
     }
   } else if (direction === 'up' || direction === 'down') {
-    var columns = getGroupsOrganizedIntoColumns(groups);
+    const columns = getGroupsOrganizedIntoColumns(groups);
 
     for (const column of columns) {
       if (!column) {
@@ -730,12 +742,12 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
       } else if (direction === 'down') {
         column.sort((a,b) => parseInt(b.node.style.top) - parseInt(a.node.style.top));
       }
-      var lastNodeEdge = null;
-      var lastNodeGroup = null;
+      let lastNodeEdge = null;
+      let lastNodeGroup = null;
       for (const entry of column) {
-        var topEdge = parseInt(entry.node.style.top);
-        var bottomEdge = topEdge + 32;
-        var edge = (direction === 'up') ? topEdge : bottomEdge;
+        const topEdge = parseInt(entry.node.style.top);
+        const bottomEdge = topEdge + 32;
+        const edge = (direction === 'up') ? topEdge : bottomEdge;
         if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
           if (edge === lastNodeEdge) {
             entry.group.touches = entry.group.touches || new Set();
@@ -748,11 +760,11 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
     }
   }
 
-  var sourceGroups = groups.filter(group => { for (const node of group) if (sourceNodes.has(node)) return true; });
-  var visitedGroups = new Set();
-  var groupsToVisit = new Set(sourceGroups);
+  const sourceGroups = groups.filter(group => { for (const node of group) if (sourceNodes.has(node)) return true; });
+  const visitedGroups = new Set();
+  const groupsToVisit = new Set(sourceGroups);
   while (groupsToVisit.size > 0) {
-    var group = groupsToVisit.values().next().value;
+    const group = groupsToVisit.values().next().value;
     groupsToVisit.delete(group);
     visitedGroups.add(group);
     if (group.touches) {
@@ -766,63 +778,13 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
   return visitedGroups;
 }
 
-function doGroupsTouch(groupA, groupB, direction) {
-  if (direction === 'left'/* || direction === 'right'*/) {
-    const groupAMinY = Math.min(...[...groupA].map(node => parseInt(node.style.top)));
-    const groupAMaxY = Math.max(...[...groupA].map(node => parseInt(node.style.top) + 32));
-
-    const groupBMinY = Math.min(...[...groupB].map(node => parseInt(node.style.top)));
-    const groupBMaxY = Math.max(...[...groupB].map(node => parseInt(node.style.top) + 32));
-
-    if ((groupAMinY > groupBMaxY) || (groupAMaxY < groupBMinY)) {
-      return false;
-    }
-
-    const minY = Math.min(groupAMinY, groupBMinY);
-    const maxY = Math.max(groupAMaxY, groupBMaxY);
-    const rows = [];
-
-    for (let node of groupA) {
-      const nodeY = parseInt(node.style.top);
-      const row = (nodeY - minY) / 32;
-      rows[row] = rows[row] || [];
-      rows[row].push({group: 'a', node: node});
-    }
-    for (let node of groupB) {
-      const nodeY = parseInt(node.style.top);
-      const row = (nodeY - minY) / 32;
-      rows[row] = rows[row] || [];
-      rows[row].push({group: 'b', node: node});
-    }
-
-    for (let row of rows) {
-      if (!row) {
-        continue;
-      }
-      row.sort((a,b) => parseInt(a.node.style.left) - parseInt(b.node.style.left));
-      var lastNodeEdge = null;
-      var lastNodeGroup = null;
-      for (let entry of row) {
-        var leftEdge = parseInt(entry.node.style.left);
-        var rightEdge = leftEdge + parseInt(entry.node.style.width);
-        if (lastNodeEdge !== null && (entry.group !== lastNodeGroup) && ((leftEdge - lastNodeEdge) < 20)) {
-          return true;
-        }
-        lastNodeEdge = rightEdge;
-        lastNodeGroup = entry.group;
-      }
-    }
-  }
-  return false;
-}
-
 function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByClassName('node')]) {
   return nodes.filter(node => {
     return !(
-      ((parseInt(node.style.left) + node.offsetWidth)  <  box.left)  ||
-       (parseInt(node.style.left)                      >= box.right) ||
-      ((parseInt(node.style.top)  + node.offsetHeight) <  box.top)   ||
-       (parseInt(node.style.top)                       >= box.bottom)
+      ((parseInt(node.style.left) + getNodeWidthForName(node.value))  <  box.left)  ||
+       (parseInt(node.style.left)                                     >= box.right) ||
+      ((parseInt(node.style.top)  + 32)                               <  box.top)   ||
+       (parseInt(node.style.top)                                      >= box.bottom)
     );
   });
 }
@@ -839,9 +801,15 @@ function setSelectionBox(position, selectedNodesToPreserve) {
   selectionBox.style.width  = position.width  + 'px';
   selectionBox.style.height = position.height + 'px';
   const intersectingNodes = new Set(getNodesIntersectingBox(position));
-  for (let node of [...currentSurface.getElementsByClassName('node')]) {
+  for (const node of [...currentSurface.getElementsByClassName('node')]) {
     if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
-    node.classList.toggle('selected', intersectingNodes.has(node));
+    const selected = intersectingNodes.has(node);
+    node.classList.toggle('selected', selected);
+    if (node.overflowMap) {
+      for (const nodeShadow of Object.values(node.overflowMap)) {
+        nodeShadow.classList.toggle('selected', selected);
+      }
+    }
   }
 }
 function getSelectionBox() {
@@ -860,15 +828,26 @@ function getSelectionBox() {
 }
 
 function selectAll() {
-  for (let node of currentSurface.getElementsByClassName('node')) {
+  for (const node of [...currentSurface.getElementsByClassName('node')]) {
     node.classList.add('selected');
+  }
+  const surfaceContainer = currentSurface.closest('.surface-container');
+  if (surfaceContainer) {
+    for (const nodeShadow of [...surfaceContainer.getElementsByClassName('node-shadow')]) {
+      nodeShadow.classList.add('selected');
+    }
   }
   selectionBox.classList.add('hidden');
 }
 
 function deselectAll() {
-  for (let element of [...currentSurface.getElementsByClassName('selected')]) {
+  for (const element of [...currentSurface.getElementsByClassName('selected')]) {
     element.classList.remove('selected');
+    if (element.overflowMap) {
+      for (const nodeShadow of Object.values(element.overflowMap)) {
+        nodeShadow.classList.remove('selected');
+      }
+    }
   }
   selectionBox.classList.add('hidden');
 }
@@ -929,15 +908,19 @@ document.addEventListener('input', event => {
   }
 });
 
+function getNodeWidthForName(name) {
+  return (Math.ceil(((name.length * 8) + 5) / 64) * 64) - 14;
+}
+
 function setNodeName(node, name) {
   const instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
-  for (let instance of instances) {
+  for (const instance of instances) {
     instance.value = name;
     instance.setAttribute('value', name);
-    var width = (Math.ceil(((name.length * 8) + 5) / 64) * 64) - 14;
+    const width = getNodeWidthForName(name);
     if (parseInt(instance.style.width) !== width) {
       instance.style.width = width + 'px';
-      for (let link of node.links) layoutLink(link);
+      for (const link of node.links) layoutLink(link);
     }
   }
   if (node.closest('[data-panel="find"]')) {
@@ -1048,9 +1031,6 @@ document.addEventListener('paste', event => {
   if (item.kind !== 'string') return;
   item.getAsString(string => {
     const inserted = insertNodesAndLinksFromHtml(string, {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)});
-    for (let node of inserted.nodes) {
-      node.classList.add('selected');
-    }
     evaluateCursorPosition();
     const selectionBox = getSelectionBox();
     recordAction(
@@ -1059,6 +1039,14 @@ document.addEventListener('paste', event => {
         selectionBox: {before: selectionBox, after: null},
       }
     );
+    for (const node of inserted.nodes) {
+      node.classList.add('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
+    }
   });
 });
 
@@ -1190,15 +1178,29 @@ function openFindPanel() {
 }
 function highlightQueriedNodes() {
   const queriedNodes = getQueriedNodes();
-  for (let node of mainSurface.getElementsByClassName('node')) {
-    node.classList.toggle('highlighted', queriedNodes.has(node));
+  for (const node of mainSurface.getElementsByClassName('node')) {
+    const highlighted = queriedNodes.has(node);
+    node.classList.toggle('highlighted', highlighted);
+    if (node.overflowMap) {
+      for (const nodeShadow of Object.values(node.overflowMap)) {
+        nodeShadow.classList.toggle('highlighted', highlighted);
+      }
+    }
   }
 }
 function moveSelectionToQueriedNodes() {
   const queriedNodes = getQueriedNodes();
-  for (let node of mainSurface.getElementsByClassName('node')) {
-    node.classList.toggle('highlighted', queriedNodes.has(node));
-    node.classList.toggle('selected',    queriedNodes.has(node) || (event.shiftKey && node.classList.contains('selected')));
+  for (const node of mainSurface.getElementsByClassName('node')) {
+    const selected    = queriedNodes.has(node);
+    const highlighted = queriedNodes.has(node) || (event.shiftKey && node.classList.contains('selected'));
+    node.classList.toggle('highlighted', selected);
+    node.classList.toggle('selected',    highlighted);
+    if (node.overflowMap) {
+      for (const nodeShadow of Object.values(node.overflowMap)) {
+        nodeShadow.classList.toggle('selected', selected);
+        nodeShadow.classList.toggle('highlighted', highlighted);
+      }
+    }
   }
   if (queriedNodes.size > 0) {
     setCurrentSurface(mainSurface);
@@ -1212,9 +1214,9 @@ function moveSelectionToQueriedNodes() {
 function moveSelectionInDirection(direction) {
   resetCursorBlink();
   let nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
-  const nodeUnderCursor = getNodeAtCursor();
-  if (nodeUnderCursor) {
-    nodesToMove.add(nodeUnderCursor);
+  const nodeAtCursor = getNodeAtCursor();
+  if (nodeAtCursor) {
+    nodesToMove.add(nodeAtCursor);
   }
   if (nodesToMove.size === 0) return;
 
@@ -1222,17 +1224,17 @@ function moveSelectionInDirection(direction) {
 
   const groups = getNodeGroups();
 
-  var selectedGroups = groups.filter(group => [...group].some(node => node.classList.contains('selected') || document.activeElement === node));
-  var selectedGroupsNodes = [];
+  const selectedGroups = groups.filter(group => [...group].some(node => node.classList.contains('selected') || document.activeElement === node));
+  const selectedGroupsNodes = [];
   for (const group of selectedGroups) {
     selectedGroupsNodes.push(...group);
   }
-  var touchingNodes = getTouchingNodesInDirection(nodesToMove, direction, selectedGroupsNodes);
+  const touchingNodes = getTouchingNodesInDirection(nodesToMove, direction, selectedGroupsNodes);
   for (const node of touchingNodes) {
     nodesToMove.add(node);
   }
 
-  var unselectedGroups = groups.filter(group => [...group].every(node => !node.classList.contains('selected') && document.activeElement !== node));
+  const unselectedGroups = groups.filter(group => [...group].every(node => !node.classList.contains('selected') && document.activeElement !== node));
   for (const group of selectedGroups) {
     var newGroup = new Set();
     for (const node of group) {
@@ -1243,7 +1245,7 @@ function moveSelectionInDirection(direction) {
     unselectedGroups.push(newGroup);
   }
 
-  var touchingGroups = getTouchingGroupsInDirection(nodesToMove, direction, unselectedGroups);
+  const touchingGroups = getTouchingGroupsInDirection(nodesToMove, direction, unselectedGroups);
   for (const group of touchingGroups) {
     if ([...group].every(node => !nodesToMove.has(node))) {
       for (const node of group) {
@@ -1251,44 +1253,44 @@ function moveSelectionInDirection(direction) {
       }
     }
   }
-  var moveDelta = {
+  const moveDelta = {
     left:  {x: -64, y:   0},
     right: {x:  64, y:   0},
     up:    {x:   0, y: -32},
     down:  {x:   0, y:  32},
   }[direction];
-  var willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
+  const willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
     return parseInt(node.style.left) + moveDelta.x < 0 ||
            parseInt(node.style.top)  + moveDelta.y < 0;
   });
   if (willNodeBeMovedOutOfBounds) return false;
 
-  var oldPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+  const oldPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
-  for (let node of nodesToMove) {
+  for (const node of nodesToMove) {
     node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
     node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
     node.links.forEach(link => affectedLinks.add(link));
   }
   affectedLinks.forEach(link => layoutLink(link));
 
-  var cursorBefore = {
+  const cursorBefore = {
     x: parseInt(cursor.style.left),
     y: parseInt(cursor.style.top),
   }
   cursor.style.left = (parseInt(cursor.style.left) + moveDelta.x) + 'px';
   cursor.style.top  = (parseInt(cursor.style.top)  + moveDelta.y) + 'px';
-  var cursorAfter = {
+  const cursorAfter = {
     x: parseInt(cursor.style.left),
     y: parseInt(cursor.style.top),
   }
 
-  var selectionBoxBefore = getSelectionBox();
+  const selectionBoxBefore = getSelectionBox();
   selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
   selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
-  var selectionBoxAfter = getSelectionBox();
+  const selectionBoxAfter = getSelectionBox();
 
-  var newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+  const newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
   recordAction(
     new moveNodesAction({oldPositions, newPositions}),
@@ -1390,14 +1392,14 @@ function insertNodeAtCursor(options) {
 }
 
 function moveCursorInDirection(direction, options = {}) {
-  var moveDelta = {
+  const moveDelta = {
     left:  {x: -64, y:   0},
     right: {x:  64, y:   0},
     up:    {x:   0, y: -32},
     down:  {x:   0, y:  32},
   }[direction];
-  var cursorX = parseInt(cursor.style.left) + moveDelta.x;
-  var cursorY = parseInt(cursor.style.top)  + moveDelta.y;
+  const cursorX = parseInt(cursor.style.left) + moveDelta.x;
+  const cursorY = parseInt(cursor.style.top)  + moveDelta.y;
   if (currentSurface === mainSurface && (cursorX <= 0 || cursorY <= 0)) {
     window.scroll({
       left: cursorX <= 0 ? 0 : undefined,
@@ -1415,7 +1417,7 @@ function moveCursorInDirection(direction, options = {}) {
     deselectAll();
   }
   setCursorPosition({x: cursorX, y: cursorY});
-  var nodeUnderCursor = getNodeAtCursor();
+  const nodeUnderCursor = getNodeAtCursor();
   if (nodeUnderCursor) {
     nodeUnderCursor.focus();
     nodeUnderCursor.select();
@@ -1477,26 +1479,35 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
 }
 
 function selectConnectedNodesAtCursor() {
-  var nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     deselectAll();
-    for (let node of getConnectedNodes(nodeAtCursor)) {
+    for (const node of getConnectedNodes(nodeAtCursor)) {
       node.classList.add('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
     }
   }
 }
 
-function selectInstancesOfNodeAtCursor(options) {
-  options = options || {};
-  var nodeAtCursor = getNodeAtCursor();
+function selectInstancesOfNodeAtCursor(options = {}) {
+  const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     deselectAll();
-    var nodes = options.onlyConnectedNodes ?
+    const nodes = options.onlyConnectedNodes ?
       getConnectedNodes(nodeAtCursor).filter(connectedNode => connectedNode.dataset.id === nodeAtCursor.dataset.id)
       :
       currentSurface.querySelectorAll(`.node[data-id='${nodeAtCursor.dataset.id}']`);
-    for (let node of nodes) {
+    for (const node of nodes) {
       node.classList.add('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
     }
   }
 }
@@ -1555,6 +1566,78 @@ function layoutLink(link, lastPosition) {
     link.setAttribute('points', points.map(point => point.x + ',' + point.y).join(' '));
   } else {
     link.setAttribute('points', '');
+  }
+}
+
+function updateOverflowMap(nodes, surface) {
+  const surfaceContainer = surface.closest('.surface-container');
+  if (surfaceContainer) {
+    for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
+      const edge = overflowMap.dataset.edge;
+      for (const node of nodes) {
+        node.overflowMap = node.overflowMap || {};
+        if (!node.overflowMap[edge]) {
+          node.overflowMap[edge] = document.createElement('div');
+          node.overflowMap[edge].classList.add('node-shadow');
+          if (node.classList.contains('selected')) {
+            node.overflowMap[edge].classList.add('selected');
+          }
+          overflowMap.appendChild(node.overflowMap[edge]);
+        }
+        node.overflowMap[edge].style.left = node.style.left;
+        node.overflowMap[edge].style.top  = node.style.top;
+        if (overflowMap.dataset.edge === 'top' || overflowMap.dataset.edge === 'bottom') {
+          node.overflowMap[edge].style.width = node.style.width;
+        }
+        if (overflowMap.dataset.edge === 'right') {
+          node.overflowMap[edge].style.width = (parseInt(node.style.width) + 5000) + 'px';
+        } else if (overflowMap.dataset.edge === 'bottom') {
+          node.overflowMap[edge].style.height = (20 + 5000) + 'px';
+        }
+        if (overflowMap.dataset.edge === 'left') {
+          node.overflowMap[edge].style.zIndex = parseInt(node.style.left);
+        } else if (overflowMap.dataset.edge === 'top') {
+          node.overflowMap[edge].style.zIndex = parseInt(node.style.top);
+        } else if (overflowMap.dataset.edge === 'right') {
+          node.overflowMap[edge].style.zIndex = 5000 - parseInt(node.style.left);
+        } else if (overflowMap.dataset.edge === 'bottom') {
+          node.overflowMap[edge].style.zIndex = 5000 - parseInt(node.style.top);
+        }
+        node.overflowMap[edge].node = node;
+      }
+      for (const nodeShadow of [...overflowMap.getElementsByClassName('node-shadow')]) {
+        if (!nodeShadow.node.parentElement) {
+          nodeShadow.remove();
+          delete nodeShadow.node.overflowMap[edge];
+        }
+      }
+    }
+  }
+}
+
+for (const surface of document.getElementsByClassName('surface')) {
+  const surfaceContainer = surface.closest('.surface-container');
+  if (surfaceContainer) {
+    for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
+      surface.addEventListener('scroll', event => {
+        overflowMap.scrollTo(surface.scrollLeft, surface.scrollTop);
+      });
+      overflowMap.addEventListener('mousedown', event => {
+        if (event.target.classList.contains('node-shadow')) {
+          if (overflowMap.dataset.edge === 'left') {
+            surface.scrollTo({left: parseInt(event.target.node.style.left), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'top') {
+            surface.scrollTo({top: parseInt(event.target.node.style.top), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'right') {
+            const nodeRight = parseInt(event.target.node.style.left) + parseInt(event.target.node.style.width) + 14;
+            surface.scrollTo({left: nodeRight - (surfaceContainer.offsetWidth - 40), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'bottom') {
+            const nodeBottom = parseInt(event.target.node.style.top) + 32;
+            surface.scrollTo({top: nodeBottom - (surfaceContainer.offsetHeight - 40), behavior: 'smooth'});
+          }
+        }
+      });
+    }
   }
 }
 
@@ -1663,6 +1746,7 @@ function insertNodesAndLinksFromHtml(html, position=null) {
     }
     links.forEach(layoutLink);
   }
+  updateOverflowMap(nodes, currentSurface);
   evaluateCursorPosition();
   return {nodes, links};
 }
@@ -1697,8 +1781,8 @@ mainSurface.addEventListener('dragenter', event => {
 mainSurface.addEventListener('dragover', event => {
   event.preventDefault();
   setCursorPosition({
-    x: pxToGridX(event.offsetX),
-    y: pxToGridY(event.offsetY),
+    x: pxToGridX(mainSurface.scrollLeft + event.offsetX),
+    y: pxToGridY(mainSurface.scrollTop  + event.offsetY),
   });
   return false;
 });

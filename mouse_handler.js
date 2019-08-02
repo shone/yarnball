@@ -67,14 +67,19 @@ function handlePointerDrag(event, options) {
 
 function handleNodeMousedown(event) {
   event.preventDefault();
-  var node = event.target;
+  const node = event.target;
   if (event.ctrlKey) {
     if (!event.shiftKey) {
       deselectAll();
     }
-    var connectedNodes = getConnectedNodes(node).filter(connectedNode => connectedNode.dataset.id === node.dataset.id);
-    for (let connectedNode of connectedNodes) {
+    const connectedNodes = getConnectedNodes(node).filter(connectedNode => connectedNode.dataset.id === node.dataset.id);
+    for (const connectedNode of connectedNodes) {
       connectedNode.classList.add('selected');
+      if (connectedNode.overflowMap) {
+        for (const nodeShadow of Object.values(connectedNode.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
     }
     return;
   }
@@ -139,13 +144,13 @@ function handleNodeMousedown(event) {
         }
       }
       // Move nodes
-      var affectedLinks = new Set();
-      for (let node of nodesToDrag) {
+      const affectedLinks = new Set();
+      for (const node of nodesToDrag) {
         node.style.left = (node.dragStartPosition.x + cursorDelta.x) + 'px';
         node.style.top  = (node.dragStartPosition.y + cursorDelta.y) + 'px';
-        for (let link of node.links) affectedLinks.add(link);
+        for (const link of node.links) affectedLinks.add(link);
       }
-      for (let link of affectedLinks) layoutLink(link);
+      for (const link of affectedLinks) layoutLink(link);
       // Move cursor
       setCursorPosition(cursorPosition);
       // Move selection box
@@ -216,7 +221,7 @@ function handlePointerDownForSurface(event) {
     });
     selectionBox.classList.add('hidden');
 
-    var selectedNodesToPreserve = null;
+    let selectedNodesToPreserve = null;
     if (!event.shiftKey) {
       deselectAll();
       if (document.activeElement) document.activeElement.blur();
@@ -227,7 +232,7 @@ function handlePointerDownForSurface(event) {
     handlePointerDrag(event, {
       onmove: function(cursor) {
         document.body.classList.add('dragging-selection-box');
-        var cursorPosition = {x: pxToGridX(cursor.positionOnTarget.x), y: pxToGridY(cursor.positionOnTarget.y)};
+        const cursorPosition = {x: pxToGridX(cursor.positionOnTarget.x), y: pxToGridY(cursor.positionOnTarget.y)};
         if (cursorPosition.x < 0) cursorPosition.x = 0;
         if (cursorPosition.y < 0) cursorPosition.y = 0;
         if (!selectionBox.anchorPosition) {
@@ -304,18 +309,24 @@ function handlePointerDownForSurface(event) {
 };
 
 function handleDblClickForSurface(event) {
+  const surface = event.target.closest('.surface');
   if (event.target.classList.contains('surface')) {
-    var closestNode = getNodeClosestToPosition({
-      x: pxToGridX(event.offsetX),
-      y: pxToGridY(event.offsetY),
-    }, event.target.closest('.surface'));
+    const closestNode = getNodeClosestToPosition({
+      x: pxToGridX(surface.scrollLeft + event.offsetX),
+      y: pxToGridY(surface.scrollTop  + event.offsetY),
+    }, surface);
     if (closestNode) {
       if (!event.shiftKey) {
         deselectAll();
       }
-      var connectedNodes = getConnectedNodes(closestNode);
-      for (let node of connectedNodes) {
+      const connectedNodes = getConnectedNodes(closestNode);
+      for (const node of connectedNodes) {
         node.classList.add('selected');
+        if (node.overflowMap) {
+          for (const nodeShadow of Object.values(node.overflowMap)) {
+            nodeShadow.classList.add('selected');
+          }
+        }
       }
     }
   } else if (event.target.classList.contains('node')) {
@@ -323,34 +334,64 @@ function handleDblClickForSurface(event) {
       deselectAll();
     }
     if (event.ctrlKey) {
-      var surface = event.target.closest('.surface');
-      for (let node of surface.querySelectorAll(`.node[data-id='${event.target.dataset.id}']`)) {
+      for (const node of surface.querySelectorAll(`.node[data-id='${event.target.dataset.id}']`)) {
         node.classList.add('selected');
+        if (node.overflowMap) {
+          for (const nodeShadow of Object.values(node.overflowMap)) {
+            nodeShadow.classList.add('selected');
+          }
+        }
       }
     } else {
-      var connectedNodes = getConnectedNodes(event.target);
-      for (let node of connectedNodes) {
+      const connectedNodes = getConnectedNodes(event.target);
+      for (const node of connectedNodes) {
         node.classList.add('selected');
+        if (node.overflowMap) {
+          for (const nodeShadow of Object.values(node.overflowMap)) {
+            nodeShadow.classList.add('selected');
+          }
+        }
       }
     }
   } else if (event.target.classList.contains('link')) {
-    var connectedLinks = new Set([event.target]);
-    var connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
+    const connectedLinks = new Set([event.target]);
+    const connectedNodes = new Set([event.target.from, event.target.via, event.target.to]);
     getAllConnectedNodesAndLinks(event.target.to, connectedNodes, connectedLinks);
     connectedNodes.delete(event.target.from);
-    for (let node of connectedNodes) node.classList.add('selected');
+    for (const node of connectedNodes) {
+      node.classList.add('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
+    }
   }
 };
 
 // Node/link instance highlighting
 document.addEventListener('mouseover', event => {
   if (event.target.classList.contains('node')) {
-    var instances = [...document.querySelectorAll(`[data-id="${event.target.dataset.id}"]`)];
-    for (let instance of instances) instance.classList.add('mouse-over-instance');
+    const instances = [...document.querySelectorAll(`[data-id="${event.target.dataset.id}"]`)];
+    for (const instance of instances) {
+      instance.classList.add('mouse-over-instance');
+      if (instance.overflowMap) {
+        for (const nodeShadow of Object.values(instance.overflowMap)) {
+          nodeShadow.classList.add('mouse-over-instance');
+        }
+      }
+    }
     event.target.addEventListener(
       'mouseleave',
       event => {
-        for (let instance of instances) instance.classList.remove('mouse-over-instance')
+        for (const instance of instances) {
+          instance.classList.remove('mouse-over-instance');
+          if (instance.overflowMap) {
+            for (const nodeShadow of Object.values(instance.overflowMap)) {
+              nodeShadow.classList.remove('mouse-over-instance');
+            }
+          }
+        }
       },
       {once: true}
     );
@@ -359,19 +400,19 @@ document.addEventListener('mouseover', event => {
       return;
     }
     event.target.parentElement.appendChild(event.target);
-    var instances = [...document.getElementsByClassName('link')].filter(link => {
+    const instances = [...document.getElementsByClassName('link')].filter(link => {
       return (link.from && link.via && link.to) &&
              link.from.dataset.id === event.target.from.dataset.id &&
              link.via.dataset.id  === event.target.via.dataset.id  &&
              link.to.dataset.id   === event.target.to.dataset.id;
     });
-    for (let instance of instances) {
+    for (const instance of instances) {
       instance.classList.add('mouse-over-instance');
     }
     event.target.addEventListener(
       'mouseleave',
       event => {
-        for (let instance of instances) instance.classList.remove('mouse-over-instance');
+        for (const instance of instances) instance.classList.remove('mouse-over-instance');
       },
       {once: true}
     );

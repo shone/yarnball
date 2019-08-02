@@ -48,6 +48,74 @@ h2 {
   display: flex;
   flex-direction: column;
 }
+#primary-surfaces .surface-container {
+  flex-grow: 1;
+}
+
+.surface-container {
+  position: relative;
+  user-select: none;
+  background-color: #b5b5b5;
+}
+.surface-container .surface {
+  position: absolute;
+  left:   20px;
+  top:    20px;
+  right:  20px;
+  bottom: 20px;
+}
+.surface-container .overflow-map {
+  position: absolute;
+  left:   0;
+  top:    0;
+  right:  0;
+  bottom: 0;
+}
+
+.overflow-map {
+  pointer-events: none;
+  scrollbar-width: 0;
+  overflow: scroll;
+  background-color: #b5b5b5;
+  z-index: 2;
+}
+.overflow-map:before {
+  content: '';
+  display: block;
+  width:  5000px;
+  height: 5000px;
+}
+.overflow-map::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.overflow-map[data-edge="left"]   { clip-path: inset(20px calc(100% - 20px) 20px 0); }
+.overflow-map[data-edge="top"]    { clip-path: inset(0 20px calc(100% - 20px) 20px); }
+.overflow-map[data-edge="right"]  { clip-path: inset(20px 0 20px calc(100% - 20px)); }
+.overflow-map[data-edge="bottom"] { clip-path: inset(calc(100% - 20px) 20px 0 20px); }
+
+.overflow-map .node-shadow {
+  position: absolute;
+  background-color: #fff;
+  pointer-events: auto;
+  transform: translate(20px, 20px);
+  border-radius: 5px;
+  box-sizing: border-box;
+  cursor: pointer;
+  margin-left: 7px;
+  margin-top: 6px;
+}
+.node-shadow:hover {
+  background-color: #888;
+}
+.node-shadow.mouse-over-instance { z-index: 5000 !important; background-color: #888;    }
+.node-shadow.cursor-at-instance  { z-index: 5000 !important; border: 4px solid #000;    }
+.node-shadow.highlighted         { z-index: 5000 !important; background-color: #ffff98; }
+.node-shadow.selected            { z-index: 5000 !important; background-color: orange;  }
+.overflow-map[data-edge="left"]   .node-shadow { width: 5000px; height: 20px;   }
+.overflow-map[data-edge="top"]    .node-shadow { width: 50px;   height: 5000px; }
+.overflow-map[data-edge="right"]  .node-shadow { height: 20px; margin-left: calc(-5000px + 7px); }
+.overflow-map[data-edge="bottom"] .node-shadow { width:  50px; margin-top:  calc(-5000px + 6px); }
 
 .surface {
   position: relative;
@@ -65,9 +133,6 @@ h2 {
   outline-offset: -2px;
 }
 
-#main-surface {
-  flex-grow: 1;
-}
 
 .links {
   position: absolute;
@@ -248,13 +313,20 @@ body.dragging-selection-box :not(.surface) {
   align-self: flex-start;
   flex-direction: column;
   position: absolute;
+  right: calc(100% + 20px);
+  margin-top: 30px;
+}
+.panels-container.right.expanded .headers {
   right: 100%;
 }
 .panels-container.bottom .headers {
   flex-direction: row;
   position: absolute;
+  bottom: calc(100% + 20px);
+  padding-left: 40px;
+}
+.panels-container.bottom.expanded .headers {
   bottom: 100%;
-  padding-left: 10px;
 }
 
 .panels-container .panel {

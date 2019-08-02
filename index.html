@@ -24,15 +24,20 @@
       </defs>
     </svg>
 
-    <div id="name-match-panel">
-    </div>
+    <div id="name-match-panel"></div>
 
     <div id="primary-surfaces">
-      <div id="main-surface" class="surface current">
-        <div class="nodes"></div>
-        <svg class="links"></svg>
-        <div class="selection-box hidden"></div>
-        <div class="cursor blinking" style="left: 0px; top: 0px;"></div>
+      <div class="surface-container">
+        <div id="main-surface" class="surface current">
+          <div class="nodes"></div>
+          <svg class="links"></svg>
+          <div class="selection-box hidden"></div>
+          <div class="cursor blinking" style="left: 0px; top: 0px;"></div>
+        </div>
+        <div class="overflow-map" data-edge="left">  </div>
+        <div class="overflow-map" data-edge="top">   </div>
+        <div class="overflow-map" data-edge="right"> </div>
+        <div class="overflow-map" data-edge="bottom"></div>
       </div>
 
       <div class="panels-container bottom">
