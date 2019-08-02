@@ -1058,20 +1058,18 @@ function closeNameMatchPanel() {
 
 document.addEventListener('paste', event => {
   if (event.clipboardData.items.length !== 1) return;
-  var item = event.clipboardData.items[0];
+  const item = event.clipboardData.items[0];
   if (item.kind !== 'string') return;
   item.getAsString(string => {
-    var inserted = insertNodesAndLinksFromHtml(string);
-    var nodes = inserted.nodes;
-    var links = inserted.links;
-    moveNodesToPosition(nodes, {x: cursor.style.left, y: cursor.style.top});
-    for (let node of nodes) {
+    const inserted = insertNodesAndLinksFromHtml(string);
+    moveNodesToPosition(inserted.nodes, {x: cursor.style.left, y: cursor.style.top});
+    for (let node of inserted.nodes) {
       node.classList.add('selected');
     }
     evaluateCursorPosition();
-    var selectionBox = getSelectionBox();
+    const selectionBox = getSelectionBox();
     recordAction(
-      new pasteElementsAction(nodes, links),
+      new pasteElementsAction(inserted.nodes, inserted.links),
       {
         selectionBox: {before: selectionBox, after: null},
       }
@@ -1545,23 +1543,22 @@ function getNodeAnchorPoints(node) {
 }
 
 function layoutLink(link, lastPosition) {
-  function pos(node) {
-    return {x: parseInt(node.style.left) + 32, y: parseInt(node.style.top) + 16};
-  }
-  var points = [];
+  const points = [];
   if (link.from) {
-    var nextPoint = link.via ? getNodeCenter(link.via) : lastPosition;
-    var anchorPoints = getNodeAnchorPoints(link.from);
+    const nextPoint = link.via ? getNodeCenter(link.via) : lastPosition;
+    const anchorPoints = getNodeAnchorPoints(link.from);
     for (let anchor of anchorPoints) {
       anchor.distance = Math.pow(nextPoint.x - anchor.point.x, 2) + Math.pow(nextPoint.y - anchor.point.y, 2);
     }
     anchorPoints.sort((a, b) => a.distance - b.distance);
     points.push(anchorPoints[0].point);
   }
-  if (link.via)  points.push(getNodeCenter(link.via));
+  if (link.via) {
+    points.push(getNodeCenter(link.via));
+  }
   if (link.to) {
-    var viaPoint = getNodeCenter(link.via);
-    var anchorPoints = getNodeAnchorPoints(link.to);
+    const viaPoint = getNodeCenter(link.via);
+    const anchorPoints = getNodeAnchorPoints(link.to);
     for (let anchor of anchorPoints) {
       anchor.distance = Math.pow(viaPoint.x - anchor.point.x, 2) + Math.pow(viaPoint.y - anchor.point.y, 2);
     }
@@ -1576,7 +1573,6 @@ function layoutLink(link, lastPosition) {
   }
 }
 
-
 function deserialize(nodes, links) {
   for (let link of links) {
     link.from = document.getElementById(link.dataset.from);
@@ -1584,9 +1580,8 @@ function deserialize(nodes, links) {
     link.to   = document.getElementById(link.dataset.to);
   }
   for (let node of nodes) {
-    var linksList = node.getAttribute('data-links');
-    if (linksList) {
-      node.links = new Set(linksList.split(',').map(id => document.getElementById(id)));
+    if (node.dataset.links) {
+      node.links = new Set(node.dataset.links.split(',').map(id => document.getElementById(id)));
     } else {
       node.links = new Set();
     }
@@ -1607,11 +1602,8 @@ function clearSerialization(nodes, links) {
   }
 }
 
-function getNodesAndLinksAsHtml(nodes, links) {
-  var nodes = nodes || [...mainSurface.getElementsByClassName('node')];
-  var links = links || [...mainSurface.getElementsByClassName('link')];
-
-  var classes = new Map();
+function getNodesAndLinksAsHtml(nodes=[...mainSurface.getElementsByClassName('node')], links=[...mainSurface.getElementsByClassName('link')]) {
+  const classes = new Map();
   for (let node of nodes) {
     classes.set(node, node.className);
     node.className = 'node';
@@ -1621,24 +1613,27 @@ function getNodesAndLinksAsHtml(nodes, links) {
     link.className.baseVal = 'link';
   }
 
-  var id = 0;
-  var nodesSet = new Set(nodes);
-  var linksSet = new Set(links);
-  for (let node of nodes) node.id = id++;
+  // Assign IDs to nodes and links
+  let id = 0;
+  for (let node of nodes) {
+    node.id = id++;
+  }
   for (let link of links) {
     link.id = id++;
-    link.setAttribute('data-from', link.from.id);
-    link.setAttribute('data-via',  link.via.id);
-    link.setAttribute('data-to',   link.to.id);
+    link.dataset.from = link.from.id;
+    link.dataset.via  = link.via.id;
+    link.dataset.to   = link.to.id;
   }
+
+  const linksSet = new Set(links);
   for (let node of nodes) {
     if (node.links.size > 0) {
-      node.setAttribute('data-links', [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(','));
+      node.dataset.links = [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(',');
     }
   }
 
-  var html = '<div class="nodes">' + [...nodes].map(node => node.outerHTML).join('') + '</div>' +
-             '<svg class="links">' + [...links].map(link => link.outerHTML).join('') + '</svg>';
+  const html = '<div class="nodes">' + [...nodes].map(node => node.outerHTML).join('') + '</div>' +
+               '<svg class="links">' + [...links].map(link => link.outerHTML).join('') + '</svg>';
 
   clearSerialization(nodes, links);
 
@@ -1654,26 +1649,26 @@ function getNodesAndLinksAsHtml(nodes, links) {
 }
 
 function insertNodesAndLinksFromHtml(html) {
-  var fragment = document.createRange().createContextualFragment(html);
-  var nodes = [...fragment.querySelectorAll('.node')];
-  var links = [...fragment.querySelectorAll('.link')];
+  const fragment = document.createRange().createContextualFragment(html);
+  const nodes = [...fragment.querySelectorAll('.node')];
+  let   links = [...fragment.querySelectorAll('.link')];
   for (let node of nodes) currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
   links = links.map(link => {
-    var copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-    copiedLink.setAttribute('id',        link.getAttribute('id'));
-    copiedLink.setAttribute('class',     link.getAttribute('class'));
-    copiedLink.setAttribute('data-from', link.getAttribute('data-from'));
-    copiedLink.setAttribute('data-via',  link.getAttribute('data-via'));
-    copiedLink.setAttribute('data-to',   link.getAttribute('data-to'));
+    const copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    copiedLink.id                = link.id;
+    copiedLink.className.baseVal = link.className.baseVal;
+    copiedLink.dataset.from      = link.dataset.from;
+    copiedLink.dataset.via       = link.dataset.via;
+    copiedLink.dataset.to        = link.dataset.to;
     currentSurface.getElementsByClassName('links')[0].appendChild(copiedLink)
     return copiedLink;
   });
   deserialize(nodes, links);
   clearSerialization(nodes, links);
-  var leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-  var topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
-  var deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
-  var deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
+  const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
+  const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+  const deltaX = pxToGridX(parseInt(cursor.style.left)) - leftmost;
+  const deltaY = pxToGridY(parseInt(cursor.style.top))  - topmost;
   for (let node of nodes) {
     node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
     node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
@@ -1685,17 +1680,17 @@ function insertNodesAndLinksFromHtml(html) {
 }
 
 function replaceSurfaceFromHtml(html) {
-  var originalCursor       = mainSurface.getElementsByClassName('cursor')[0];
-  var originalSelectionBox = mainSurface.getElementsByClassName('selection-box')[0];
+  const originalCursor       = mainSurface.getElementsByClassName('cursor')[0];
+  const originalSelectionBox = mainSurface.getElementsByClassName('selection-box')[0];
 
   mainSurface.innerHTML = html;
-  var nodes = mainSurface.getElementsByClassName('node');
-  var links = mainSurface.getElementsByClassName('link');
+  const nodes = mainSurface.getElementsByClassName('node');
+  const links = mainSurface.getElementsByClassName('link');
   deserialize(nodes, links);
   clearSerialization(nodes, links);
 
-  var newCursor       = mainSurface.appendChild(originalCursor);
-  var newSelectionBox = mainSurface.appendChild(originalSelectionBox);
+  const newCursor       = mainSurface.appendChild(originalCursor);
+  const newSelectionBox = mainSurface.appendChild(originalSelectionBox);
   if (currentSurface === mainSurface) {
     cursor = newCursor;
     selectionBox = newSelectionBox;
