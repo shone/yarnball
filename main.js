@@ -914,15 +914,24 @@ document.addEventListener('input', event => {
 });
 
 function getNodeWidthForName(name) {
-  return (Math.ceil(((name.length * 8) + 5) / 64) * 64) - 14;
+  const characterWidth = 6.02;
+  const padding = 5;
+  const stringWidth = padding + (name.length * characterWidth);
+  if (stringWidth <= 50) {
+    return 50;
+  } else if (stringWidth <= 114) {
+    return 114;
+  } else {
+    return 114 + (Math.ceil((stringWidth - 114) / 64) * 64);
+  }
 }
 
 function setNodeName(node, name) {
   const instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
+  const width = getNodeWidthForName(name);
   for (const instance of instances) {
     instance.value = name;
     instance.setAttribute('value', name);
-    const width = getNodeWidthForName(name);
     if (parseInt(instance.style.width) !== width) {
       instance.style.width = width + 'px';
       for (const link of node.links) layoutLink(link);
