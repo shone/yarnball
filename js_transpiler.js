@@ -311,17 +311,21 @@ function compileVarArrayAssignment(node) {
 
 function compileIfStatement(node) {
   const if_ = graph.findNodeVia(node, _if);
-  const then = graph.findNodeVia(node, _then);
-  if (if_ && then) {
-    const else_ = graph.findNodeVia(node, _else);
-    if (else_) {
-      return `if (${compileExpression(if_)}) {\n${addIndentation(compileStatements(then))}\n} else {\n${addIndentation(compileStatements(else_))}\n}`;
-    } else {
-      return `if (${compileExpression(if_)}) {\n${addIndentation(compileStatements(then))}\n}`;
-    }
-  } else {
+  if (!if_) {
     return null;
   }
+  let compiled = `if (${compileExpression(if_)}) `;
+  const then = graph.findNodeVia(node, _then);
+  if (then) {
+    compiled += `{\n${addIndentation(compileStatements(then))}\n}`;
+    const else_ = graph.findNodeVia(node, _else);
+    if (else_) {
+      compiled += ` else {\n${addIndentation(compileStatements(else_))}\n}`;
+    }
+  } else {
+    compiled += '{}';
+  }
+  return compiled;
 }
 
 function compileIncrement(node) {
@@ -367,7 +371,7 @@ function compileLessThan(node) {
 }
 
 function compileEqualityTest(node) {
-  var operands = graph.findNodesVia(node, _equality);
+  const operands = graph.findNodesVia(node, _equality);
   if (operands.length !== 2) return null;
   return `(${compileExpression(operands[0])})===(${compileExpression(operands[1])})`;
 }
