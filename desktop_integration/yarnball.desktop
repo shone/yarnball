@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Yarnball
+Exec=chromium --app=http://localhost:8089?path=%f
+StartupNotify=false
+MimeType=application/yarnball;

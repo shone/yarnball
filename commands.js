@@ -56,7 +56,7 @@ const commands = {
   select_name_match_up:                 ['PAGEUP',            event => moveNameMatchSelection('previous')],
   select_name_match_down:               ['PAGEDOWN',          event => moveNameMatchSelection('next')],
 
-  save:                                 ['CtrlS',             event => saveToLocalStorage()],
+  save:                                 ['CtrlS',             event => save()],
   download:                             ['CtrlShiftS',        event => download()],
 
   undo:                                 ['CtrlZ',             event => undo()],

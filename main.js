@@ -14,9 +14,25 @@ function setCurrentSurface(surface) {
   }
 }
 
-if (localStorage.saved_state) {
-  insertNodesAndLinksFromHtml(localStorage.saved_state);
+const queryParams = new URLSearchParams(location.search.substring(1));
+const path = queryParams.get('path');
+async function load() {
+  if (path) {
+    window.resizeTo(640, 480);
+    const pathParts = path.split('/');
+    document.title = pathParts[pathParts.length-1] + ' — Yarnball';
+    const response = await fetch(location.origin + '/load?path=' + path);
+    const text = await response.text();
+    if (response.ok) {
+      insertNodesAndLinksFromHtml(text);
+    } else {
+      alert(response.statusText + ' - ' + text);
+    }
+  } else if (localStorage.saved_state) {
+    insertNodesAndLinksFromHtml(localStorage.saved_state);
+  }
 }
+load();
 
 const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
 
@@ -1765,8 +1781,18 @@ function insertNodesAndLinksFromHtml(html, position=null) {
   return {nodes, links};
 }
 
-function saveToLocalStorage() {
-  localStorage.saved_state = getNodesAndLinksAsHtml();
+async function save() {
+  const html = getNodesAndLinksAsHtml();
+  if (path) {
+    const response = await fetch(location.origin + '/save?path=' + path, {method: 'PUT', body: html});
+    if (!response.ok) {
+      const responseText = await response.text();
+      alert(response.statusText + ' - ' + responseText);
+      return;
+    }
+  } else {
+    localStorage.saved_state = html;
+  }
   if (actions.length > 0) {
     savedAction = actions[actions.length-1];
   } else {

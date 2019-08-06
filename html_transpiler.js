@@ -6,6 +6,8 @@ const _sibling     = '1d6655ba2ca8030affc72b05af4c2926'; builtinNameMatches.push
 const _textContent = '4864556309ad38df157c2a2384a127b1'; builtinNameMatches.push({name: '""',      id: _textContent});
 const _div         = 'd11b50d14f62e851911361fcb5f1c190'; builtinNameMatches.push({name: 'div',     id: _div});
 const _span        = '98f57dc515e1e606e2559b9a4f4620e0'; builtinNameMatches.push({name: 'span',    id: _span});
+const _p           = '20701f3935a047ae8580ea3cbfd7f2d4'; builtinNameMatches.push({name: 'p',       id: _p});
+const _h1          = 'ac9170351582e7ad92695b9c7b608b4d'; builtinNameMatches.push({name: 'h1',      id: _h1});
 const _script      = '144d24c36274780d9c872d59f675a162'; builtinNameMatches.push({name: 'script',  id: _script});
 const _style       = '3049868f3e58a4e7046fd4f1234e17f4'; builtinNameMatches.push({name: 'style',   id: _style});
 const _button      = '0402df62de7d3950f811d38036bee89e'; builtinNameMatches.push({name: 'button',  id: _button});
@@ -86,6 +88,18 @@ function transpileElement(node) {
     textContent = graph.getNameForId(span);
   }
 
+  const p = graph.findNodeVia(node, _p);
+  if (p) {
+    tagName = 'p';
+    textContent = graph.getNameForId(p);
+  }
+
+  const h1 = graph.findNodeVia(node, _h1);
+  if (h1) {
+    tagName = 'h1';
+    textContent = graph.getNameForId(h1);
+  }
+
   const script = graph.findNodeVia(node, _script);
   if (script) {
     tagName = 'script';
@@ -115,8 +129,6 @@ function transpileElement(node) {
   const id = graph.findNodeVia(node, _id);
   if (id) {
     attributes.set('id', graph.getNameForId(id));
-  } else {
-    attributes.set('id', node);
   }
 
   const class_ = graph.findNodeVia(node, _class);

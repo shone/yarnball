@@ -1,6 +1,6 @@
 'use strict';
 
-const _rules    = '348b6fa30fc94e55378565889927dc7e'; builtinNameMatches.push({name: 'rules',   id: _rules});
+const _rule     = '348b6fa30fc94e55378565889927dc7e'; builtinNameMatches.push({name: 'rule',    id: _rule});
 const _nextPart = '7b4d5216c9d438a6cfca7259ce5940d2'; builtinNameMatches.push({name: '->',      id: _nextPart});
 
 const selectors = new Map([
@@ -44,7 +44,7 @@ for (const [id, name] of values) {
 }
 
 function transpileCss(node) {
-  const rules = graph.findNodesVia(node, _rules);
+  const rules = graph.findNodesVia(node, _rule);
   return rules.map(transpileCssRule).join('');
 }
 
