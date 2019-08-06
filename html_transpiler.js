@@ -16,16 +16,16 @@ const _class       = '6c8d5c7756858aa43f136630c279dbe4'; builtinNameMatches.push
 var launchedHtmlWindow = null;
 
 function transpileHtmlAtCursor() {
-  var nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     console.log(transpileHtml(nodeAtCursor.dataset.id));
   }
 }
 
 function launchHtmlAtCursor() {
-  var nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
-    var html = transpileHtml(nodeAtCursor.dataset.id);
+    const html = transpileHtml(nodeAtCursor.dataset.id);
     if (!launchedHtmlWindow || launchedHtmlWindow.window === null) {
       launchedHtmlWindow = window.open();
     }
@@ -65,40 +65,40 @@ function transpileHtml(node) {
 }
 
 function transpileElement(node) {
-  var tagName = null;
-  var attributes = new Map();
-  var textContent = null;
+  let tagName = null;
+  const attributes = new Map();
+  let textContent = null;
 
-  var tag = graph.findNodeVia(node, _tag);
+  const tag = graph.findNodeVia(node, _tag);
   if (tag) {
     tagName = graph.getNameForId(tag);
   }
 
-  var div = graph.findNodeVia(node, _div);
+  const div = graph.findNodeVia(node, _div);
   if (div) {
     tagName = 'div';
     textContent = graph.getNameForId(div);
   }
 
-  var span = graph.findNodeVia(node, _span);
+  const span = graph.findNodeVia(node, _span);
   if (span) {
     tagName = 'span';
     textContent = graph.getNameForId(span);
   }
 
-  var script = graph.findNodeVia(node, _script);
+  const script = graph.findNodeVia(node, _script);
   if (script) {
     tagName = 'script';
     textContent = compileStatements(script);
   }
 
-  var style = graph.findNodeVia(node, _style);
+  const style = graph.findNodeVia(node, _style);
   if (style) {
     tagName = 'style';
     textContent = transpileCss(style);
   }
 
-  var button = graph.findNodeVia(node, _button);
+  const button = graph.findNodeVia(node, _button);
   if (button) {
     tagName = 'button';
     textContent = graph.getNameForId(button);
@@ -109,22 +109,22 @@ function transpileElement(node) {
     textContent = textContent ? graph.getNameForId(textContent) : '';
   }
 
-  var firstChild = graph.findNodeVia(node, _child);
-  var content = firstChild ? transpileHtml(firstChild) : '';
+  const firstChild = graph.findNodeVia(node, _child);
+  const content = firstChild ? transpileHtml(firstChild) : '';
 
-  var id = graph.findNodeVia(node, _id);
+  const id = graph.findNodeVia(node, _id);
   if (id) {
     attributes.set('id', graph.getNameForId(id));
   } else {
     attributes.set('id', node);
   }
 
-  var class_ = graph.findNodeVia(node, _class);
+  const class_ = graph.findNodeVia(node, _class);
   if (class_) {
     attributes.set('class', graph.getNameForId(class_));
   }
 
-  var attributesText = '';
+  let attributesText = '';
   if (attributes.size > 0) {
     attributesText = ' ' + [...attributes.entries()].map(i => `${i[0]}="${i[1]}"`).join(' ');
   }

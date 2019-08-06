@@ -13,30 +13,30 @@ function handlePointerDrag(event, options) {
   cursorOnTargetPositionStart             = { x: target.scrollLeft + event.offsetX, y: target.scrollTop + event.offsetY };
   cursorScreenPositionOnLastDragMousemove = { x: event.screenX, y: event.screenY };
   cursorPositionOnLastDragMousemove = cursorPositionOnMouseDragStart;
-  var lastCursorClientPosition = {x: event.clientX, y: event.clientY};
+  let lastCursorClientPosition = {x: event.clientX, y: event.clientY};
   function distance(pointA, pointB) {
-    var deltaX = Math.abs(pointA.x - pointB.x);
-    var deltaY = Math.abs(pointA.y - pointB.y);
+    const deltaX = Math.abs(pointA.x - pointB.x);
+    const deltaY = Math.abs(pointA.y - pointB.y);
     return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
   }
   function handlePointermove(event) {
-    var cursorClientPosition = {x: event.clientX, y: event.clientY};
-    var wasOutsideWindow = lastCursorClientPosition.x < 0 ||
-                           lastCursorClientPosition.y < 0 ||
-                           lastCursorClientPosition.x > window.innerWidth ||
-                           lastCursorClientPosition.y > window.innerHeight;
-    var isInsideWindow = cursorClientPosition.x >= 0 && cursorClientPosition.x < window.innerWidth &&
-                         cursorClientPosition.y >= 0 && cursorClientPosition.y < window.innerHeight;
+    const cursorClientPosition = {x: event.clientX, y: event.clientY};
+    const wasOutsideWindow = lastCursorClientPosition.x < 0 ||
+                             lastCursorClientPosition.y < 0 ||
+                             lastCursorClientPosition.x > window.innerWidth ||
+                             lastCursorClientPosition.y > window.innerHeight;
+    const isInsideWindow = cursorClientPosition.x >= 0 && cursorClientPosition.x < window.innerWidth &&
+                           cursorClientPosition.y >= 0 && cursorClientPosition.y < window.innerHeight;
     // If the cursor appears to teleport from somewhere outside the window to inside, then ignore the event as it seems to be a bug with chrome or my window manager
-    var badPointerEvent = wasOutsideWindow && isInsideWindow && distance(cursorClientPosition, lastCursorClientPosition) > 20;
+    const badPointerEvent = wasOutsideWindow && isInsideWindow && distance(cursorClientPosition, lastCursorClientPosition) > 20;
     if (options.onmove && !badPointerEvent) {
-      var position       = { x: event.pageX,   y: event.pageY   };
-      var positionScreen = { x: event.screenX, y: event.screenY };
-      var delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
-      var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
-      var deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
-      var positionOffset = { x: cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
-      var positionOnTarget = { x: target.scrollLeft + cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: target.scrollTop + cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
+      const position       = { x: event.pageX,   y: event.pageY   };
+      const positionScreen = { x: event.screenX, y: event.screenY };
+      const delta = {x: position.x - cursorPositionOnLastDragMousemove.x, y: position.y - cursorPositionOnLastDragMousemove.y};
+      const deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
+      const deltaScreen = {x: positionScreen.x - cursorScreenPositionOnLastDragMousemove.x, y: positionScreen.y - cursorScreenPositionOnLastDragMousemove.y};
+      const positionOffset = { x: cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
+      const positionOnTarget = { x: target.scrollLeft + cursorPositionOffsetOnMouseDragStart.x + deltaTotal.x, y: target.scrollTop + cursorPositionOffsetOnMouseDragStart.y + deltaTotal.y };
       cursorPositionOnLastDragMousemove = position;
       cursorScreenPositionOnLastDragMousemove = positionScreen;
       options.onmove({position, positionOffset, positionOnTarget, delta, deltaTotal, deltaScreen});
@@ -56,8 +56,8 @@ function handlePointerDrag(event, options) {
         target.releasePointerCapture(pointerId);
       }
       if (options.onup) {
-        var position   = {x: event.pageX, y: event.pageY};
-        var deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
+        const position   = {x: event.pageX, y: event.pageY};
+        const deltaTotal = {x: position.x - cursorPositionOnMouseDragStart.x, y: position.y - cursorPositionOnMouseDragStart.y};
         options.onup(event, {position, deltaTotal});
       }
     },
@@ -121,8 +121,8 @@ function handleNodeMousedown(event) {
         y: cursorPosition.y - cursorStartPosition.y,
       }
       // Don't allow dragging off the edge of the document
-      var leftmost = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.x + cursorDelta.x));
-      var topmost  = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.y + cursorDelta.y));
+      const leftmost = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.x + cursorDelta.x));
+      const topmost  = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.y + cursorDelta.y));
       if (leftmost < 0) {
         cursorPosition.x += -leftmost;
         cursorDelta.x    += -leftmost;
@@ -132,7 +132,7 @@ function handleNodeMousedown(event) {
         cursorDelta.y    += -topmost;
       }
       // Don't allow dragging to where nodes would overlap with other nodes
-      for (let node of [...nodesToDrag]) {
+      for (const node of [...nodesToDrag]) {
         const newNodeBoundingBox = {
           left:   node.dragStartPosition.x + cursorDelta.x,
           top:    node.dragStartPosition.y + cursorDelta.y,
@@ -160,10 +160,10 @@ function handleNodeMousedown(event) {
       }
     },
     onup: function(event, mouse) {
-      for (let node of nodesToDrag) node.classList.remove('dragging');
+      for (const node of nodesToDrag) node.classList.remove('dragging');
       if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
-        var oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
-        var newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+        const oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
+        const newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
         recordAction(
           new moveNodesAction({oldPositions, newPositions}),
           {
@@ -179,7 +179,7 @@ function handleNodeMousedown(event) {
 }
 
 
-for (let surface of document.getElementsByClassName('surface')) {
+for (const surface of document.getElementsByClassName('surface')) {
   surface.addEventListener('pointerdown', handlePointerDownForSurface);
   surface.addEventListener('contextmenu', handleContextMenuForSurface);
   surface.addEventListener('dblclick',    handleDblClickForSurface);

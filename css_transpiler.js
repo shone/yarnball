@@ -9,7 +9,7 @@ const selectors = new Map([
   ['tag',    '55b040349bd16be47eb934032fd494fa'],
   [':',      '2e12c3086297f40f93a7d05ee6f06ccb'],
 ]);
-for (let [name, id] of selectors) {
+for (const [name, id] of selectors) {
   builtinNameMatches.push({name: name, id: id});
 }
 
@@ -31,7 +31,7 @@ const properties = new Map([
   ['content',          '86812720a030b393cc19a754898e6832'],
   ['visibility',       '60664bc282ddd29aebccae7f5c3f784e'],
 ]);
-for (let [name, id] of properties) {
+for (const [name, id] of properties) {
   builtinNameMatches.push({name: name, id: id});
 }
 
@@ -39,22 +39,22 @@ const values = new Map([
   ['8623f6638bbdc2d25c773a98711a17c3', 'center'],
   ['625e8195abfcbc9d2aedad118c23bfbc', 'column'],
 ]);
-for (let [id, name] of values) {
+for (const [id, name] of values) {
   builtinNameMatches.push({name: name, id: id});
 }
 
 function transpileCss(node) {
-  var rules = graph.findNodesVia(node, _rules);
+  const rules = graph.findNodesVia(node, _rules);
   return rules.map(transpileCssRule).join('');
 }
 
 function transpileCssRule(node) {
-  var declarations = '';
+  let declarations = '';
 
-  var selector = transpileCssSelector(node);
+  const selector = transpileCssSelector(node);
 
-  for (let [property, id] of properties) {
-    var value = graph.findNodeVia(node, id);
+  for (const [property, id] of properties) {
+    let value = graph.findNodeVia(node, id);
     value = values.get(value) || graph.getNameForId(value);
     if (value) {
       declarations += `${property}: ${value};`;
@@ -65,11 +65,11 @@ function transpileCssRule(node) {
 }
 
 function transpileCssSelector(node) {
-  var parts = graph.followListNodes(node, _nextPart);
+  const parts = graph.followListNodes(node, _nextPart);
   return parts.map(part => {
-    var partString = '';
-    for (let [name, id] of selectors) {
-      var value = graph.findNodeVia(part, id);
+    let partString = '';
+    for (const [name, id] of selectors) {
+      const value = graph.findNodeVia(part, id);
       if (value) {
         if (name === '#') {
           partString += `[id='${value}']`;
