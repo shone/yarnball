@@ -804,7 +804,7 @@ function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByCl
     return !(
       ((parseInt(node.style.left) + getNodeWidthForName(node.value))  <  box.left)  ||
        (parseInt(node.style.left)                                     >= box.right) ||
-      ((parseInt(node.style.top)  + 32)                               <  box.top)   ||
+      ((parseInt(node.style.top)  + 20)                               <  box.top)   ||
        (parseInt(node.style.top)                                      >= box.bottom)
     );
   });

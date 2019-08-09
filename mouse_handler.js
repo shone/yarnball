@@ -99,13 +99,11 @@ function handleNodeMousedown(event) {
     return false;
   }
   // Node dragging
-  const nodesToDrag = new Set(currentSurface.querySelectorAll('.node.selected'));
-  nodesToDrag.add(node);
+  const nodesToDrag = [...currentSurface.getElementsByClassName('node')].filter(node_ => node_.classList.contains('selected') || node_ === node);
   for (let node of nodesToDrag) {
     node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
   }
-  let nodesNotBeingDragged = new Set(currentSurface.getElementsByClassName('node'));
-  for (let node of nodesToDrag) nodesNotBeingDragged.delete(node);
+  const nodesNotBeingDragged = [...currentSurface.getElementsByClassName('node')].filter(node_ => !node_.classList.contains('selected') && node_ !== node);
   const cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   const selectionBoxStartPosition = getSelectionBox();
   isActionInProgress = true;
@@ -121,8 +119,8 @@ function handleNodeMousedown(event) {
         y: cursorPosition.y - cursorStartPosition.y,
       }
       // Don't allow dragging off the edge of the document
-      const leftmost = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.x + cursorDelta.x));
-      const topmost  = Math.min(...[...nodesToDrag].map(node => node.dragStartPosition.y + cursorDelta.y));
+      const leftmost = Math.min(...nodesToDrag.map(node => node.dragStartPosition.x + cursorDelta.x));
+      const topmost  = Math.min(...nodesToDrag.map(node => node.dragStartPosition.y + cursorDelta.y));
       if (leftmost < 0) {
         cursorPosition.x += -leftmost;
         cursorDelta.x    += -leftmost;
@@ -132,14 +130,14 @@ function handleNodeMousedown(event) {
         cursorDelta.y    += -topmost;
       }
       // Don't allow dragging to where nodes would overlap with other nodes
-      for (const node of [...nodesToDrag]) {
+      for (const node of nodesToDrag) {
         const newNodeBoundingBox = {
           left:   node.dragStartPosition.x + cursorDelta.x,
           top:    node.dragStartPosition.y + cursorDelta.y,
-          right:  node.dragStartPosition.x + cursorDelta.x + parseInt(node.style.width),
+          right:  node.dragStartPosition.x + cursorDelta.x + getNodeWidthForName(node.value),
           bottom: node.dragStartPosition.y + cursorDelta.y + 20,
         };
-        if (getNodesIntersectingBox(newNodeBoundingBox, [...nodesNotBeingDragged]).length !== 0) {
+        if (getNodesIntersectingBox(newNodeBoundingBox, nodesNotBeingDragged).length !== 0) {
           return;
         }
       }
@@ -162,8 +160,8 @@ function handleNodeMousedown(event) {
     onup: function(event, mouse) {
       for (const node of nodesToDrag) node.classList.remove('dragging');
       if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
-        const oldPositions = [...nodesToDrag].map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
-        const newPositions = [...nodesToDrag].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+        const oldPositions = nodesToDrag.map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
+        const newPositions = nodesToDrag.map(node => {return {node: node, left: node.style.left, top: node.style.top}});
         recordAction(
           new moveNodesAction({oldPositions, newPositions}),
           {
