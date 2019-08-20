@@ -492,43 +492,6 @@ function getClosestNodeTo(position, nodes = currentSurface.getElementsByClassNam
   return closestNode;
 }
 
-function directionBetweenPoints(a, b) {
-  var delta = {
-    x: b.x - a.x,
-    y: b.y - a.y,
-  }
-  var downLeft  = (-delta.x + delta.y) > 0;
-  var downRight = ( delta.x + delta.y) > 0;
-  if ( downLeft &&  downRight) return 'down';
-  if (!downLeft && !downRight) return 'up';
-  if ( downLeft && !downRight) return 'left';
-  if (!downLeft &&  downRight) return 'right';
-}
-
-function getClosestNodeInDirection(sourceNode, direction) {
-  var sourcePosition = {x: parseInt(sourceNode.style.left), y: parseInt(sourceNode.style.top)};
-  if (direction === 'up')    sourcePosition.y += 1;
-  if (direction === 'down')  sourcePosition.y -= 1;
-  if (direction === 'left')  sourcePosition.x += 1;
-  if (direction === 'right') sourcePosition.x -= 1;
-  var closestNode = null;
-  var distanceToClosestNode = null;
-  Array.from(currentSurface.getElementsByClassName('node')).forEach(node => {
-    if (node === sourceNode) return;
-    var nodePosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
-    if (directionBetweenPoints(sourcePosition, nodePosition) === direction) {
-      var deltaX = sourcePosition.x - nodePosition.x;
-      var deltaY = sourcePosition.y - nodePosition.y;
-      var distance = (deltaX * deltaX) + (deltaY * deltaY);
-      if (closestNode === null || distance < distanceToClosestNode) {
-        closestNode = node;
-        distanceToClosestNode = distance;
-      }
-    }
-  });
-  return closestNode;
-}
-
 function getAdjacentNodesInDirection(sourceNode, direction) {
   return [...currentSurface.getElementsByClassName('node')].filter(node => {
     if (node === sourceNode) return false;
@@ -1599,49 +1562,61 @@ function layoutLink(link, lastPosition) {
   }
 }
 
-function updateOverflowMap(nodes, surface) {
+function updateOverflowMaps(nodes, surface) {
   const surfaceContainer = surface.closest('.surface-container');
-  if (surfaceContainer) {
-    for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
-      const edge = overflowMap.dataset.edge;
-      for (const node of nodes) {
-        node.overflowMap = node.overflowMap || {};
-        if (!node.overflowMap[edge]) {
-          node.overflowMap[edge] = document.createElement('div');
-          node.overflowMap[edge].classList.add('node-shadow');
-          if (node.classList.contains('selected')) {
-            node.overflowMap[edge].classList.add('selected');
-          }
-          overflowMap.appendChild(node.overflowMap[edge]);
-        }
-        node.overflowMap[edge].style.left = node.style.left;
-        node.overflowMap[edge].style.top  = node.style.top;
-        if (overflowMap.dataset.edge === 'top' || overflowMap.dataset.edge === 'bottom') {
-          node.overflowMap[edge].style.width = node.style.width;
-        }
-        if (overflowMap.dataset.edge === 'right') {
-          node.overflowMap[edge].style.width = (parseInt(node.style.width) + 5000) + 'px';
-        } else if (overflowMap.dataset.edge === 'bottom') {
-          node.overflowMap[edge].style.height = (20 + 5000) + 'px';
-        }
-        if (overflowMap.dataset.edge === 'left') {
-          node.overflowMap[edge].style.zIndex = parseInt(node.style.left);
-        } else if (overflowMap.dataset.edge === 'top') {
-          node.overflowMap[edge].style.zIndex = parseInt(node.style.top);
-        } else if (overflowMap.dataset.edge === 'right') {
-          node.overflowMap[edge].style.zIndex = 5000 - parseInt(node.style.left);
-        } else if (overflowMap.dataset.edge === 'bottom') {
-          node.overflowMap[edge].style.zIndex = 5000 - parseInt(node.style.top);
-        }
-        node.overflowMap[edge].node = node;
+  if (!surfaceContainer) {
+    return;
+  }
+  for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
+    const edge = overflowMap.dataset.edge;
+    // Create/update shadows for existing nodes
+    for (const node of nodes) {
+      node.overflowMap = node.overflowMap || {};
+      let nodeShadow = node.overflowMap[edge];
+      if (!nodeShadow) {
+        nodeShadow = document.createElement('div');
+        nodeShadow.classList.add('node-shadow');
+        nodeShadow.classList.toggle('selected', node.classList.contains('selected'));
+        nodeShadow.node = node;
+        overflowMap.appendChild(nodeShadow);
+        node.overflowMap[edge] = nodeShadow;
       }
-      for (const nodeShadow of [...overflowMap.getElementsByClassName('node-shadow')]) {
-        if (!nodeShadow.node.parentElement) {
-          nodeShadow.remove();
-          delete nodeShadow.node.overflowMap[edge];
-        }
+      layoutNodeShadow(nodeShadow, node, edge);
+    }
+    // Remove shadows for deleted nodes
+    for (const nodeShadow of [...overflowMap.getElementsByClassName('node-shadow')]) {
+      if (!nodeShadow.node.parentElement) {
+        nodeShadow.remove();
+        delete nodeShadow.node.overflowMap[edge];
       }
     }
+  }
+}
+
+function layoutNodeShadow(shadow, node, edge) {
+  // Position
+  shadow.style.left = node.style.left;
+  shadow.style.top  = node.style.top;
+
+  // Dimensions
+  if (edge === 'top' || edge === 'bottom') {
+    shadow.style.width = node.style.width;
+  }
+  if (edge === 'right') {
+    shadow.style.width = (parseInt(node.style.width) + 5000) + 'px';
+  } else if (edge === 'bottom') {
+    shadow.style.height = (20 + 5000) + 'px';
+  }
+
+  // Z-index
+  if (edge === 'left') {
+    shadow.style.zIndex = parseInt(node.style.left);
+  } else if (edge === 'top') {
+    shadow.style.zIndex = parseInt(node.style.top);
+  } else if (edge === 'right') {
+    shadow.style.zIndex = 5000 - parseInt(node.style.left);
+  } else if (edge === 'bottom') {
+    shadow.style.zIndex = 5000 - parseInt(node.style.top);
   }
 }
 
@@ -1776,7 +1751,7 @@ function insertNodesAndLinksFromHtml(html, position=null) {
     }
     links.forEach(layoutLink);
   }
-  updateOverflowMap(nodes, currentSurface);
+  updateOverflowMaps(nodes, currentSurface);
   evaluateCursorPosition();
   return {nodes, links};
 }

@@ -10,7 +10,7 @@ function recordAction(action, options) {
     action.options = options || {};
     actions.push(action);
     actionsUndone = [];
-    updateOverflowMap(mainSurface.getElementsByClassName('node'), mainSurface);
+    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
   } else if (currentSurface === findPanel) {
     highlightQueriedNodes();
   }
@@ -23,7 +23,7 @@ function undo() {
     closeNameMatchPanel();
     action.undo();
     actionsUndone.push(action);
-    updateOverflowMap(mainSurface.getElementsByClassName('node'), mainSurface);
+    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.before);
     }
@@ -45,7 +45,7 @@ function redo() {
     closeNameMatchPanel();
     action.redo();
     actions.push(action);
-    updateOverflowMap(mainSurface.getElementsByClassName('node'), mainSurface);
+    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.after);
     }
