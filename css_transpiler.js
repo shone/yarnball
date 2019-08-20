@@ -1,7 +1,9 @@
 'use strict';
 
-const _rule     = '348b6fa30fc94e55378565889927dc7e'; builtinNameMatches.push({name: 'rule',    id: _rule});
-const _nextPart = '7b4d5216c9d438a6cfca7259ce5940d2'; builtinNameMatches.push({name: '->',      id: _nextPart});
+const cssSymbols = [];
+
+const _rule     = '348b6fa30fc94e55378565889927dc7e'; cssSymbols.push({name: 'rule',    id: _rule});
+const _nextPart = '7b4d5216c9d438a6cfca7259ce5940d2'; cssSymbols.push({name: '->',      id: _nextPart});
 
 const selectors = new Map([
   ['#',      '79a0b037275b58db64688c341db0e45f'],
@@ -10,7 +12,7 @@ const selectors = new Map([
   [':',      '2e12c3086297f40f93a7d05ee6f06ccb'],
 ]);
 for (const [name, id] of selectors) {
-  builtinNameMatches.push({name: name, id: id});
+  cssSymbols.push({name: name, id: id});
 }
 
 const properties = new Map([
@@ -32,7 +34,7 @@ const properties = new Map([
   ['visibility',       '60664bc282ddd29aebccae7f5c3f784e'],
 ]);
 for (const [name, id] of properties) {
-  builtinNameMatches.push({name: name, id: id});
+  cssSymbols.push({name: name, id: id});
 }
 
 const values = new Map([
@@ -40,8 +42,12 @@ const values = new Map([
   ['625e8195abfcbc9d2aedad118c23bfbc', 'column'],
 ]);
 for (const [id, name] of values) {
-  builtinNameMatches.push({name: name, id: id});
+  cssSymbols.push({name: name, id: id});
 }
+
+const cssSyntaxHighlighting = new CSSStyleSheet();
+cssSyntaxHighlighting.replaceSync(cssSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: #006ebd; font-weight: bold}');
+document.adoptedStyleSheets = [...document.adoptedStyleSheets, cssSyntaxHighlighting];
 
 function transpileCss(node) {
   const rules = graph.findNodesVia(node, _rule);
