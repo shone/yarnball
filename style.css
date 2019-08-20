@@ -302,6 +302,7 @@ body.dragging-selection-box :not(.surface) {
   z-index: 3;
   filter: drop-shadow(0 0 12px #333);
   pointer-events: none;
+  font-size: 12px;
 }
 
 .panels-container .headers {
@@ -364,15 +365,15 @@ body.dragging-selection-box :not(.surface) {
 .panels-container .headers button {
   background-color: #000;
   color: #fff;
-  font-size: 15px;
+  font-size: 1em;
   font-weight: bold;
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding-left:  5px;
-  padding-right: 5px;
+  padding-left:  7px;
+  padding-right: 7px;
   min-width:  20px;
-  height: 40px;
+  height: 32px;
 }
 .panels-container .headers button:hover {
   background-color: #696969;
@@ -385,8 +386,8 @@ body.dragging-selection-box :not(.surface) {
   color: #000;
 }
 .panels-container.right .headers button {
-  margin-top:    5px;
-  margin-bottom: 5px;
+  margin-top:    3px;
+  margin-bottom: 3px;
   border-top-left-radius:    5px;
   border-bottom-left-radius: 5px;
 }
@@ -416,10 +417,10 @@ body.dragging-selection-box :not(.surface) {
   display: none;
 }
 .panels-container[data-panel="commands"] .panels {
-  margin-right: -350px;
+  margin-right: -300px;
 }
 .panel[data-panel="commands"] {
-  width: 350px;
+  width: 300px;
   flex-direction: column;
   overflow-y: auto;
   background-color: #fff;
@@ -484,11 +485,11 @@ body.dragging-selection-box :not(.surface) {
   display: none;
 }
 .panels-container[data-panel="find"] .panels {
-  margin-bottom: -350px;
+  margin-bottom: -250px;
 }
 
 .panel[data-panel="find"] {
-  height: 350px;
+  height: 250px;
   overflow-y: auto;
 }
 
@@ -507,13 +508,13 @@ body.dragging-selection-box :not(.surface) {
   display: none;
 }
 .panel[data-panel="help"] {
-  width: 70vw;
+  width: 50vw;
   box-sizing: border-box;
   overflow-y: auto;
   background-color: #fff;
 }
 .panels-container[data-panel="help"] .panels {
-  margin-right: -70vw;
+  margin-right: -50vw;
 }
 
 .panels-container[data-panel="javascript"] .headers button[data-panel="javascript"] {
