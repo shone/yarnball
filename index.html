@@ -99,17 +99,17 @@
             <tr data-command="cut" ><td>Cut </td> <td><span>Ctrl</span><span>X</span></td></tr>
 
             <tr><td class="category-title" colspan="2">Cursor</td></tr>
-            
+
             <tr data-command="move_cursor_left" > <td>Move cursor left </td> <td><span>←</span></td> </tr>
             <tr data-command="move_cursor_right"> <td>Move cursor right</td> <td><span>→</span></td> </tr>
             <tr data-command="move_cursor_up"   > <td>Move cursor up   </td> <td><span>↑</span></td> </tr>
             <tr data-command="move_cursor_down" > <td>Move cursor down </td> <td><span>↓</span></td> </tr>
-            
+
             <tr data-command="move_cursor_left_select" > <td>Move cursor left  <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>←</span></td> </tr>
             <tr data-command="move_cursor_right_select"> <td>Move cursor right <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>→</span></td> </tr>
             <tr data-command="move_cursor_up_select"   > <td>Move cursor up    <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>↑</span></td> </tr>
             <tr data-command="move_cursor_down_select" > <td>Move cursor down  <div><em>(and drag selection box)</em></div></td> <td><span>Shift</span><span>↓</span></td> </tr>
-            
+
             <tr data-command="move_cursor_left_block" ><td><div>Move cursor left</div><div><em>(block)</em></div></td> <td><span>Home</span></td></tr>
             <tr data-command="move_cursor_right_block"><td><div>Move cursor right</div><div><em>(block)</em></div></td> <td><span>End</span></td></tr>
             <tr data-command="move_cursor_left_block_select" ><td><div>Move cursor left  </div><div><em>(block, select)</em></div></td> <td><span>Shift</span><span>Home</span></td></tr>
@@ -124,7 +124,7 @@
             <tr data-command="select_connected_at_cursor"><td>Select connected at cursor</td> <td><span>Ctrl</span><span>G</span></td></tr>
             <tr data-command="select_instances_at_cursor"><td>Select instances at cursor</td> <td><span>Ctrl</span><span>Shift</span><span>I</span></td></tr>
             <tr data-command="select_instances_at_cursor_connected"><td>Select instances at cursor<div><em>(connected)</em></div></td> <td><span>Ctrl</span><span>I</span></td></tr>
-            
+
             <tr data-command="move_selection_left"  > <td>Move selection left  </td> <td><span>Ctrl</span><span>←</span></td> </tr>
             <tr data-command="move_selection_right" > <td>Move selection right </td> <td><span>Ctrl</span><span>→</span></td> </tr>
             <tr data-command="move_selection_up"    > <td>Move selection up    </td> <td><span>Ctrl</span><span>↑</span></td> </tr>
@@ -172,16 +172,16 @@
         </div>
       </div>
     </div>
-    
-    <script src="main.js">          </script>
-    <script src="graph.js">         </script>
-    <script src="undo_redo.js">     </script>
-    <script src="commands.js">      </script>
-    <script src="mouse_handler.js"> </script>
 
-    <script src="js_transpiler.js"   async="true"></script>
-    <script src="html_transpiler.js" async="true"></script>
-    <script src="css_transpiler.js"  async="true"></script>
+    <script src="source/main.js">          </script>
+    <script src="source/graph.js">         </script>
+    <script src="source/undo_redo.js">     </script>
+    <script src="source/commands.js">      </script>
+    <script src="source/mouse_handler.js"> </script>
+
+    <script src="transpilers/js_transpiler.js"   async="true"></script>
+    <script src="transpilers/html_transpiler.js" async="true"></script>
+    <script src="transpilers/css_transpiler.js"  async="true"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/highlight.min.js"></script>
   </body>
