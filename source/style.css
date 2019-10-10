@@ -1,0 +1,296 @@
+/*!
+ *  Hack typeface https://github.com/source-foundry/Hack
+ *  License: https://github.com/source-foundry/Hack/blob/master/LICENSE.md
+ */
+@font-face {
+  font-family: 'Hack';
+  src: url('../fonts/hack-regular-subset.woff2?sha=3114f1256') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Hack';
+  src: url('../fonts/hack-bold-subset.woff2?sha=3114f1256') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+html {
+  padding: 0;
+  margin:  0;
+  width:  100%;
+  height: 100%;
+}
+
+body {
+  padding: 0;
+  margin:  0;
+  height: 100%;
+  width:  100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+body.dragging .surface {
+  cursor: move;
+}
+body.dragging :not(.surface) {
+  pointer-events: none;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+#primary-surfaces {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+#primary-surfaces .surface-container {
+  flex-grow: 1;
+}
+
+.surface-container {
+  position: relative;
+  user-select: none;
+  background-color: #b5b5b5;
+}
+.surface-container .surface {
+  position: absolute;
+  left:   20px;
+  top:    20px;
+  right:  20px;
+  bottom: 20px;
+}
+.surface-container .overflow-map {
+  position: absolute;
+  left:   0;
+  top:    0;
+  right:  0;
+  bottom: 0;
+}
+
+.overflow-map {
+  pointer-events: none;
+  scrollbar-width: 0;
+  overflow: scroll;
+  background-color: #b5b5b5;
+  z-index: 2;
+}
+.overflow-map:before {
+  content: '';
+  display: block;
+  width:  5000px;
+  height: 5000px;
+}
+.overflow-map::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.overflow-map[data-edge="left"]   { clip-path: inset(20px calc(100% - 20px) 20px 0); }
+.overflow-map[data-edge="top"]    { clip-path: inset(0 20px calc(100% - 20px) 20px); }
+.overflow-map[data-edge="right"]  { clip-path: inset(20px 0 20px calc(100% - 20px)); }
+.overflow-map[data-edge="bottom"] { clip-path: inset(calc(100% - 20px) 20px 0 20px); }
+
+.overflow-map .node-shadow {
+  position: absolute;
+  background-color: #fff;
+  pointer-events: auto;
+  transform: translate(20px, 20px);
+  border-radius: 5px;
+  box-sizing: border-box;
+  cursor: pointer;
+  margin-left: 7px;
+  margin-top: 6px;
+}
+.node-shadow:hover {
+  background-color: #888;
+}
+.node-shadow.mouse-over-instance { z-index: 5000 !important; background-color: #888;    }
+.node-shadow.cursor-at-instance  { z-index: 5000 !important; border: 4px solid #000;    }
+.node-shadow.highlighted         { z-index: 5000 !important; background-color: #ffff98; }
+.node-shadow.selected            { z-index: 5000 !important; background-color: orange;  }
+.overflow-map[data-edge="left"]   .node-shadow { width: 5000px; height: 20px;   }
+.overflow-map[data-edge="top"]    .node-shadow { width: 50px;   height: 5000px; }
+.overflow-map[data-edge="right"]  .node-shadow { height: 20px; margin-left: calc(-5000px + 7px); }
+.overflow-map[data-edge="bottom"] .node-shadow { width:  50px; margin-top:  calc(-5000px + 6px); }
+
+.surface {
+  position: relative;
+  background-color: #b5b5b5;
+  cursor: crosshair;
+  scrollbar-width: 0;
+  overflow: scroll;
+}
+.surface::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.surface.current {
+  outline: 2px solid #9de1fe;
+  outline-offset: -2px;
+}
+
+
+.links {
+  position: absolute;
+  width:  5000px;
+  height: 5000px;
+  pointer-events: none;
+}
+
+.cursor {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  width:  2px;
+  height: 16px;
+  margin-top:  -8px;
+  margin-left: -1px;
+  background-color: #000;
+  outline: 1px solid #fff;
+  pointer-events: none;
+}
+.cursor:after {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 2px;
+  margin-left: -7px;
+  margin-top: 7px;
+  background-color: #000;
+  outline: 1px solid #fff;
+  pointer-events: none;
+}
+.cursor.insert-mode {
+  width:  64px;
+  height: 32px;
+  margin-left: 0;
+  margin-top:  0;
+  background-color: transparent;
+  outline: 1px solid #000;
+  border:  1px solid #fff;
+}
+.cursor.insert-mode:after {
+  display: none;
+}
+@keyframes blink-animation {
+  to { visibility: hidden; }
+}
+.surface.current .cursor.blinking {
+  animation: blink-animation 1s steps(2, start) infinite;
+}
+
+.node {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  width:  50px;
+  height: 20px;
+  margin-left: 7px;
+  margin-top:  6px;
+  background-color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: Hack, monospace;
+  font-size: 10px;
+  line-height: 25px;
+  text-align: center;
+}
+.node.highlighted {
+  background-color: #ffff98;
+}
+.node.highlight-for-connected {
+  border: 2px solid purple;
+}
+.node.mouse-over-instance {
+  background-color: #888;
+}
+.node.cursor-at-instance {
+  border: 2px solid #000;
+}
+.node.name-match-selected {
+  border: 2px solid orange;
+}
+
+.node.selected {
+  background-color: orange;
+}
+.node:focus {
+  outline: none;
+}
+
+.link {
+  stroke: #444;
+  stroke-width: 12px;
+  fill: none;
+  marker-end: url(#Triangle);
+  cursor: pointer;
+  pointer-events: stroke;
+}
+.link-arrow {
+  fill: #444;
+}
+.link:hover {
+  stroke: #4e4e4e;
+}
+.link.highlight-for-connected {
+  stroke: purple;
+}
+.link.mouse-over-instance {
+  stroke: grey;
+}
+.link.selected {
+  stroke: orange;
+}
+
+.unfinished-link {
+  stroke: #444;
+  stroke-width: 12px;
+  fill: none;
+  marker-end: url(#Triangle);
+  pointer-events: none;
+}
+
+#svg-defs {
+  position: fixed;
+  width:  0;
+  height: 0;
+}
+
+.selection-box {
+  position: absolute;
+  background-color: grey;
+  border: 1px solid grey;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+body.dragging-selection-box :not(.surface) {
+  pointer-events: none;
+}
+
+#name-match-panel {
+  position: absolute;
+  display: block;
+  padding-top:    5px;
+  padding-bottom: 5px;
+  background-color: #fff;
+  box-shadow: 1px 3px 18px #000;
+  z-index: 2;
+}
+.name-match {
+  height: 18px;
+  padding-left:  5px;
+  padding-right: 5px;
+  cursor: pointer;
+}
+.name-match.selected {
+  background-color: orange;
+}
+.name-match:hover {
+  background-color: grey;
+}
