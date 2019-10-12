@@ -6,9 +6,16 @@ import (
   "os"
 )
 
+func NoCache(handler http.Handler) http.Handler {
+  return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+    writer.Header().Set("Cache-Control", "must-revalidate")
+    handler.ServeHTTP(writer, request)
+  })
+}
+
 func main() {
-  http.Handle("/", http.FileServer(http.Dir(".")))
-  
+  http.Handle("/", NoCache(http.FileServer(http.Dir("."))))
+
   http.HandleFunc("/load", func(response http.ResponseWriter, request *http.Request) {
     if request.Method != "GET" {
       response.WriteHeader(http.StatusBadRequest)
@@ -60,7 +67,7 @@ func main() {
     }
     ioutil.WriteFile(path, body, 0644)
   })
-  
+
   log.Println("Serving on port 8089..")
   if err := http.ListenAndServe(":8089", nil); err != nil {
     panic(err)
