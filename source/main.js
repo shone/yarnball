@@ -16,9 +16,13 @@ function setCurrentSurface(surface) {
 
 const queryParams = new URLSearchParams(location.search.substring(1));
 const path = queryParams.get('path');
+if (path && (window.outerWidth < 100 || window.outerHeight < 100)) {
+  // When chromium is opened in app mode on my machine, the initial window size is tiny
+  // This resizes it to sensible initial dimensions
+  window.resizeTo(Math.max(window.outerWidth, 640), Math.max(window.outerHeight, 480));
+}
 async function load() {
   if (path) {
-    window.resizeTo(640, 480);
     const pathParts = path.split('/');
     document.title = pathParts[pathParts.length-1] + ' — Yarnball';
     const response = await fetch(location.origin + '/load?path=' + path);
