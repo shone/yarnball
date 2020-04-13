@@ -1779,6 +1779,45 @@ async function save() {
   }
 }
 
+function getAsYarnballFile() {
+  let file = '';
+
+  const nodeNames = new Map();
+  for (const node of [...mainSurface.getElementsByClassName('node')]) {
+    nodeNames.set(node.dataset.id, node.value);
+  }
+
+  file += '[node_names]\n';
+  for (const [id, name] of nodeNames) {
+    file += `${id} ${name}\n`;
+  }
+
+  file += '[node_layout]\n';
+  let index = 0;
+  let instanceIndex = 0;
+  const instanceIndexes = new Map();
+  for (const id of nodeNames.keys()) {
+    const instances = [...mainSurface.querySelectorAll(`.node[data-id="${id}"]`)];
+    for (const instance of instances) {
+      file += `${index} ${parseInt(instance.style.left)},${parseInt(instance.style.top)}\n`;
+      instanceIndexes.set(instance, instanceIndex);
+      instanceIndex++;
+    }
+    index++;
+  }
+
+  file += '[link_layout]\n';
+  for (const link of [...mainSurface.getElementsByClassName('link')]) {
+    file += `${instanceIndexes.get(link.from)} ${instanceIndexes.get(link.via)} ${instanceIndexes.get(link.to)}\n`;
+  }
+
+  file += '[graph]\n';
+  const uniqueLinks = new Set([...mainSurface.getElementsByClassName('link')].map(link => `${link.from.dataset.id} ${link.via.dataset.id} ${link.to.dataset.id}`));
+  file += [...uniqueLinks].map(link => link + '\n');
+
+  return file;
+}
+
 function download() {
   const element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
