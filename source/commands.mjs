@@ -1,4 +1,33 @@
-'use strict';
+import * as undo_redo from './undo_redo.mjs';
+
+import {
+  mainSurface,
+  currentSurface,
+  selectionToClipboard,
+  pxToGridX,
+  pxToGridY,
+  cursor,
+  selectionBox,
+  linkBeingCreated,
+  insertNodeAtCursor,
+  moveCursorToBlockEdge,
+  selectConnectedNodesAtCursor,
+  selectInstancesOfNodeAtCursor,
+  openFindPanel,
+  moveSelectionToQueriedNodes,
+  moveCursorInDirection,
+  moveSelectionInDirection,
+  createInstanceInDirection,
+  deleteSelection,
+  backspace,
+  save,
+  download,
+  makeNodeAtCursorUnique,
+  isolateSelection,
+  useNodeForLinkCreationMode,
+  executeLinkMode,
+  cancelCurrentModeOrOperation
+} from './main.mjs';
 
 const commands = {
   move_cursor_left_block:               ['HOME',              event => moveCursorToBlockEdge('left')],
@@ -10,8 +39,8 @@ const commands = {
   create_node_down:                     ['ENTER',             event => selectNameMatchOrInsertNodeDown()],
   create_node_right:                    [' ',                 event => insertNodeAtCursor({moveAdjacent: 'right'})],
 
-  select_all:                           ['CtrlA',             event => selectAll()],
-  deselect_all:                         ['CtrlShiftA',        event => deselectAll()],
+  select_all:                           ['CtrlA',             event => currentSurface.selectAll()],
+  deselect_all:                         ['CtrlShiftA',        event => currentSurface.deselectAll()],
   select_connected_at_cursor:           ['CtrlG',             event => selectConnectedNodesAtCursor()],
   select_connected_instances_at_cursor: ['CtrlI',             event => selectInstancesOfNodeAtCursor({onlyConnectedNodes: true})],
   select_instances_at_cursor:           ['CtrlShiftI',        event => selectInstancesOfNodeAtCursor()],
@@ -42,10 +71,10 @@ const commands = {
   create_instance_up:                   ['CtrlAltARROWUP',    event => createInstanceInDirection('up')],
   create_instance_down:                 ['CtrlAltARROWDOWN',  event => createInstanceInDirection('down')],
 
-  move_view_left:                       ['AltARROWLEFT',      event => scrollMainSurfaceInDirection('left')],
-  move_view_right:                      ['AltARROWRIGHT',     event => scrollMainSurfaceInDirection('right')],
-  move_view_up:                         ['AltARROWUP',        event => scrollMainSurfaceInDirection('up')],
-  move_view_down:                       ['AltARROWDOWN',      event => scrollMainSurfaceInDirection('down')],
+  move_view_left:                       ['AltARROWLEFT',      event => mainSurface.scrollInDirection('left')],
+  move_view_right:                      ['AltARROWRIGHT',     event => mainSurface.scrollInDirection('right')],
+  move_view_up:                         ['AltARROWUP',        event => mainSurface.scrollInDirection('up')],
+  move_view_down:                       ['AltARROWDOWN',      event => mainSurface.scrollInDirection('down')],
 
   delete:                               ['DELETE',            event => deleteSelection()],
   backspace:                            ['BACKSPACE',         event => backspace(event)],
@@ -59,8 +88,8 @@ const commands = {
   save:                                 ['CtrlS',             event => save()],
   download:                             ['CtrlShiftS',        event => download()],
 
-  undo:                                 ['CtrlZ',             event => undo()],
-  redo:                                 ['CtrlShiftZ',        event => redo()],
+  undo:                                 ['CtrlZ',             event => undo_redo.undo()],
+  redo:                                 ['CtrlShiftZ',        event => undo_redo.redo()],
 
   make_unique:                          ['CtrlD',             event => makeNodeAtCursorUnique()],
 
@@ -99,7 +128,7 @@ document.body.addEventListener('keydown', event => {
                            event.key.toUpperCase();
   if (keyWithModifiers in keyboard_handlers) {
     event.preventDefault();
-    if (isActionInProgress) {
+    if (undo_redo.isActionInProgress) {
       return false;
     }
     keyboard_handlers[keyWithModifiers](event);
@@ -109,7 +138,7 @@ document.body.addEventListener('keydown', event => {
 
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
-    const newNode = createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
+    const newNode = currentSurface.createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
     newNode.focus();
     selectionBox.classList.add('hidden');
     const createdElements = [newNode];
@@ -119,7 +148,7 @@ document.addEventListener('keypress', event => {
         createdElements.push(createdLink);
       }
     }
-    recordAction(createElementsAction(createdElements));
+    undo_redo.markElementsCreated(createdElements);
     return false;
   }
 });

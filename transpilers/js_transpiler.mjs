@@ -1,4 +1,5 @@
-'use strict';
+import {builtinNameMatches} from '/source/name_matching.mjs';
+import {mainSurface, currentSurface} from '/source/main.mjs';
 
 const javascriptPanel = document.querySelector('.panel[data-panel="javascript"]');
 

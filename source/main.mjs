@@ -1,4 +1,10 @@
-'use strict';
+import * as undo_redo from './undo_redo.mjs';
+import {builtinNameMatches} from './name_matching.mjs';
+import {makeUuid, getBoundingBoxForPoints} from './utils.mjs';
+
+import {initSurface} from './surface.mjs';
+import './commands.mjs';
+import './mouse_handler.mjs';
 
 const queryParams = new URLSearchParams(location.search.substring(1));
 const path = queryParams.get('path');
@@ -30,10 +36,11 @@ const path = queryParams.get('path');
   }
 })();
 
-var mainSurface = document.getElementById('main-surface');
-var currentSurface = mainSurface;
+export let mainSurface = document.getElementById('main-surface');
+initSurface(mainSurface);
+export let currentSurface = mainSurface;
 
-function setCurrentSurface(surface) {
+export function setCurrentSurface(surface) {
   if (currentSurface !== surface) {
     closeNameMatchPanel();
     currentSurface.classList.remove('current');
@@ -48,11 +55,11 @@ const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom
 
 // Cursor
 
-var cursor = currentSurface.getElementsByClassName('cursor')[0];
+export var cursor = currentSurface.getElementsByClassName('cursor')[0];
 function getCursorPosition() {
   return {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
 }
-function setCursorPosition(position) {
+export function setCursorPosition(position) {
   resetCursorBlink();
 
   if (parseInt(cursor.style.left) === position.x && parseInt(cursor.style.top) === position.y) {
@@ -102,10 +109,10 @@ function setCursorPosition(position) {
 
   nameMatchPanel.remove();
 }
-function moveCursorToNode(node) {
+export function moveCursorToNode(node) {
   setCursorPosition({x: parseInt(node.style.left), y: parseInt(node.style.top)});
 }
-function evaluateCursorPosition() {
+export function evaluateCursorPosition() {
   const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
     nodeAtCursor.focus();
@@ -122,16 +129,16 @@ function evaluateCursorPosition() {
   }
   document.dispatchEvent(new Event('cursorPositionEvaluated'));
 }
-function resetCursorBlink() {
+export function resetCursorBlink() {
   cursor.classList.remove('blinking');
   cursor.offsetHeight;
   cursor.classList.add('blinking');
 }
-function getNodeAtCursor(surface = currentSurface) {
+export function getNodeAtCursor(surface = currentSurface) {
   const cursor_ = surface.getElementsByClassName('cursor')[0];
-  return getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)}, surface);
+  return surface.getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
 }
-function moveCursorToBlockEdge(direction, options) {
+export function moveCursorToBlockEdge(direction, options) {
   options = options || {};
   var cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   var nodesInRow = [...currentSurface.getElementsByClassName('node')].filter(node => node.style.top === cursor.style.top);
@@ -182,102 +189,16 @@ function moveCursorToBlockEdge(direction, options) {
     setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition));
     selectionBox.classList.remove('hidden');
   } else {
-    deselectAll();
+    currentSurface.deselectAll();
   }
 }
 
-function getBoundingBoxForPoints(pointA, pointB) {
-  const left   = Math.min(pointA.x, pointB.x);
-  const top    = Math.min(pointA.y, pointB.y);
-  const right  = Math.max(pointA.x, pointB.x);
-  const bottom = Math.max(pointA.y, pointB.y);
-  const width  = right - left;
-  const height = bottom - top;
-  return {left, top, right, bottom, width, height};
-}
-
-function getNodeAtPosition(position, surface = currentSurface) {
-  for (let node of surface.getElementsByClassName('node')) {
-    if ((position.y === parseInt(node.style.top)) &&
-      (position.x >= parseInt(node.style.left)) && (position.x < (parseInt(node.style.left) + parseInt(node.style.width)))) {
-      return node;
-    }
-  }
-  return null;
-}
-
-function getNodeClosestToPosition(position, surface = currentSurface) {
-  let closestNode = null;
-  let closestDistance = null;
-  for (let node of surface.getElementsByClassName('node')) {
-    var deltaX = parseInt(node.style.left) - position.x;
-    var deltaY = parseInt(node.style.top)  - position.y;
-    var distance = (deltaX*deltaX) + (deltaY*deltaY);
-    if (!closestNode || (distance < closestDistance)) {
-      closestNode = node;
-      closestDistance = distance;
-    }
-  }
-  return closestNode;
-}
-
-const pxToGridX = px => Math.round(px / 64) * 64;
-const pxToGridY = px => Math.round(px / 32) * 32;
+export const pxToGridX = px => Math.round(px / 64) * 64;
+export const pxToGridY = px => Math.round(px / 32) * 32;
 
 
-
-function makeUuid() {
-  const uints = window.crypto.getRandomValues(new Uint8Array(16));
-  return Array.prototype.map.call(uints, i => ('00' + i.toString(16)).slice(-2)).join('');
-}
-
-function createNode(options = {}) {
-  const node = document.createElement('input');
-  node.classList.add('node');
-  node.setAttribute('data-id', makeUuid());
-  if (options.text) node.value = text;
-  if (options.position) {
-    node.style.left = String(options.position.x) + 'px';
-    node.style.top  = String(options.position.y) + 'px';
-  } else {
-    node.style.left = '0px';
-    node.style.top  = '0px';
-  }
-  node.style.width = '50px';
-  node.links = new Set();
-  if (options.parent) {
-    options.parent.appendChild(node);
-  } else {
-    currentSurface.getElementsByClassName('nodes')[0].appendChild(node);
-  }
-  return node;
-}
-
-function createLink(options = {}) {
-  const link = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  currentSurface.getElementsByClassName('links')[0].appendChild(link);
-  if (options.from) {
-    link.from = options.from;
-    options.from.links.add(link);
-  }
-  if (options.via) {
-    link.via = options.via;
-    options.via.links.add(link);
-  }
-  if (options.to) {
-    link.to = options.to;
-    options.to.links.add(link);
-  }
-  if (options.from && options.via && options.to) {
-    link.classList.add('link');
-  } else {
-    link.classList.add('unfinished-link');
-  }
-  return link;
-}
-
-var linkBeingCreated = null;
-function useNodeForLinkCreationMode(node) {
+export var linkBeingCreated = null;
+export function useNodeForLinkCreationMode(node) {
   if (linkBeingCreated) {
     if (!linkBeingCreated.from) {
       linkBeingCreated.from = node;
@@ -295,7 +216,7 @@ function useNodeForLinkCreationMode(node) {
       if (existingLink) {
         deleteElements([existingLink]);
         linkBeingCreated.remove();
-        recordAction(deleteElementsAction([existingLink]));
+        undo_redo.markElementsDeleted([existingLink]);
       } else {
         linkBeingCreated.to = node;
         linkBeingCreated.from.links.add(linkBeingCreated);
@@ -314,9 +235,9 @@ function useNodeForLinkCreationMode(node) {
   }
   return null;
 }
-function executeLinkMode() {
+export function executeLinkMode() {
   if (!linkBeingCreated) {
-    linkBeingCreated = createLink();
+    linkBeingCreated = currentSurface.createLink();
     let nodeAtCursor = getNodeAtCursor();
     if (nodeAtCursor) {
       useNodeForLinkCreationMode(nodeAtCursor);
@@ -329,7 +250,7 @@ function executeLinkMode() {
     if (nodeAtCursor) {
       var createdLink = useNodeForLinkCreationMode(nodeAtCursor);
       if (createdLink) {
-        recordAction(createElementsAction([createdLink]));
+        undo_redo.markElementsCreated([createdLink]);
       }
     } else {
       cancelLinkMode();
@@ -345,7 +266,7 @@ function cancelLinkMode() {
   resetCursorBlink();
 }
 
-function deleteElements(elements) {
+export function deleteElements(elements) {
   const affectedLinks = new Set();
   for (const element of elements) {
     if (element.classList.contains('node')) {
@@ -370,7 +291,7 @@ function deleteElements(elements) {
   return affectedLinks;
 }
 
-function deleteSelection() {
+export function deleteSelection() {
   const elementsToDelete = new Set(currentSurface.getElementsByClassName('selected'));
   let nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
@@ -382,16 +303,16 @@ function deleteSelection() {
     focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
   }
   var affectedLinks = deleteElements(elementsToDelete);
-  recordAction(
-    deleteElementsAction(new Set([...elementsToDelete, ...affectedLinks])),
-    {
-      selectionBox: {before: getSelectionBox(), after: null},
-    }
-  );
+//   recordAction(
+    undo_redo.markElementsDeleted(new Set([...elementsToDelete, ...affectedLinks]));
+//     {
+//       selectionBox: {before: getSelectionBox(), after: null},
+//     }
+//   );
   selectionBox.classList.add('hidden');
 }
 
-function backspace() {
+export function backspace() {
   if (currentSurface.getElementsByClassName('selected').length > 0) {
     deleteSelection();
   } else if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -403,19 +324,19 @@ function backspace() {
       var oldCursorPosition = getCursorPosition();
       var newCursorPosition = {x: Math.max(0, oldCursorPosition.x - 64), y: oldCursorPosition.y};
       setCursorPosition(newCursorPosition);
-      recordAction(
-        deleteElementsAction([node, ...affectedLinks]),
-        {cursor: {before: oldCursorPosition, after: newCursorPosition}}
-      );
+//       recordAction(
+        undo_redo.markElementsDeleted([node, ...affectedLinks]);
+//         {cursor: {before: oldCursorPosition, after: newCursorPosition}}
+//       );
     }
   } else {
     setCursorPosition({x: Math.max(0, parseInt(cursor.style.left) - 64), y: parseInt(cursor.style.top)});
   }
 }
 
-function cancelCurrentModeOrOperation() {
+export function cancelCurrentModeOrOperation() {
 
-  deselectAll();
+  currentSurface.deselectAll();
 
   if (nameMatchPanel.parentElement) {
     closeNameMatchPanel();
@@ -426,7 +347,7 @@ function cancelCurrentModeOrOperation() {
     cancelLinkMode();
     return;
   }
-  
+
   if (bottomPanelContainer.classList.contains('expanded')) {
     bottomPanelContainer.classList.remove('expanded');
     bottomPanelContainer.dataset.panel = '';
@@ -443,7 +364,7 @@ function cancelCurrentModeOrOperation() {
   }
 }
 
-function selectionToClipboard(options = {}) {
+export function selectionToClipboard(options = {}) {
   const selectedNodes = new Set([...currentSurface.querySelectorAll('.node.selected')]);
   if (document.activeElement && document.activeElement.classList.contains('node')) {
     selectedNodes.add(document.activeElement);
@@ -479,7 +400,7 @@ function selectionToClipboard(options = {}) {
     if (nodesToDelete.size > 0 || affectedLinks.size > 0) {
       const elements = [...nodesToDelete, ...affectedLinks];
       deleteElements(elements);
-      recordAction(deleteElementsAction(elements));
+      undo_redo.markElementsDeleted(elements);
     }
     selectionBox.classList.add('hidden');
   } else if (previouslyFocusedElement) {
@@ -772,7 +693,7 @@ function getTouchingGroupsInDirection(sourceNodes, direction, groups = getNodeGr
   return visitedGroups;
 }
 
-function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByClassName('node')]) {
+export function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByClassName('node')]) {
   return nodes.filter(node => {
     return !(
       ((parseInt(node.style.left) + getNodeWidthForName(node.value))  <  box.left)  ||
@@ -784,8 +705,8 @@ function getNodesIntersectingBox(box, nodes = [...currentSurface.getElementsByCl
 }
 
 // Selection box
-var selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
-function setSelectionBox(position, selectedNodesToPreserve) {
+export var selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
+export function setSelectionBox(position, selectedNodesToPreserve) {
   if (!position.width)  position.width  = position.right  - position.left;
   if (!position.height) position.height = position.bottom - position.top;
   if (!position.right)  position.right  = position.left   + position.width;
@@ -806,7 +727,7 @@ function setSelectionBox(position, selectedNodesToPreserve) {
     }
   }
 }
-function getSelectionBox() {
+export function getSelectionBox() {
   if (selectionBox.classList.contains('hidden')) {
     return null;
   } else {
@@ -819,31 +740,6 @@ function getSelectionBox() {
       height: parseInt(selectionBox.style.height),
     }
   }
-}
-
-function selectAll() {
-  for (const node of [...currentSurface.getElementsByClassName('node')]) {
-    node.classList.add('selected');
-  }
-  const surfaceContainer = currentSurface.closest('.surface-container');
-  if (surfaceContainer) {
-    for (const nodeShadow of [...surfaceContainer.getElementsByClassName('node-shadow')]) {
-      nodeShadow.classList.add('selected');
-    }
-  }
-  selectionBox.classList.add('hidden');
-}
-
-function deselectAll() {
-  for (const element of [...currentSurface.getElementsByClassName('selected')]) {
-    element.classList.remove('selected');
-    if (element.overflowMap) {
-      for (const nodeShadow of Object.values(element.overflowMap)) {
-        nodeShadow.classList.remove('selected');
-      }
-    }
-  }
-  selectionBox.classList.add('hidden');
 }
 
 var lastFocusedNodeOriginalName = null;
@@ -860,7 +756,7 @@ document.addEventListener('focusin', event => {
 document.addEventListener('focusout', event => {
   if (event.target.classList.contains('node')) {
     if (event.target.value !== lastFocusedNodeOriginalName) {
-      recordAction(renameNodeAction(event.target, lastFocusedNodeOriginalName));
+      undo_redo.markNodeRenamed(event.target, lastFocusedNodeOriginalName);
     }
   }
 });
@@ -902,7 +798,7 @@ document.addEventListener('input', event => {
   }
 });
 
-function getNodeWidthForName(name) {
+export function getNodeWidthForName(name) {
   const characterWidth = 6.02;
   const padding = 5;
   const stringWidth = padding + (name.length * characterWidth);
@@ -915,7 +811,7 @@ function getNodeWidthForName(name) {
   }
 }
 
-function setNodeName(node, name) {
+export function setNodeName(node, name) {
   const instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
   const width = getNodeWidthForName(name);
   for (const instance of instances) {
@@ -931,7 +827,7 @@ function setNodeName(node, name) {
   }
 }
 
-function makeNodeAtCursorUnique() {
+export function makeNodeAtCursorUnique() {
   const node = getNodeAtCursor();
   if (!node) {
     return;
@@ -940,10 +836,10 @@ function makeNodeAtCursorUnique() {
   const newId = makeUuid();
   node.dataset.id = newId;
   evaluateCursorPosition();
-  recordAction(changeIdAction(node, {id: oldId}, {id: newId}));
+  undo_redo.markIdChanged(node, {id: oldId}, {id: newId});
 }
 
-function isolateSelection() {
+export function isolateSelection() {
   const selectedNodes = new Set(currentSurface.querySelectorAll('.node.selected'));
   const linksToDelete = new Set();
   for (let node of selectedNodes) {
@@ -957,7 +853,7 @@ function isolateSelection() {
   }
   if (linksToDelete.size > 0) {
     deleteElements([...linksToDelete]);
-    recordAction(deleteElementsAction([...linksToDelete]));
+    undo_redo.markElementsDeleted([...linksToDelete]);
   }
 }
 
@@ -965,8 +861,6 @@ function isolateSelection() {
 // Name match panel
 
 const nameMatchPanel = document.getElementById('name-match-panel');
-
-const builtinNameMatches = [];
 
 function moveNameMatchSelection(direction) {
   var matches = nameMatchPanel.getElementsByClassName('name-match');
@@ -1004,7 +898,7 @@ function applyCurrentNameMatchSelection(nameMatch = nameMatchPanel.getElementsBy
     node.setAttribute('data-id', nameMatch.dataset.id);
     setNodeName(node, nameMatch.textContent);
     lastFocusedNodeOriginalName = nameMatch.textContent;
-    recordAction(changeIdAction(node, {id: oldId, name: oldName}, {id: nameMatch.dataset.id, name: nameMatch.textContent}));
+    undo_redo.markIdChanged(node, {id: oldId, name: oldName}, {id: nameMatch.dataset.id, name: nameMatch.textContent});
   }
   nameMatchPanel.remove();
   resetCursorBlink();
@@ -1020,7 +914,7 @@ nameMatchPanel.addEventListener('click', event => {
   }
 });
 
-function closeNameMatchPanel() {
+export function closeNameMatchPanel() {
   nameMatchPanel.remove();
   for (let node of [...document.getElementsByClassName('name-match-selected')]) {
     node.classList.remove('name-match-selected');
@@ -1036,12 +930,12 @@ document.addEventListener('paste', event => {
     const inserted = insertNodesAndLinksFromHtml(string, {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)});
     evaluateCursorPosition();
     const selectionBox = getSelectionBox();
-    recordAction(
-      pasteElementsAction(inserted.nodes, inserted.links),
-      {
-        selectionBox: {before: selectionBox, after: null},
-      }
-    );
+//     recordAction(
+      undo_redo.markElementsPasted(inserted.nodes, inserted.links);
+//       {
+//         selectionBox: {before: selectionBox, after: null},
+//       }
+//     );
     for (const node of inserted.nodes) {
       node.classList.add('selected');
       if (node.overflowMap) {
@@ -1097,6 +991,7 @@ for (let panelContainer of document.getElementsByClassName('panels-container')) 
 // Find panel
 
 const findPanel = document.querySelectorAll('.panel[data-panel="find"]')[0];
+initSurface(findPanel);
 
 function testNodesFindMatch(findNode, targetNode) {
   return !findNode.value ||
@@ -1163,12 +1058,12 @@ function getQueriedNodes() {
     return queryResult;
   }
 }
-function openFindPanel() {
+export function openFindPanel() {
   bottomPanelContainer.dataset.panel = 'find';
   bottomPanelContainer.classList.add('expanded');
   const findPanelNodes = findPanel.getElementsByClassName('nodes')[0];
   if (findPanelNodes.getElementsByClassName('node').length === 0) {
-    createNode({position: {x: 0, y: 0}, parent: findPanelNodes});
+    findPanel.createNode({position: {x: 0, y: 0}, parent: findPanelNodes});
   } else {
     highlightQueriedNodes();
   }
@@ -1191,7 +1086,7 @@ function highlightQueriedNodes() {
     }
   }
 }
-function moveSelectionToQueriedNodes() {
+export function moveSelectionToQueriedNodes() {
   const queriedNodes = getQueriedNodes();
   for (const node of mainSurface.getElementsByClassName('node')) {
     const selected    = queriedNodes.has(node);
@@ -1214,7 +1109,7 @@ function moveSelectionToQueriedNodes() {
   }
 }
 
-function moveSelectionInDirection(direction) {
+export function moveSelectionInDirection(direction) {
   resetCursorBlink();
   let nodesToMove = new Set(currentSurface.querySelectorAll('.node.selected'));
   const nodeAtCursor = getNodeAtCursor();
@@ -1295,16 +1190,16 @@ function moveSelectionInDirection(direction) {
 
   const newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
-  recordAction(
-    moveNodesAction({oldPositions, newPositions}),
-    {
-      cursor: {before: cursorBefore, after: cursorAfter},
-      selectionBox: {before: selectionBoxBefore, after: selectionBoxAfter}
-    }
-  );
+//   recordAction(
+    undo_redo.markNodesMoved({oldPositions, newPositions});
+//     {
+//       cursor: {before: cursorBefore, after: cursorAfter},
+//       selectionBox: {before: selectionBoxBefore, after: selectionBoxAfter}
+//     }
+//   );
 }
 
-function createInstanceInDirection(direction) {
+export function createInstanceInDirection(direction) {
   const node = getNodeAtCursor();
   if (!node) {
     return;
@@ -1338,7 +1233,7 @@ function createInstanceInDirection(direction) {
 
   setCursorPosition({x: parseInt(instance.style.left), y: parseInt(instance.style.top)});
 
-  recordAction(createElementsAction([instance]));
+  undo_redo.markElementsCreated([instance]);
 }
 
 function selectNameMatchOrInsertNodeDown() {
@@ -1349,7 +1244,7 @@ function selectNameMatchOrInsertNodeDown() {
   }
 }
 
-function insertNodeAtCursor(options) {
+export function insertNodeAtCursor(options) {
   var offsetX = 0;
   var offsetY = 0;
 
@@ -1366,7 +1261,7 @@ function insertNodeAtCursor(options) {
     for (let link of affectedLinks) layoutLink(link);
   }
 
-  var newNode = createNode({
+  var newNode = currentSurface.createNode({
     position: {
       x: pxToGridX(parseInt(cursor.style.left) + offsetX),
       y: pxToGridY(parseInt(cursor.style.top)  + offsetY),
@@ -1382,7 +1277,7 @@ function insertNodeAtCursor(options) {
     y: pxToGridY(parseInt(newNode.style.top)),
   }
   setCursorPosition(cursorPositionAfter);
-  deselectAll();
+  currentSurface.deselectAll();
   var createdElements = [newNode];
   if (linkBeingCreated) {
     var createdLink = useNodeForLinkCreationMode(newNode);
@@ -1390,11 +1285,11 @@ function insertNodeAtCursor(options) {
       createdElements.push(createdLink);
     }
   }
-  recordAction(createElementsAction(createdElements), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
+  undo_redo.markElementsCreated(createdElements);// {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
   return newNode;
 }
 
-function moveCursorInDirection(direction, options = {}) {
+export function moveCursorInDirection(direction, options = {}) {
   const moveDelta = {
     left:  {x: -64, y:   0},
     right: {x:  64, y:   0},
@@ -1417,7 +1312,7 @@ function moveCursorInDirection(direction, options = {}) {
     setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, {x: cursorX, y: cursorY}));
     selectionBox.classList.remove('hidden');
   } else {
-    deselectAll();
+    currentSurface.deselectAll();
   }
   setCursorPosition({x: cursorX, y: cursorY});
   const nodeUnderCursor = getNodeAtCursor();
@@ -1429,18 +1324,7 @@ function moveCursorInDirection(direction, options = {}) {
   }
 }
 
-function scrollMainSurfaceInDirection(direction) {
-  var scrollDelta = {
-    left:  {x: -64, y:   0},
-    right: {x:  64, y:   0},
-    up:    {x:   0, y: -32},
-    down:  {x:   0, y:  32},
-  }[direction];
-  mainSurface.scrollBy(scrollDelta.x, scrollDelta.y);
-  resetCursorBlink();
-}
-
-function getConnectedNodes(node) {
+export function getConnectedNodes(node) {
   var connectedNodes = new Set();
   var nodesToVisit = [node];
   while (nodesToVisit.length > 0) {
@@ -1481,10 +1365,10 @@ function getAllConnectedNodesAndLinks(node, connectedNodes, connectedLinks) {
   }
 }
 
-function selectConnectedNodesAtCursor() {
+export function selectConnectedNodesAtCursor() {
   const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
-    deselectAll();
+    currentSurface.deselectAll();
     for (const node of getConnectedNodes(nodeAtCursor)) {
       node.classList.add('selected');
       if (node.overflowMap) {
@@ -1496,10 +1380,10 @@ function selectConnectedNodesAtCursor() {
   }
 }
 
-function selectInstancesOfNodeAtCursor(options = {}) {
+export function selectInstancesOfNodeAtCursor(options = {}) {
   const nodeAtCursor = getNodeAtCursor();
   if (nodeAtCursor) {
-    deselectAll();
+    currentSurface.deselectAll();
     const nodes = options.onlyConnectedNodes ?
       getConnectedNodes(nodeAtCursor).filter(connectedNode => connectedNode.dataset.id === nodeAtCursor.dataset.id)
       :
@@ -1541,7 +1425,7 @@ function getNodeAnchorPoints(node) {
   ]
 }
 
-function layoutLink(link, lastPosition) {
+export function layoutLink(link, lastPosition) {
   const points = [];
   if (link.from) {
     const nextPoint = link.via ? getNodeCenter(link.via) : lastPosition;
@@ -1572,7 +1456,7 @@ function layoutLink(link, lastPosition) {
   }
 }
 
-function updateOverflowMaps(nodes, surface) {
+export function updateOverflowMaps(nodes, surface) {
   const surfaceContainer = surface.closest('.surface-container');
   if (!surfaceContainer) {
     return;
@@ -1766,7 +1650,7 @@ function insertNodesAndLinksFromHtml(html, position=null) {
   return {nodes, links};
 }
 
-async function save() {
+export async function save() {
   const html = getNodesAndLinksAsHtml();
   if (path) {
     const response = await fetch(location.origin + '/save?path=' + path, {method: 'PUT', body: html});
@@ -1824,7 +1708,7 @@ function getAsYarnballFile() {
   return file;
 }
 
-function download() {
+export function download() {
   const element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(getNodesAndLinksAsHtml()));
   element.setAttribute('download', '');
@@ -1856,13 +1740,13 @@ mainSurface.addEventListener('drop', event => {
   const cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   if (html) {
     const inserted = insertNodesAndLinksFromHtml(html, cursorPosition);
-    recordAction(pasteElementsAction(inserted.nodes, inserted.links));
+    undo_redo.markElementsPasted(inserted.nodes, inserted.links);
   } else if (event.dataTransfer.files.length > 0) {
     const file = event.dataTransfer.files[0];
     const reader = new FileReader();
     reader.onload = function(event) {
       const inserted = insertNodesAndLinksFromHtml(event.target.result, cursorPosition);
-      recordAction(pasteElementsAction(inserted.nodes, inserted.links));
+      undo_redo.markElementsPasted(inserted.nodes, inserted.links);
     };
     reader.readAsText(file);
   }

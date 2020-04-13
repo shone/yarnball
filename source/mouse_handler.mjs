@@ -1,4 +1,25 @@
-'use strict';
+import {
+  currentSurface,
+  setCurrentSurface,
+  setCursorPosition,
+  pxToGridX,
+  pxToGridY,
+  selectionBox,
+  setSelectionBox,
+  linkBeingCreated,
+  cursor,
+  getSelectionBox,
+  getNodeWidthForName,
+  getNodesIntersectingBox,
+  layoutLink,
+  getConnectedNodes
+} from './main.mjs';
+
+import {getBoundingBoxForPoints} from './utils.mjs';
+
+import {setActionInProgress} from './undo_redo.mjs';
+
+import * as undo_redo from './undo_redo.mjs';
 
 var cursorPositionOnMouseDragStart          = null;
 var cursorPositionOffsetOnMouseDragStart    = null;
@@ -70,7 +91,7 @@ function handleNodeMousedown(event) {
   const node = event.target;
   if (event.ctrlKey) {
     if (!event.shiftKey) {
-      deselectAll();
+      currentSurface.deselectAll();
     }
     const connectedNodes = getConnectedNodes(node).filter(connectedNode => connectedNode.dataset.id === node.dataset.id);
     for (const connectedNode of connectedNodes) {
@@ -91,7 +112,7 @@ function handleNodeMousedown(event) {
     node.classList.toggle('selected');
   } else {
     if (!node.classList.contains('selected')) {
-      deselectAll();
+      currentSurface.deselectAll();
     }
   }
   if (linkBeingCreated) {
@@ -106,7 +127,7 @@ function handleNodeMousedown(event) {
   const nodesNotBeingDragged = [...currentSurface.getElementsByClassName('node')].filter(node_ => !node_.classList.contains('selected') && node_ !== node);
   const cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   const selectionBoxStartPosition = getSelectionBox();
-  isActionInProgress = true;
+  setActionInProgress(true);
   handlePointerDrag(event, {
     onmove: function(mouse) {
       document.body.classList.add('dragging');
@@ -162,15 +183,15 @@ function handleNodeMousedown(event) {
       if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
         const oldPositions = nodesToDrag.map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
         const newPositions = nodesToDrag.map(node => {return {node: node, left: node.style.left, top: node.style.top}});
-        recordAction(
-          moveNodesAction({oldPositions, newPositions}),
-          {
-            cursor: {before: cursorStartPosition, after: {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)}},
-            selectionBox: {before: selectionBoxStartPosition, after: getSelectionBox()}
-          }
-        );
+//         recordAction(
+        undo_redo.markNodesMoved({oldPositions, newPositions});
+//           {
+//             cursor: {before: cursorStartPosition, after: {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)}},
+//             selectionBox: {before: selectionBoxStartPosition, after: getSelectionBox()}
+//           }
+//         );
       }
-      isActionInProgress = false;
+      setActionInProgress(false);
       document.body.classList.remove('dragging');
     }
   });
@@ -221,7 +242,7 @@ function handlePointerDownForSurface(event) {
 
     let selectedNodesToPreserve = null;
     if (!event.shiftKey) {
-      deselectAll();
+      surface.deselectAll();
       if (document.activeElement) document.activeElement.blur();
     } else {
       selectedNodesToPreserve = new Set(currentSurface.getElementsByClassName('selected'));
@@ -299,7 +320,7 @@ function handlePointerDownForSurface(event) {
     if (event.shiftKey) {
       event.target.classList.toggle('selected');
     } else {
-      deselectAll();
+      surface.deselectAll();
       event.target.classList.add('selected');
     }
     return false;
@@ -309,13 +330,13 @@ function handlePointerDownForSurface(event) {
 function handleDblClickForSurface(event) {
   const surface = event.target.closest('.surface');
   if (event.target.classList.contains('surface')) {
-    const closestNode = getNodeClosestToPosition({
+    const closestNode = surface.getNodeClosestToPosition({
       x: pxToGridX(surface.scrollLeft + event.offsetX),
       y: pxToGridY(surface.scrollTop  + event.offsetY),
-    }, surface);
+    });
     if (closestNode) {
       if (!event.shiftKey) {
-        deselectAll();
+        surface.deselectAll();
       }
       const connectedNodes = getConnectedNodes(closestNode);
       for (const node of connectedNodes) {
@@ -329,7 +350,7 @@ function handleDblClickForSurface(event) {
     }
   } else if (event.target.classList.contains('node')) {
     if (!event.shiftKey) {
-      deselectAll();
+      surface.deselectAll();
     }
     if (event.ctrlKey) {
       for (const node of surface.querySelectorAll(`.node[data-id='${event.target.dataset.id}']`)) {

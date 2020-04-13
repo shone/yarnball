@@ -1,4 +1,5 @@
-'use strict';
+import {builtinNameMatches} from '/source/name_matching.mjs';
+import {mainSurface, currentSurface} from '/source/main.mjs';
 
 const htmlSymbols = [];
 
@@ -48,7 +49,7 @@ function launchHtmlAtCursor() {
 const htmlPanel = document.querySelector('.panel[data-panel="html"]');
 
 document.addEventListener('cursorPositionEvaluated', event => {
-  const panelContainer = javascriptPanel.closest('.panels-container');
+  const panelContainer = htmlPanel.closest('.panels-container');
   if (currentSurface === mainSurface && panelContainer.classList.contains('expanded') && panelContainer.dataset.panel === 'html') {
     const nodeAtCursor = getNodeAtCursor();
     const htmlSourceElement = htmlPanel.getElementsByClassName('source')[0];

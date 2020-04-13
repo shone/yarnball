@@ -1,22 +1,20 @@
-'use strict';
+import {
+  mainSurface,
+  currentSurface,
+  updateOverflowMaps,
+  setCurrentSurface,
+  closeNameMatchPanel,
+  layoutLink,
+  setNodeName,
+  evaluateCursorPosition,
+  deleteElements
+} from './main.mjs';
 
 const actions = [];
 var actionsUndone = [];
-var isActionInProgress = false;
 var savedAction = null;
 
-function recordAction(action, options) {
-  if (currentSurface === mainSurface) {
-    action.options = options || {};
-    actions.push(action);
-    actionsUndone = [];
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
-  } else if (currentSurface === findPanel) {
-    highlightQueriedNodes();
-  }
-}
-
-function undo() {
+export function undo() {
   const action = actions.pop();
   if (action) {
     setCurrentSurface(mainSurface);
@@ -38,7 +36,7 @@ function undo() {
   }
 }
 
-function redo() {
+export function redo() {
   const action = actionsUndone.pop();
   if (action) {
     setCurrentSurface(mainSurface);
@@ -60,6 +58,22 @@ function redo() {
   }
 }
 
+export let isActionInProgress = false;
+export function setActionInProgress(inProgress) {
+  isActionInProgress = inProgress;
+}
+
+function recordAction(action, options) {
+  if (currentSurface === mainSurface) {
+    action.options = options || {};
+    actions.push(action);
+    actionsUndone = [];
+    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+  } else if (currentSurface === findPanel) {
+    highlightQueriedNodes();
+  }
+}
+
 window.addEventListener('beforeunload', event => {
   if (actions.length > 0 && actions[actions.length-1] !== savedAction) {
     event.preventDefault();
@@ -67,7 +81,7 @@ window.addEventListener('beforeunload', event => {
   }
 });
 
-const deleteElementsAction = elements => ({
+export const markElementsDeleted = elements => recordAction({
   undo() {
     for (const element of elements) {
       if (element.classList.contains('node')) {
@@ -86,7 +100,7 @@ const deleteElementsAction = elements => ({
   }
 });
 
-const createElementsAction = elements => ({
+export const markElementsCreated = elements => recordAction({
   undo() {
     deleteElements(elements);
   },
@@ -105,7 +119,7 @@ const createElementsAction = elements => ({
   }
 });
 
-const pasteElementsAction = (nodes, links) => ({
+export const markElementsPasted = (nodes, links) => recordAction({
   undo() {
     for (const node of nodes) node.remove();
     for (const link of links) link.remove();
@@ -118,7 +132,7 @@ const pasteElementsAction = (nodes, links) => ({
   }
 });
 
-const moveNodesAction = positions => ({
+export const markNodesMoved = positions => recordAction({
   undo() {
     const affectedLinks = new Set();
     for (const i of positions.oldPositions) {
@@ -139,9 +153,9 @@ const moveNodesAction = positions => ({
   }
 });
 
-const renameNodeAction = (node, oldName) => {
+export const markNodeRenamed = (node, oldName) => {
   const newName = node.value;
-  return {
+  recordAction({
     undo() {
       setNodeName(node, oldName);
       if (document.activeElement === node) {
@@ -154,10 +168,10 @@ const renameNodeAction = (node, oldName) => {
         lastFocusedNodeOriginalName = node.value;
       }
     }
-  }
+  });
 };
 
-const changeIdAction = (node, old, new_) => ({
+export const markIdChanged = (node, old, new_) => recordAction({
   undo() {
     node.dataset.id = old.id;
     if ('name' in old) {
