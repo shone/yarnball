@@ -1,12 +1,8 @@
 import {
   mainSurface,
   currentSurface,
-  updateOverflowMaps,
   setCurrentSurface,
   closeNameMatchPanel,
-  layoutLink,
-  setNodeName,
-  evaluateCursorPosition,
   deleteElements
 } from './main.mjs';
 
@@ -21,7 +17,7 @@ export function undo() {
     closeNameMatchPanel();
     action.undo();
     actionsUndone.push(action);
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'));
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.before);
     }
@@ -43,7 +39,7 @@ export function redo() {
     closeNameMatchPanel();
     action.redo();
     actions.push(action);
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'));
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.after);
     }
@@ -93,7 +89,7 @@ export const markElementsDeleted = elements => recordAction({
         element.to.links.add(element);
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
     deleteElements(elements);
@@ -115,7 +111,7 @@ export const markElementsCreated = elements => recordAction({
         element.to.links.add(element);
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });
 
@@ -123,12 +119,12 @@ export const markElementsPasted = (nodes, links) => recordAction({
   undo() {
     for (const node of nodes) node.remove();
     for (const link of links) link.remove();
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
     for (const node of nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
     for (const link of links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });
 
@@ -157,13 +153,13 @@ export const markNodeRenamed = (node, oldName) => {
   const newName = node.value;
   recordAction({
     undo() {
-      setNodeName(node, oldName);
+      node.setName(oldName);
       if (document.activeElement === node) {
         lastFocusedNodeOriginalName = node.value;
       }
     },
     redo() {
-      setNodeName(node, newName);
+      node.setName(newName);
       if (document.activeElement === node) {
         lastFocusedNodeOriginalName = node.value;
       }
@@ -181,7 +177,7 @@ export const markIdChanged = (node, old, new_) => recordAction({
         lastFocusedNodeOriginalName = node.value;
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
     node.dataset.id = new_.id;
@@ -192,6 +188,6 @@ export const markIdChanged = (node, old, new_) => recordAction({
         lastFocusedNodeOriginalName = node.value;
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });

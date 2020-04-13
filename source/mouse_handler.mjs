@@ -1,21 +1,15 @@
 import {
   currentSurface,
   setCurrentSurface,
-  setCursorPosition,
   pxToGridX,
   pxToGridY,
   selectionBox,
-  setSelectionBox,
   linkBeingCreated,
-  cursor,
-  getSelectionBox,
-  getNodeWidthForName,
-  getNodesIntersectingBox,
-  layoutLink,
-  getConnectedNodes
+  cursor
 } from './main.mjs';
 
 import {getBoundingBoxForPoints} from './utils.mjs';
+import {getNodeWidthForName} from './node.mjs';
 
 import {setActionInProgress} from './undo_redo.mjs';
 
@@ -104,7 +98,7 @@ function handleNodeMousedown(event) {
     }
     return;
   }
-  setCursorPosition({
+  currentSurface.setCursorPosition({
     x: pxToGridX(parseInt(node.style.left)),
     y: pxToGridY(parseInt(node.style.top)),
   });
@@ -126,7 +120,7 @@ function handleNodeMousedown(event) {
   }
   const nodesNotBeingDragged = [...currentSurface.getElementsByClassName('node')].filter(node_ => !node_.classList.contains('selected') && node_ !== node);
   const cursorStartPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
-  const selectionBoxStartPosition = getSelectionBox();
+  const selectionBoxStartPosition = currentSurface.getSelectionBox();
   setActionInProgress(true);
   handlePointerDrag(event, {
     onmove: function(mouse) {
@@ -158,7 +152,7 @@ function handleNodeMousedown(event) {
           right:  node.dragStartPosition.x + cursorDelta.x + getNodeWidthForName(node.value),
           bottom: node.dragStartPosition.y + cursorDelta.y + 20,
         };
-        if (getNodesIntersectingBox(newNodeBoundingBox, nodesNotBeingDragged).length !== 0) {
+        if (currentSurface.getNodesIntersectingBox(newNodeBoundingBox, nodesNotBeingDragged).length !== 0) {
           return;
         }
       }
@@ -169,9 +163,9 @@ function handleNodeMousedown(event) {
         node.style.top  = (node.dragStartPosition.y + cursorDelta.y) + 'px';
         for (const link of node.links) affectedLinks.add(link);
       }
-      for (const link of affectedLinks) layoutLink(link);
+      for (const link of affectedLinks) currentSurface.layoutLink(link);
       // Move cursor
-      setCursorPosition(cursorPosition);
+      currentSurface.setCursorPosition(cursorPosition);
       // Move selection box
       if (selectionBoxStartPosition) {
         selectionBox.style.left = (selectionBoxStartPosition.left + pxToGridX(cursorPosition.x - cursorStartPosition.x)) + 'px';
@@ -234,7 +228,7 @@ function handlePointerDownForSurface(event) {
   if (event.button === 0 && event.target.classList.contains('surface')) {
     event.preventDefault();
     setCurrentSurface(event.target);
-    setCursorPosition({
+    currentSurface.setCursorPosition({
       x: pxToGridX(surface.scrollLeft + event.offsetX),
       y: pxToGridY(surface.scrollTop  + event.offsetY),
     });
@@ -257,9 +251,9 @@ function handlePointerDownForSurface(event) {
         if (!selectionBox.anchorPosition) {
           selectionBox.anchorPosition = {x: pxToGridX(cursorOnTargetPositionStart.x), y: pxToGridY(cursorOnTargetPositionStart.y)};
         }
-        setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition), selectedNodesToPreserve);
+        surface.setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition), selectedNodesToPreserve);
         selectionBox.classList.remove('hidden');
-        setCursorPosition(cursorPosition);
+        surface.setCursorPosition(cursorPosition);
       },
       onup: function() {
         document.body.classList.remove('dragging-selection-box');
@@ -276,7 +270,7 @@ function handlePointerDownForSurface(event) {
     link.from = event.target;
     const fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
     handlePointerDrag(event, {
-      onmove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
+      onmove: cursor => surface.layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       onup: function(event) {
         if (link.from && link.via && link.to) {
           recordAction(createElementsAction([link]));
@@ -292,11 +286,11 @@ function handlePointerDownForSurface(event) {
       if (event.target.classList.contains('node') && ![link.from, link.via, link.to].includes(event.target)) {
         if (!link.via) {
           link.via = event.target;
-          layoutLink(link);
+          surface.layoutLink(link);
         } else if (!link.to) {
           link.to = event.target;
           surface.removeEventListener('mouseover', handleMouseover);
-          layoutLink(link);
+          surface.layoutLink(link);
           link.from.links.add(link);
           link.via.links.add(link);
           link.to.links.add(link);
@@ -338,7 +332,7 @@ function handleDblClickForSurface(event) {
       if (!event.shiftKey) {
         surface.deselectAll();
       }
-      const connectedNodes = getConnectedNodes(closestNode);
+      const connectedNodes = surface.getConnectedNodes(closestNode);
       for (const node of connectedNodes) {
         node.classList.add('selected');
         if (node.overflowMap) {
@@ -362,7 +356,7 @@ function handleDblClickForSurface(event) {
         }
       }
     } else {
-      const connectedNodes = getConnectedNodes(event.target);
+      const connectedNodes = surface.getConnectedNodes(event.target);
       for (const node of connectedNodes) {
         node.classList.add('selected');
         if (node.overflowMap) {
