@@ -1,4 +1,4 @@
-![Yarnball Logo](icon.svg)
+![Yarnball Logo](images/icon.svg)
 
 # Yarnball
 
