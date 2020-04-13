@@ -9,19 +9,19 @@ const commands = {
 
   create_node_down:                     ['ENTER',             event => selectNameMatchOrInsertNodeDown()],
   create_node_right:                    [' ',                 event => insertNodeAtCursor({moveAdjacent: 'right'})],
- 
+
   select_all:                           ['CtrlA',             event => selectAll()],
   deselect_all:                         ['CtrlShiftA',        event => deselectAll()],
   select_connected_at_cursor:           ['CtrlG',             event => selectConnectedNodesAtCursor()],
   select_connected_instances_at_cursor: ['CtrlI',             event => selectInstancesOfNodeAtCursor({onlyConnectedNodes: true})],
   select_instances_at_cursor:           ['CtrlShiftI',        event => selectInstancesOfNodeAtCursor()],
- 
+
   copy:                                 ['CtrlC',             event => selectionToClipboard()],
   cut:                                  ['CtrlX',             event => selectionToClipboard({cut: true})],
- 
+
   open_find_panel:                      ['CtrlF',             event => openFindPanel()],
   select_queried_nodes:                 ['CtrlENTER',         event => moveSelectionToQueriedNodes()],
- 
+
   move_cursor_left:                     ['ARROWLEFT',         event => moveCursorInDirection('left')],
   move_cursor_right:                    ['ARROWRIGHT',        event => moveCursorInDirection('right')],
   move_cursor_up:                       ['ARROWUP',           event => moveCursorInDirection('up')],
@@ -41,12 +41,12 @@ const commands = {
   create_instance_right:                ['CtrlAltARROWRIGHT', event => createInstanceInDirection('right')],
   create_instance_up:                   ['CtrlAltARROWUP',    event => createInstanceInDirection('up')],
   create_instance_down:                 ['CtrlAltARROWDOWN',  event => createInstanceInDirection('down')],
- 
+
   move_view_left:                       ['AltARROWLEFT',      event => scrollMainSurfaceInDirection('left')],
   move_view_right:                      ['AltARROWRIGHT',     event => scrollMainSurfaceInDirection('right')],
   move_view_up:                         ['AltARROWUP',        event => scrollMainSurfaceInDirection('up')],
   move_view_down:                       ['AltARROWDOWN',      event => scrollMainSurfaceInDirection('down')],
- 
+
   delete:                               ['DELETE',            event => deleteSelection()],
   backspace:                            ['BACKSPACE',         event => backspace(event)],
   cancel:                               ['ESCAPE',            event => cancelCurrentModeOrOperation()],
@@ -61,7 +61,7 @@ const commands = {
 
   undo:                                 ['CtrlZ',             event => undo()],
   redo:                                 ['CtrlShiftZ',        event => redo()],
- 
+
   make_unique:                          ['CtrlD',             event => makeNodeAtCursorUnique()],
 
   isolate_selection:                    ['CtrlE',             event => isolateSelection()],
