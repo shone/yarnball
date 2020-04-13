@@ -1,5 +1,35 @@
 'use strict';
 
+const queryParams = new URLSearchParams(location.search.substring(1));
+const path = queryParams.get('path');
+
+(async function load() {
+  if (path) {
+    const filename = path.split('/').slice(-1)[0];
+    document.title = `${filename} — Yarnball`;
+    tinyWindowWorkaround();
+    const response = await fetch(location.origin + '/load?path=' + path);
+    const text = await response.text();
+    if (response.ok) {
+      insertNodesAndLinksFromHtml(text);
+    } else {
+      alert(response.statusText + ' - ' + text);
+    }
+  } else if (localStorage.saved_state) {
+    insertNodesAndLinksFromHtml(localStorage.saved_state);
+  }
+  function tinyWindowWorkaround() {
+    if (window.outerWidth < 100 || window.outerHeight < 100) {
+      // When chromium is opened in app mode on my machine, the initial window size is tiny
+      // This resizes it to sensible initial dimensions
+      window.resizeTo(
+        Math.max(window.outerWidth, 640),
+        Math.max(window.outerHeight, 480)
+      );
+    }
+  }
+})();
+
 var mainSurface = document.getElementById('main-surface');
 var currentSurface = mainSurface;
 
@@ -13,30 +43,6 @@ function setCurrentSurface(surface) {
     selectionBox = currentSurface.getElementsByClassName('selection-box')[0];
   }
 }
-
-const queryParams = new URLSearchParams(location.search.substring(1));
-const path = queryParams.get('path');
-if (path && (window.outerWidth < 100 || window.outerHeight < 100)) {
-  // When chromium is opened in app mode on my machine, the initial window size is tiny
-  // This resizes it to sensible initial dimensions
-  window.resizeTo(Math.max(window.outerWidth, 640), Math.max(window.outerHeight, 480));
-}
-async function load() {
-  if (path) {
-    const pathParts = path.split('/');
-    document.title = pathParts[pathParts.length-1] + ' — Yarnball';
-    const response = await fetch(location.origin + '/load?path=' + path);
-    const text = await response.text();
-    if (response.ok) {
-      insertNodesAndLinksFromHtml(text);
-    } else {
-      alert(response.statusText + ' - ' + text);
-    }
-  } else if (localStorage.saved_state) {
-    insertNodesAndLinksFromHtml(localStorage.saved_state);
-  }
-}
-load();
 
 const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
 
