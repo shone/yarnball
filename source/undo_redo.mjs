@@ -1,29 +1,25 @@
-'use strict';
+import {
+  mainSurface,
+  findPanel,
+  currentSurface,
+  setCurrentSurface,
+  highlightQueriedNodes
+} from './main.mjs';
+
+import {closeNameMatchPanel} from './name_matching.mjs';
 
 const actions = [];
 var actionsUndone = [];
-var isActionInProgress = false;
 var savedAction = null;
 
-function recordAction(action, options) {
-  if (currentSurface === mainSurface) {
-    action.options = options || {};
-    actions.push(action);
-    actionsUndone = [];
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
-  } else if (currentSurface === findPanel) {
-    highlightQueriedNodes();
-  }
-}
-
-function undo() {
+export function undo() {
   const action = actions.pop();
   if (action) {
     setCurrentSurface(mainSurface);
     closeNameMatchPanel();
     action.undo();
     actionsUndone.push(action);
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'));
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.before);
     }
@@ -38,14 +34,14 @@ function undo() {
   }
 }
 
-function redo() {
+export function redo() {
   const action = actionsUndone.pop();
   if (action) {
     setCurrentSurface(mainSurface);
     closeNameMatchPanel();
     action.redo();
     actions.push(action);
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'));
     if (action.options.cursor) {
       setCursorPosition(action.options.cursor.after);
     }
@@ -60,6 +56,30 @@ function redo() {
   }
 }
 
+export function markSaved() {
+  if (actions.length > 0) {
+    savedAction = actions[actions.length-1];
+  } else {
+    savedAction = null;
+  }
+}
+
+export let isActionInProgress = false;
+export function setActionInProgress(inProgress) {
+  isActionInProgress = inProgress;
+}
+
+function recordAction(action, options) {
+  if (currentSurface === mainSurface) {
+    action.options = options || {};
+    actions.push(action);
+    actionsUndone = [];
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+  } else if (currentSurface === findPanel) {
+    highlightQueriedNodes();
+  }
+}
+
 window.addEventListener('beforeunload', event => {
   if (actions.length > 0 && actions[actions.length-1] !== savedAction) {
     event.preventDefault();
@@ -67,7 +87,7 @@ window.addEventListener('beforeunload', event => {
   }
 });
 
-const deleteElementsAction = elements => ({
+export const markElementsDeleted = elements => recordAction({
   undo() {
     for (const element of elements) {
       if (element.classList.contains('node')) {
@@ -79,16 +99,16 @@ const deleteElementsAction = elements => ({
         element.to.links.add(element);
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
-    deleteElements(elements);
+    mainSurface.deleteElements(elements);
   }
 });
 
-const createElementsAction = elements => ({
+export const markElementsCreated = elements => recordAction({
   undo() {
-    deleteElements(elements);
+    mainSurface.deleteElements(elements);
   },
   redo() {
     for (let element of elements) {
@@ -101,24 +121,24 @@ const createElementsAction = elements => ({
         element.to.links.add(element);
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });
 
-const pasteElementsAction = (nodes, links) => ({
+export const markElementsPasted = (nodes, links) => recordAction({
   undo() {
     for (const node of nodes) node.remove();
     for (const link of links) link.remove();
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
     for (const node of nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
     for (const link of links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });
 
-const moveNodesAction = positions => ({
+export const markNodesMoved = positions => recordAction({
   undo() {
     const affectedLinks = new Set();
     for (const i of positions.oldPositions) {
@@ -126,7 +146,7 @@ const moveNodesAction = positions => ({
       i.node.style.top  = i.top;
       for (const link of i.node.links) affectedLinks.add(link);
     }
-    for (const link of affectedLinks) layoutLink(link);
+    mainSurface.layoutLinks(affectedLinks);
   },
   redo() {
     const affectedLinks = new Set();
@@ -135,29 +155,29 @@ const moveNodesAction = positions => ({
       i.node.style.top  = i.top;
       for (const link of i.node.links) affectedLinks.add(link);
     }
-    for (const link of affectedLinks) layoutLink(link);
+    mainSurface.layoutLinks(affectedLinks);
   }
 });
 
-const renameNodeAction = (node, oldName) => {
+export const markNodeRenamed = (node, oldName) => {
   const newName = node.value;
-  return {
+  recordAction({
     undo() {
-      setNodeName(node, oldName);
+      node.setName(oldName);
       if (document.activeElement === node) {
         lastFocusedNodeOriginalName = node.value;
       }
     },
     redo() {
-      setNodeName(node, newName);
+      node.setName(newName);
       if (document.activeElement === node) {
         lastFocusedNodeOriginalName = node.value;
       }
     }
-  }
+  });
 };
 
-const changeIdAction = (node, old, new_) => ({
+export const markIdChanged = (node, old, new_) => recordAction({
   undo() {
     node.dataset.id = old.id;
     if ('name' in old) {
@@ -167,7 +187,7 @@ const changeIdAction = (node, old, new_) => ({
         lastFocusedNodeOriginalName = node.value;
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   },
   redo() {
     node.dataset.id = new_.id;
@@ -178,6 +198,6 @@ const changeIdAction = (node, old, new_) => ({
         lastFocusedNodeOriginalName = node.value;
       }
     }
-    evaluateCursorPosition();
+    mainSurface.evaluateCursorPosition();
   }
 });

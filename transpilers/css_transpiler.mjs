@@ -1,4 +1,4 @@
-'use strict';
+import * as graph from '/source/graph.mjs';
 
 const cssSymbols = [];
 
