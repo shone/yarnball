@@ -119,7 +119,7 @@ document.addEventListener('keypress', event => {
         createdElements.push(createdLink);
       }
     }
-    recordAction(new createElementsAction(createdElements));
+    recordAction(createElementsAction(createdElements));
     return false;
   }
 });

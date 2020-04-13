@@ -295,7 +295,7 @@ function useNodeForLinkCreationMode(node) {
       if (existingLink) {
         deleteElements([existingLink]);
         linkBeingCreated.remove();
-        recordAction(new deleteElementsAction([existingLink]));
+        recordAction(deleteElementsAction([existingLink]));
       } else {
         linkBeingCreated.to = node;
         linkBeingCreated.from.links.add(linkBeingCreated);
@@ -329,7 +329,7 @@ function executeLinkMode() {
     if (nodeAtCursor) {
       var createdLink = useNodeForLinkCreationMode(nodeAtCursor);
       if (createdLink) {
-        recordAction(new createElementsAction([createdLink]));
+        recordAction(createElementsAction([createdLink]));
       }
     } else {
       cancelLinkMode();
@@ -383,7 +383,7 @@ function deleteSelection() {
   }
   var affectedLinks = deleteElements(elementsToDelete);
   recordAction(
-    new deleteElementsAction(new Set([...elementsToDelete, ...affectedLinks])),
+    deleteElementsAction(new Set([...elementsToDelete, ...affectedLinks])),
     {
       selectionBox: {before: getSelectionBox(), after: null},
     }
@@ -404,7 +404,7 @@ function backspace() {
       var newCursorPosition = {x: Math.max(0, oldCursorPosition.x - 64), y: oldCursorPosition.y};
       setCursorPosition(newCursorPosition);
       recordAction(
-        new deleteElementsAction([node, ...affectedLinks]),
+        deleteElementsAction([node, ...affectedLinks]),
         {cursor: {before: oldCursorPosition, after: newCursorPosition}}
       );
     }
@@ -479,7 +479,7 @@ function selectionToClipboard(options = {}) {
     if (nodesToDelete.size > 0 || affectedLinks.size > 0) {
       const elements = [...nodesToDelete, ...affectedLinks];
       deleteElements(elements);
-      recordAction(new deleteElementsAction(elements));
+      recordAction(deleteElementsAction(elements));
     }
     selectionBox.classList.add('hidden');
   } else if (previouslyFocusedElement) {
@@ -860,7 +860,7 @@ document.addEventListener('focusin', event => {
 document.addEventListener('focusout', event => {
   if (event.target.classList.contains('node')) {
     if (event.target.value !== lastFocusedNodeOriginalName) {
-      recordAction(new renameNodeAction(event.target, lastFocusedNodeOriginalName));
+      recordAction(renameNodeAction(event.target, lastFocusedNodeOriginalName));
     }
   }
 });
@@ -940,7 +940,7 @@ function makeNodeAtCursorUnique() {
   const newId = makeUuid();
   node.dataset.id = newId;
   evaluateCursorPosition();
-  recordAction(new changeIdAction(node, {id: oldId}, {id: newId}));
+  recordAction(changeIdAction(node, {id: oldId}, {id: newId}));
 }
 
 function isolateSelection() {
@@ -957,7 +957,7 @@ function isolateSelection() {
   }
   if (linksToDelete.size > 0) {
     deleteElements([...linksToDelete]);
-    recordAction(new deleteElementsAction([...linksToDelete]));
+    recordAction(deleteElementsAction([...linksToDelete]));
   }
 }
 
@@ -1004,7 +1004,7 @@ function applyCurrentNameMatchSelection(nameMatch = nameMatchPanel.getElementsBy
     node.setAttribute('data-id', nameMatch.dataset.id);
     setNodeName(node, nameMatch.textContent);
     lastFocusedNodeOriginalName = nameMatch.textContent;
-    recordAction(new changeIdAction(node, {id: oldId, name: oldName}, {id: nameMatch.dataset.id, name: nameMatch.textContent}));
+    recordAction(changeIdAction(node, {id: oldId, name: oldName}, {id: nameMatch.dataset.id, name: nameMatch.textContent}));
   }
   nameMatchPanel.remove();
   resetCursorBlink();
@@ -1037,7 +1037,7 @@ document.addEventListener('paste', event => {
     evaluateCursorPosition();
     const selectionBox = getSelectionBox();
     recordAction(
-      new pasteElementsAction(inserted.nodes, inserted.links),
+      pasteElementsAction(inserted.nodes, inserted.links),
       {
         selectionBox: {before: selectionBox, after: null},
       }
@@ -1296,7 +1296,7 @@ function moveSelectionInDirection(direction) {
   const newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
   recordAction(
-    new moveNodesAction({oldPositions, newPositions}),
+    moveNodesAction({oldPositions, newPositions}),
     {
       cursor: {before: cursorBefore, after: cursorAfter},
       selectionBox: {before: selectionBoxBefore, after: selectionBoxAfter}
@@ -1338,7 +1338,7 @@ function createInstanceInDirection(direction) {
 
   setCursorPosition({x: parseInt(instance.style.left), y: parseInt(instance.style.top)});
 
-  recordAction(new createElementsAction([instance]));
+  recordAction(createElementsAction([instance]));
 }
 
 function selectNameMatchOrInsertNodeDown() {
@@ -1390,7 +1390,7 @@ function insertNodeAtCursor(options) {
       createdElements.push(createdLink);
     }
   }
-  recordAction(new createElementsAction(createdElements), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
+  recordAction(createElementsAction(createdElements), {cursor: {before: cursorPositionBefore, after: cursorPositionAfter}});
   return newNode;
 }
 
@@ -1856,13 +1856,13 @@ mainSurface.addEventListener('drop', event => {
   const cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   if (html) {
     const inserted = insertNodesAndLinksFromHtml(html, cursorPosition);
-    recordAction(new pasteElementsAction(inserted.nodes, inserted.links));
+    recordAction(pasteElementsAction(inserted.nodes, inserted.links));
   } else if (event.dataTransfer.files.length > 0) {
     const file = event.dataTransfer.files[0];
     const reader = new FileReader();
     reader.onload = function(event) {
       const inserted = insertNodesAndLinksFromHtml(event.target.result, cursorPosition);
-      recordAction(new pasteElementsAction(inserted.nodes, inserted.links));
+      recordAction(pasteElementsAction(inserted.nodes, inserted.links));
     };
     reader.readAsText(file);
   }

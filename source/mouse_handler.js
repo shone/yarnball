@@ -163,7 +163,7 @@ function handleNodeMousedown(event) {
         const oldPositions = nodesToDrag.map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
         const newPositions = nodesToDrag.map(node => {return {node: node, left: node.style.left, top: node.style.top}});
         recordAction(
-          new moveNodesAction({oldPositions, newPositions}),
+          moveNodesAction({oldPositions, newPositions}),
           {
             cursor: {before: cursorStartPosition, after: {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)}},
             selectionBox: {before: selectionBoxStartPosition, after: getSelectionBox()}
@@ -258,7 +258,7 @@ function handlePointerDownForSurface(event) {
       onmove: cursor => layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       onup: function(event) {
         if (link.from && link.via && link.to) {
-          recordAction(new createElementsAction([link]));
+          recordAction(createElementsAction([link]));
         } else {
           link.remove();
         }

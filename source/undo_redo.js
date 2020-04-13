@@ -67,8 +67,8 @@ window.addEventListener('beforeunload', event => {
   }
 });
 
-function deleteElementsAction(elements) {
-  this.undo = () => {
+const deleteElementsAction = elements => ({
+  undo() {
     for (const element of elements) {
       if (element.classList.contains('node')) {
         mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
@@ -80,17 +80,17 @@ function deleteElementsAction(elements) {
       }
     }
     evaluateCursorPosition();
-  };
-  this.redo = () => {
+  },
+  redo() {
     deleteElements(elements);
-  };
-}
+  }
+});
 
-function createElementsAction(elements) {
-  this.undo = () => {
+const createElementsAction = elements => ({
+  undo() {
     deleteElements(elements);
-  };
-  this.redo = () => {
+  },
+  redo() {
     for (let element of elements) {
       if (element.classList.contains('node')) {
         mainSurface.getElementsByClassName('nodes')[0].appendChild(element);
@@ -102,24 +102,24 @@ function createElementsAction(elements) {
       }
     }
     evaluateCursorPosition();
-  };
-}
+  }
+});
 
-function pasteElementsAction(nodes, links) {
-  this.undo = () => {
+const pasteElementsAction = (nodes, links) => ({
+  undo() {
     for (const node of nodes) node.remove();
     for (const link of links) link.remove();
     evaluateCursorPosition();
-  };
-  this.redo = () => {
+  },
+  redo() {
     for (const node of nodes) mainSurface.getElementsByClassName('nodes')[0].appendChild(node);
     for (const link of links) mainSurface.getElementsByClassName('links')[0].appendChild(link);
     evaluateCursorPosition();
-  };
-}
+  }
+});
 
-function moveNodesAction(positions) {
-  this.undo = () => {
+const moveNodesAction = positions => ({
+  undo() {
     const affectedLinks = new Set();
     for (const i of positions.oldPositions) {
       i.node.style.left = i.left;
@@ -127,8 +127,8 @@ function moveNodesAction(positions) {
       for (const link of i.node.links) affectedLinks.add(link);
     }
     for (const link of affectedLinks) layoutLink(link);
-  };
-  this.redo = () => {
+  },
+  redo() {
     const affectedLinks = new Set();
     for (const i of positions.newPositions) {
       i.node.style.left = i.left;
@@ -136,27 +136,29 @@ function moveNodesAction(positions) {
       for (const link of i.node.links) affectedLinks.add(link);
     }
     for (const link of affectedLinks) layoutLink(link);
-  };
-}
+  }
+});
 
-function renameNodeAction(node, oldName) {
+const renameNodeAction = (node, oldName) => {
   const newName = node.value;
-  this.undo = () => {
-    setNodeName(node, oldName);
-    if (document.activeElement === node) {
-      lastFocusedNodeOriginalName = node.value;
+  return {
+    undo() {
+      setNodeName(node, oldName);
+      if (document.activeElement === node) {
+        lastFocusedNodeOriginalName = node.value;
+      }
+    },
+    redo() {
+      setNodeName(node, newName);
+      if (document.activeElement === node) {
+        lastFocusedNodeOriginalName = node.value;
+      }
     }
   }
-  this.redo = () => {
-    setNodeName(node, newName);
-    if (document.activeElement === node) {
-      lastFocusedNodeOriginalName = node.value;
-    }
-  }
-}
+};
 
-function changeIdAction(node, old, new_) {
-  this.undo = () => {
+const changeIdAction = (node, old, new_) => ({
+  undo() {
     node.dataset.id = old.id;
     if ('name' in old) {
       node.value = old.name;
@@ -166,8 +168,8 @@ function changeIdAction(node, old, new_) {
       }
     }
     evaluateCursorPosition();
-  }
-  this.redo = () => {
+  },
+  redo() {
     node.dataset.id = new_.id;
     if ('name' in new_) {
       node.value = new_.name;
@@ -178,4 +180,4 @@ function changeIdAction(node, old, new_) {
     }
     evaluateCursorPosition();
   }
-}
+});
