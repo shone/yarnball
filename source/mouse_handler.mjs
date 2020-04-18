@@ -89,8 +89,8 @@ function handleNodeMousedown(event) {
     return;
   }
   currentSurface.setCursorPosition({
-    x: pxToGridX(parseInt(node.style.left)),
-    y: pxToGridY(parseInt(node.style.top)),
+    x: pxToGridX(node.x),
+    y: pxToGridY(node.y),
   });
   if (event.shiftKey) {
     node.classList.toggle('selected');
@@ -106,7 +106,7 @@ function handleNodeMousedown(event) {
   // Node dragging
   const nodesToDrag = [...currentSurface.getElementsByClassName('node')].filter(node_ => node_.classList.contains('selected') || node_ === node);
   for (let node of nodesToDrag) {
-    node.dragStartPosition = {x: parseInt(node.style.left), y: parseInt(node.style.top)};
+    node.dragStartPosition = node.getPos();
   }
   const nodesNotBeingDragged = [...currentSurface.getElementsByClassName('node')].filter(node_ => !node_.classList.contains('selected') && node_ !== node);
   const cursorStartPosition = currentSurface.getCursorPosition();
@@ -149,8 +149,10 @@ function handleNodeMousedown(event) {
       // Move nodes
       const affectedLinks = new Set();
       for (const node of nodesToDrag) {
-        node.style.left = (node.dragStartPosition.x + cursorDelta.x) + 'px';
-        node.style.top  = (node.dragStartPosition.y + cursorDelta.y) + 'px';
+        node.setPos(
+          node.dragStartPosition.x + cursorDelta.x,
+          node.dragStartPosition.y + cursorDelta.y
+        );
         for (const link of node.links) affectedLinks.add(link);
       }
       currentSurface.layoutLinks(affectedLinks);
@@ -165,8 +167,8 @@ function handleNodeMousedown(event) {
     onup: function(event, mouse) {
       for (const node of nodesToDrag) node.classList.remove('dragging');
       if (Math.abs(mouse.deltaTotal.x) > 32 || Math.abs(mouse.deltaTotal.y) > 16) {
-        const oldPositions = nodesToDrag.map(node => {return {node: node, left: node.dragStartPosition.x+'px', top: node.dragStartPosition.y+'px'}});
-        const newPositions = nodesToDrag.map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+        const oldPositions = nodesToDrag.map(node => ({node: node, pos: node.dragStartPosition}));
+        const newPositions = nodesToDrag.map(node => ({node: node, pos: node.getPos()}));
 //         recordAction(
         undo_redo.markNodesMoved({oldPositions, newPositions});
 //           {
@@ -258,7 +260,7 @@ function handlePointerDownForSurface(event) {
     event.preventDefault();
     const link = surface.createLink();
     link.from = event.target;
-    const fromPosition = {x: parseInt(link.from.style.left), y: parseInt(link.from.style.top)};
+    const fromPosition = link.from.getPos();
     handlePointerDrag(event, {
       onmove: cursor => surface.layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       onup: function(event) {

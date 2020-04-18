@@ -121,8 +121,8 @@ export function initSurface(surface) {
 
   surface.getNodeAtPosition = position => {
     for (let node of surface.getElementsByClassName('node')) {
-      if ((position.y === parseInt(node.style.top)) &&
-        (position.x >= parseInt(node.style.left)) && (position.x < (parseInt(node.style.left) + parseInt(node.style.width)))) {
+      if ((position.y === node.y) &&
+        (position.x >= node.x) && (position.x < (node.x + parseInt(node.style.width)))) {
         return node;
       }
     }
@@ -133,8 +133,7 @@ export function initSurface(surface) {
     let closestNode = null;
     let closestNodeDistance = null;
     for (let node of nodes) {
-      const nodePosition = { x: parseInt(node.style.left),   y: parseInt(node.style.top)    };
-      const distance = squaredDistance(position, nodePosition);
+      const distance = squaredDistance(position, node.getPos());
       if (!closestNode || distance < closestNodeDistance) {
         closestNode = node;
         closestNodeDistance = distance;
@@ -146,10 +145,10 @@ export function initSurface(surface) {
   surface.getNodesIntersectingBox = (box, nodes = [...surface.getElementsByClassName('node')]) => {
     return nodes.filter(node => {
       return !(
-        ((parseInt(node.style.left) + getNodeWidthForName(node.value))  <  box.left)  ||
-        (parseInt(node.style.left)                                     >= box.right) ||
-        ((parseInt(node.style.top)  + 20)                               <  box.top)   ||
-        (parseInt(node.style.top)                                      >= box.bottom)
+        ((node.x + getNodeWidthForName(node.value)) <  box.left)  ||
+        (node.x                                     >= box.right) ||
+        ((node.y  + 20)                             <  box.top)   ||
+        (node.y                                     >= box.bottom)
       );
     });
   }
@@ -158,8 +157,8 @@ export function initSurface(surface) {
     let closestNode = null;
     let closestDistance = null;
     for (let node of surface.getElementsByClassName('node')) {
-      var deltaX = parseInt(node.style.left) - position.x;
-      var deltaY = parseInt(node.style.top)  - position.y;
+      var deltaX = node.x - position.x;
+      var deltaY = node.y - position.y;
       var distance = (deltaX*deltaX) + (deltaY*deltaY);
       if (!closestNode || (distance < closestDistance)) {
         closestNode = node;
@@ -174,22 +173,22 @@ export function initSurface(surface) {
       if (node === sourceNode) return false;
       return (
         (direction === 'right' &&
-        parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
-        parseInt(node.style.left) === parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) + 14)
+        node.y === sourceNode.y &&
+        node.x === sourceNode.x + parseInt(sourceNode.style.width) + 14)
         ||
         (direction === 'left' &&
-          parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
-          parseInt(node.style.left) + parseInt(node.style.width) === parseInt(sourceNode.style.left) - 14)
+          node.y === sourceNode.y &&
+          node.x + parseInt(node.style.width) === sourceNode.x - 14)
         ||
         (direction === 'up' &&
-          parseInt(node.style.top) === parseInt(sourceNode.style.top) - 32 &&
-          !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
-            parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+          node.y === sourceNode.y - 32 &&
+          !(node.x > sourceNode.x + parseInt(sourceNode.style.width) ||
+            node.x + parseInt(node.style.width) < sourceNode.x))
         ||
         (direction === 'down' &&
-          parseInt(node.style.top) === parseInt(sourceNode.style.top) + 32 &&
-          !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
-            parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+          node.y === sourceNode.y + 32 &&
+          !(node.x > sourceNode.x + parseInt(sourceNode.style.width) ||
+            node.x + parseInt(node.style.width) < sourceNode.x))
       );
     });
   }
@@ -211,8 +210,7 @@ export function initSurface(surface) {
   function getNodesOrganizedIntoRows(nodes) {
     var rows = [];
     for (const node of nodes) {
-      var nodeY = parseInt(node.style.top);
-      var row = nodeY / 32;
+      var row = node.y / 32;
       rows[row] = rows[row] || [];
       rows[row].push(node);
     }
@@ -222,9 +220,8 @@ export function initSurface(surface) {
   function getNodesOrganizedIntoColumns(nodes) {
     var columns = [];
     for (const node of nodes) {
-      var nodeX = parseInt(node.style.left);
       var nodeWidth = parseInt(node.style.width);
-      var column = nodeX / 64;
+      var column = node.x / 64;
       var columnCount = pxToGridX(nodeWidth) / 64;
       for (let c=0; c < columnCount; c++) {
         columns[column+c] = columns[column+c] || [];
@@ -238,8 +235,7 @@ export function initSurface(surface) {
     const rows = [];
     for (const group of groups) {
       for (const node of group) {
-        const nodeY = parseInt(node.style.top);
-        const row = nodeY / 32;
+        const row = node.y / 32;
         rows[row] = rows[row] || [];
         rows[row].push({group, node});
       }
@@ -251,9 +247,8 @@ export function initSurface(surface) {
     const columns = [];
     for (const group of groups) {
       for (const node of group) {
-        const nodeX = parseInt(node.style.left);
         const nodeWidth = parseInt(node.style.width);
-        const column = nodeX / 64;
+        const column = node.x / 64;
         const columnCount = pxToGridX(nodeWidth) / 64;
         for (let c=0; c < columnCount; c++) {
           columns[column+c] = columns[column+c] || [];
@@ -297,15 +292,15 @@ export function initSurface(surface) {
           continue;
         }
         if (direction === 'left') {
-          row.sort((a,b) => parseInt(a.style.left) - parseInt(b.style.left));
+          row.sort((a,b) => a.x - b.x);
         } else if (direction === 'right') {
-          row.sort((a,b) => parseInt(b.style.left) - parseInt(a.style.left));
+          row.sort((a,b) => b.x - a.x);
         }
         let lastNodeEdge = null;
         let lastNodeWasSourceNode = null;
         let currentBlock = [];
         for (const node of row) {
-          var leftEdge = parseInt(node.style.left);
+          var leftEdge = node.x;
           var rightEdge = leftEdge + parseInt(node.style.width);
           var edge = (direction === 'left') ? leftEdge : rightEdge;
           var isSourceNode = sourceNodes.has(node);
@@ -332,25 +327,25 @@ export function initSurface(surface) {
           continue;
         }
         if (direction === 'up') {
-          column.sort((a,b) => parseInt(b.style.top) - parseInt(a.style.top));
+          column.sort((a,b) => b.y - a.y);
         } else if (direction === 'down') {
-          column.sort((a,b) => parseInt(a.style.top) - parseInt(b.style.top));
+          column.sort((a,b) => a.y - b.y);
         }
       }
-      const maxY = Math.max(...columns.filter(column => column).map(column => parseInt((direction === 'down' ? column[column.length-1] : column[0]).style.top)));
+      const maxY = Math.max(...columns.filter(column => column).map(column => ((direction === 'down' ? column[column.length-1] : column[0]).y)));
       const rowCount = (maxY + 32) / 32;
       for (let row = 0; row < rowCount; row++) {
         const normalizedRow = direction === 'down' ? row : (rowCount - row);
-        const rowPx = (normalizedRow * 32) + 'px';
+        const rowY = normalizedRow * 32;
         for (const column of columns) {
           if (!column) {
             continue;
           }
-          const nodeIndex = column.findIndex(node => node.style.top === rowPx);
+          const nodeIndex = column.findIndex(node => node.y === rowY);
           if (nodeIndex >= 1) {
             const node     = column[nodeIndex];
             const prevNode = column[nodeIndex-1];
-            if (Math.abs(parseInt(prevNode.style.top) - parseInt(node.style.top)) === 32) {
+            if (Math.abs(prevNode.y - node.y) === 32) {
               if (sourceNodes.has(prevNode) || touchingNodes.has(prevNode)) {
                 touchingNodes.add(node);
               }
@@ -371,14 +366,14 @@ export function initSurface(surface) {
           continue;
         }
         if (direction === 'left') {
-          row.sort((a,b) => parseInt(a.node.style.left) - parseInt(b.node.style.left));
+          row.sort((a,b) => a.node.x - b.node.x);
         } else if (direction === 'right') {
-          row.sort((a,b) => parseInt(b.node.style.left) - parseInt(a.node.style.left));
+          row.sort((a,b) => b.node.x - a.node.x);
         }
         let lastNodeEdge = null;
         let lastNodeGroup = null;
         for (const entry of row) {
-          const leftEdge = parseInt(entry.node.style.left);
+          const leftEdge = entry.node.x;
           const rightEdge = leftEdge + parseInt(entry.node.style.width);
           const edge = (direction === 'left') ? leftEdge : rightEdge;
           if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
@@ -399,14 +394,14 @@ export function initSurface(surface) {
           continue;
         }
         if (direction === 'up') {
-          column.sort((a,b) => parseInt(a.node.style.top) - parseInt(b.node.style.top));
+          column.sort((a,b) => a.node.y - b.node.y);
         } else if (direction === 'down') {
-          column.sort((a,b) => parseInt(b.node.style.top) - parseInt(a.node.style.top));
+          column.sort((a,b) => b.node.y - a.node.y);
         }
         let lastNodeEdge = null;
         let lastNodeGroup = null;
         for (const entry of column) {
-          const topEdge = parseInt(entry.node.style.top);
+          const topEdge = entry.node.y;
           const bottomEdge = topEdge + 32;
           const edge = (direction === 'up') ? topEdge : bottomEdge;
           if (lastNodeEdge !== null && (entry.group !== lastNodeGroup)) {
@@ -735,7 +730,7 @@ export function initSurface(surface) {
   }
 
   surface.moveCursorToNode = node => {
-    surface.setCursorPosition({x: parseInt(node.style.left), y: parseInt(node.style.top)});
+    surface.setCursorPosition({x: node.x, y: node.y});
   }
   surface.getNodeAtCursor = () => {
     const cursor_ = surface.getElementsByClassName('cursor')[0];
@@ -749,15 +744,15 @@ export function initSurface(surface) {
       selectionBox.anchorPosition = cursorPosition;
     }
     if (direction === 'left') {
-      var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < cursorPosition.x);
+      var nodesToLeft = nodesInRow.filter(node => node.x < cursorPosition.x);
       if (nodesToLeft.length > 0) {
-        nodesToLeft.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+        nodesToLeft.sort((a, b) => a.x - b.x);
         var node = nodesToLeft[nodesToLeft.length - 1];
-        if ((cursorPosition.x - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+        if ((cursorPosition.x - (node.x + parseInt(node.style.width))) > 20) {
           surface.moveCursorToNode(node);
         } else {
           for (var i = nodesToLeft.length - 2; i >= 0; i--) {
-            if ((parseInt(node.style.left) - (parseInt(nodesToLeft[i].style.left) + parseInt(nodesToLeft[i].style.width))) > 20) {
+            if ((node.x - (nodesToLeft[i].x + parseInt(nodesToLeft[i].style.width))) > 20) {
               break;
             }
             node = nodesToLeft[i];
@@ -768,18 +763,18 @@ export function initSurface(surface) {
         surface.setCursorPosition({x: 0, y: cursorPosition.y});
       }
     } else if (direction === 'right') {
-      var nodesToRight = nodesInRow.filter(node => parseInt(node.style.left) > cursorPosition.x);
+      var nodesToRight = nodesInRow.filter(node => node.x > cursorPosition.x);
       if (nodesToRight.length === 0) {
         return;
       }
-      nodesToRight.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+      nodesToRight.sort((a, b) => a.x - b.x);
       var node = nodesToRight[0];
       var nodeAtCursor = getNodeAtCursor();
-      if (!nodeAtCursor || (parseInt(node.style.left) - (parseInt(nodeAtCursor.style.left) + parseInt(nodeAtCursor.style.width)) > 20)) {
+      if (!nodeAtCursor || (node.x - (nodeAtCursor.x + parseInt(nodeAtCursor.style.width)) > 20)) {
         surface.moveCursorToNode(node);
       } else {
         for (var i=1; i < nodesToRight.length; i++) {
-          if ((parseInt(nodesToRight[i].style.left) - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+          if ((nodesToRight[i].x - (node.x + parseInt(node.style.width))) > 20) {
             break;
           }
           node = nodesToRight[i];
@@ -934,16 +929,18 @@ export function initSurface(surface) {
       down:  {x:   0, y:  32},
     }[direction];
     const willNodeBeMovedOutOfBounds = [...nodesToMove].find(node => {
-      return parseInt(node.style.left) + moveDelta.x < 0 ||
-            parseInt(node.style.top)  + moveDelta.y < 0;
+      return node.x + moveDelta.x < 0 ||
+             node.y + moveDelta.y < 0;
     });
     if (willNodeBeMovedOutOfBounds) return false;
 
-    const oldPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+    const oldPositions = [...nodesToMove].map(node => ({node: node, pos: node.getPos()}));
 
     for (const node of nodesToMove) {
-      node.style.left = (parseInt(node.style.left) + moveDelta.x) + 'px';
-      node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
+      node.setPos(
+        node.x + moveDelta.x,
+        node.y + moveDelta.y
+      )
       node.links.forEach(link => affectedLinks.add(link));
     }
     surface.layoutLinks(affectedLinks);
@@ -964,7 +961,7 @@ export function initSurface(surface) {
     selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
 //     const selectionBoxAfter = surface.getSelectionBox();
 
-    const newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
+    const newPositions = [...nodesToMove].map(node => ({node: node, pos: node.getPos()}));
 
   //   recordAction(
       undo_redo.markNodesMoved({oldPositions, newPositions});
@@ -985,8 +982,10 @@ export function initSurface(surface) {
       var adjacentNodes = surface.getAllAdjacentNodesInDirection([document.activeElement], options.moveAdjacent);
       var affectedLinks = new Set();
       for (let node of adjacentNodes) {
-        node.style.left = (parseInt(node.style.left) + offsetX) + 'px';
-        node.style.top  = (parseInt(node.style.top)  + offsetY) + 'px';
+        node.setPos(
+          node.x + offsetX,
+          node.y + offsetY
+        )
         for (let link of node.links) affectedLinks.add(link);
       }
       surface.layoutLinks(affectedLinks);
@@ -999,13 +998,13 @@ export function initSurface(surface) {
       }
     });
     newNode.focus();
-    var cursorPositionBefore = {
-      x: parseInt(cursor.style.left),
-      y: parseInt(cursor.style.top),
-    }
+//     var cursorPositionBefore = {
+//       x: parseInt(cursor.style.left),
+//       y: parseInt(cursor.style.top),
+//     }
     var cursorPositionAfter = {
-      x: pxToGridX(parseInt(newNode.style.left)),
-      y: pxToGridY(parseInt(newNode.style.top)),
+      x: pxToGridX(newNode.x),
+      y: pxToGridY(newNode.y),
     }
     surface.setCursorPosition(cursorPositionAfter);
     surface.deselectAll();
@@ -1036,26 +1035,26 @@ export function initSurface(surface) {
     instance.value = node.value;
     instance.style.width = node.style.width;
     instance.setAttribute('value', node.value);
-    if (direction === 'down') {
-      instance.style.left = node.style.left;
-      instance.style.top  = (parseInt(node.style.top) + 32) + 'px';
-    } else if (direction === 'right') {
-      instance.style.left = pxToGridX(parseInt(node.style.left) + parseInt(node.style.width)) + 'px';
-      instance.style.top = node.style.top;
-    } else if (direction === 'up') {
-      instance.style.left = node.style.left;
-      instance.style.top  = (parseInt(node.style.top) - 32) + 'px';
-    } else if (direction === 'left') {
-      instance.style.left = pxToGridX(parseInt(node.style.left) - parseInt(node.style.width)) + 'px';
-      instance.style.top = node.style.top;
-    }
     instance.links = new Set();
-
     initNode(instance);
+    switch (direction) {
+      case 'down':
+        instance.setPos(node.x, node.y + 32);
+        break;
+      case 'right':
+        instance.setPos(pxToGridX(node.x + parseInt(node.style.width)), node.y);
+        break;
+      case 'up':
+        instance.setPos(node.x, node.y - 32);
+        break;
+      case 'left':
+        instance.setPos(pxToGridX(node.x - parseInt(node.style.width)), node.y);
+        break;
+    }
 
-    surface.getElementsByClassName('nodes')[0].appendChild(instance);
+    nodesContainer.appendChild(instance);
 
-    surface.setCursorPosition({x: parseInt(instance.style.left), y: parseInt(instance.style.top)});
+    surface.setCursorPosition(instance.getPos());
 
     undo_redo.markElementsCreated([instance]);
   }
@@ -1086,18 +1085,22 @@ export function initSurface(surface) {
         overflowMap.scrollTo(surface.scrollLeft, surface.scrollTop);
       });
       overflowMap.addEventListener('mousedown', event => {
-        if (event.target.classList.contains('node-shadow')) {
-          if (overflowMap.dataset.edge === 'left') {
-            surface.scrollTo({left: parseInt(event.target.node.style.left), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'top') {
-            surface.scrollTo({top: parseInt(event.target.node.style.top), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'right') {
-            const nodeRight = parseInt(event.target.node.style.left) + parseInt(event.target.node.style.width) + 14;
+        if (!event.target.classList.contains('node-shadow')) return;
+        switch (overflowMap.dataset.edge) {
+          case 'left':
+            surface.scrollTo({left: event.target.node.x, behavior: 'smooth'});
+            break;
+          case 'top':
+            surface.scrollTo({top: event.target.node.y, behavior: 'smooth'});
+            break;
+          case 'right':
+            const nodeRight = event.target.node.x + parseInt(event.target.node.style.width) + 14;
             surface.scrollTo({left: nodeRight - (surfaceContainer.offsetWidth - 40), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'bottom') {
-            const nodeBottom = parseInt(event.target.node.style.top) + 32;
+            break;
+          case 'bottom':
+            const nodeBottom = event.target.node.y + 32;
             surface.scrollTo({top: nodeBottom - (surfaceContainer.offsetHeight - 40), behavior: 'smooth'});
-          }
+            break;
         }
       });
     }
@@ -1165,10 +1168,6 @@ export function initSurface(surface) {
       elementsToDelete.add(nodeAtCursor);
     }
     if (elementsToDelete.size === 0) return false;
-    var focusedNodePosition = null;
-    if (document.activeElement && document.activeElement.classList.contains('node')) {
-      focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
-    }
     var affectedLinks = surface.deleteElements(elementsToDelete);
   //   recordAction(
       undo_redo.markElementsDeleted(new Set([...elementsToDelete, ...affectedLinks]));
@@ -1251,13 +1250,15 @@ export function initSurface(surface) {
     surface.deserialize(nodes, links);
     surface.clearSerialization(nodes, links);
     if (position) {
-      const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-      const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+      const leftmost = Math.min(...nodes.map(node => node.x));
+      const topmost  = Math.min(...nodes.map(node => node.y));
       const deltaX = position.x - leftmost;
       const deltaY = position.y - topmost;
       for (let node of nodes) {
-        node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-        node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+        node.setPos(
+          node.x + deltaX,
+          node.y + deltaY
+        )
         node.classList.add('selected');
       }
       surface.layoutLinks(links);
@@ -1333,7 +1334,7 @@ export function initSurface(surface) {
     for (const id of nodeNames.keys()) {
       const instances = [...surface.querySelectorAll(`.node[data-id="${id}"]`)];
       for (const instance of instances) {
-        file += `${index} ${parseInt(instance.style.left)},${parseInt(instance.style.top)}\n`;
+        file += `${index} ${instance.x},${instance.y}\n`;
         instanceIndexes.set(instance, instanceIndex);
         instanceIndex++;
       }

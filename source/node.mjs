@@ -22,24 +22,37 @@ export function createNode(options) {
 
 export function initNode(node) {
 
+  node.x = parseInt(node.style.left);
+  node.y = parseInt(node.style.top);
+
+  node.setX = x => { node.x = x; node.style.left = x + 'px'; }
+  node.setY = y => { node.y = y; node.style.top  = y + 'px'; }
+  node.setPos = (x, y) => {
+    node.x = x;
+    node.y = y;
+    node.style.left = x + 'px';
+    node.style.top = y + 'px';
+  }
+  node.getPos = () => ({x: node.x, y: node.y});
+
   node.getCenter = () => ({
-    x: parseInt(node.style.left) + (parseInt(node.style.width) / 2) + 5,
-    y: parseInt(node.style.top) + 16,
+    x: node.x + (parseInt(node.style.width) / 2) + 5,
+    y: node.y + 16,
   });
 
   node.getBoundingBox = () => ({
-    left:   parseInt(node.style.left),
-    top:    parseInt(node.style.top),
+    left:   node.x,
+    top:    node.y,
     width:  parseInt(node.style.width),
     height: parseInt(node.style.height),
-    right:  parseInt(node.style.left) + parseInt(node.style.width),
-    bottom: parseInt(node.style.top) + parseInt(node.style.height),
+    right:  node.x + parseInt(node.style.width),
+    bottom: node.y + parseInt(node.style.height),
   })
 
   node.getAnchorPoints = () => [
     {point: node.getCenter()},
-    {point: {x: parseInt(node.style.left) + 18, y: parseInt(node.style.top) + 16}},
-    {point: {x: parseInt(node.style.left) + parseInt(node.style.width) - 8, y: parseInt(node.style.top) + 16}},
+    {point: {x: node.x + 18, y: node.y + 16}},
+    {point: {x: node.x + parseInt(node.style.width) - 8, y: node.y + 16}},
   ]
 
   node.getConnectedNodes = () => {
@@ -89,14 +102,11 @@ export function initNode(node) {
     }
 
     // Z-index
-    if (edge === 'left') {
-      shadow.style.zIndex = parseInt(node.style.left);
-    } else if (edge === 'top') {
-      shadow.style.zIndex = parseInt(node.style.top);
-    } else if (edge === 'right') {
-      shadow.style.zIndex = 5000 - parseInt(node.style.left);
-    } else if (edge === 'bottom') {
-      shadow.style.zIndex = 5000 - parseInt(node.style.top);
+    switch (edge) {
+      case   'left': shadow.style.zIndex = node.x; break;
+      case    'top': shadow.style.zIndex = node.y; break;
+      case  'right': shadow.style.zIndex = 5000 - node.x; break;
+      case 'bottom': shadow.style.zIndex = 5000 - node.y; break;
     }
   }
 }

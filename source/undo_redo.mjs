@@ -142,8 +142,7 @@ export const markNodesMoved = positions => recordAction({
   undo() {
     const affectedLinks = new Set();
     for (const i of positions.oldPositions) {
-      i.node.style.left = i.left;
-      i.node.style.top  = i.top;
+      i.node.setPos(i.pos.x, i.pos.y);
       for (const link of i.node.links) affectedLinks.add(link);
     }
     mainSurface.layoutLinks(affectedLinks);
@@ -151,8 +150,7 @@ export const markNodesMoved = positions => recordAction({
   redo() {
     const affectedLinks = new Set();
     for (const i of positions.newPositions) {
-      i.node.style.left = i.left;
-      i.node.style.top  = i.top;
+      i.node.setPos(i.pos.x, i.pos.y);
       for (const link of i.node.links) affectedLinks.add(link);
     }
     mainSurface.layoutLinks(affectedLinks);

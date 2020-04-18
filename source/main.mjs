@@ -285,10 +285,7 @@ export function moveSelectionToQueriedNodes() {
   }
   if (queriedNodes.size > 0) {
     setCurrentSurface(mainSurface);
-    setCursorPosition({
-      x: parseInt([...queriedNodes][0].style.left),
-      y: parseInt([...queriedNodes][0].style.top),
-    });
+    mainSurface.setCursorPosition([...queriedNodes][0].getPos());
   }
 }
 
