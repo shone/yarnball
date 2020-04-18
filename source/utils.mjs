@@ -1,3 +1,9 @@
+export function squaredDistance(pointA, pointB) {
+  const dx = pointA.x - pointB.x;
+  const dy = pointA.y - pointB.y;
+  return (dx*dx) + (dy*dy);
+}
+
 export function getBoundingBoxForPoints(pointA, pointB) {
   const left   = Math.min(pointA.x, pointB.x);
   const top    = Math.min(pointA.y, pointB.y);

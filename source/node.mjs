@@ -1,4 +1,8 @@
-export function createNode() {
+import {makeUuid} from './utils.mjs';
+
+import {highlightQueriedNodes} from './main.mjs';
+
+export function createNode(options) {
   const node = document.createElement('input');
   node.classList.add('node');
   node.setAttribute('data-id', makeUuid());
@@ -33,7 +37,7 @@ export function initNode(node) {
   })
 
   node.getAnchorPoints = () => [
-    {point: getNodeCenter(node)},
+    {point: node.getCenter()},
     {point: {x: parseInt(node.style.left) + 18, y: parseInt(node.style.top) + 16}},
     {point: {x: parseInt(node.style.left) + parseInt(node.style.width) - 8, y: parseInt(node.style.top) + 16}},
   ]
@@ -42,9 +46,9 @@ export function initNode(node) {
     var connectedNodes = new Set();
     var nodesToVisit = [node];
     while (nodesToVisit.length > 0) {
-      var node = nodesToVisit.pop();
-      connectedNodes.add(node);
-      for (let link of node.links) {
+      const visitingNode = nodesToVisit.pop();
+      connectedNodes.add(visitingNode);
+      for (let link of visitingNode.links) {
         if (!connectedNodes.has(link.from)) nodesToVisit.push(link.from);
         if (!connectedNodes.has(link.via))  nodesToVisit.push(link.via);
         if (!connectedNodes.has(link.to))   nodesToVisit.push(link.to);

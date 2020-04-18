@@ -1,3 +1,5 @@
+import * as graph from '/source/graph.mjs';
+
 const cssSymbols = [];
 
 const _rule     = '348b6fa30fc94e55378565889927dc7e'; cssSymbols.push({name: 'rule',    id: _rule});

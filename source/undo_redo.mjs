@@ -1,10 +1,12 @@
 import {
   mainSurface,
+  findPanel,
   currentSurface,
   setCurrentSurface,
-  closeNameMatchPanel,
-  deleteElements
+  highlightQueriedNodes
 } from './main.mjs';
+
+import {closeNameMatchPanel} from './name_matching.mjs';
 
 const actions = [];
 var actionsUndone = [];
@@ -54,6 +56,14 @@ export function redo() {
   }
 }
 
+export function markSaved() {
+  if (actions.length > 0) {
+    savedAction = actions[actions.length-1];
+  } else {
+    savedAction = null;
+  }
+}
+
 export let isActionInProgress = false;
 export function setActionInProgress(inProgress) {
   isActionInProgress = inProgress;
@@ -64,7 +74,7 @@ function recordAction(action, options) {
     action.options = options || {};
     actions.push(action);
     actionsUndone = [];
-    updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
+    mainSurface.updateOverflowMaps(mainSurface.getElementsByClassName('node'), mainSurface);
   } else if (currentSurface === findPanel) {
     highlightQueriedNodes();
   }
@@ -92,13 +102,13 @@ export const markElementsDeleted = elements => recordAction({
     mainSurface.evaluateCursorPosition();
   },
   redo() {
-    deleteElements(elements);
+    mainSurface.deleteElements(elements);
   }
 });
 
 export const markElementsCreated = elements => recordAction({
   undo() {
-    deleteElements(elements);
+    mainSurface.deleteElements(elements);
   },
   redo() {
     for (let element of elements) {
@@ -136,7 +146,7 @@ export const markNodesMoved = positions => recordAction({
       i.node.style.top  = i.top;
       for (const link of i.node.links) affectedLinks.add(link);
     }
-    for (const link of affectedLinks) layoutLink(link);
+    mainSurface.layoutLinks(affectedLinks);
   },
   redo() {
     const affectedLinks = new Set();
@@ -145,7 +155,7 @@ export const markNodesMoved = positions => recordAction({
       i.node.style.top  = i.top;
       for (const link of i.node.links) affectedLinks.add(link);
     }
-    for (const link of affectedLinks) layoutLink(link);
+    mainSurface.layoutLinks(affectedLinks);
   }
 });
 

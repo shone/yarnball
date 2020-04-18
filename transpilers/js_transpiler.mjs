@@ -1,12 +1,13 @@
 import {builtinNameMatches} from '/source/name_matching.mjs';
 import {mainSurface, currentSurface} from '/source/main.mjs';
+import * as graph from '/source/graph.mjs';
 
 const javascriptPanel = document.querySelector('.panel[data-panel="javascript"]');
 
 document.addEventListener('cursorPositionEvaluated', event => {
   const panelContainer = javascriptPanel.closest('.panels-container');
   if (currentSurface === mainSurface && panelContainer.classList.contains('expanded') && panelContainer.dataset.panel === 'javascript') {
-    const nodeAtCursor = getNodeAtCursor();
+    const nodeAtCursor = mainSurface.getNodeAtCursor();
     const javascriptSourceElement = document.querySelector('.panel[data-panel="javascript"] .source');
     if (nodeAtCursor) {
       const compiledStatements = compileStatements(nodeAtCursor.dataset.id);
@@ -21,7 +22,7 @@ document.addEventListener('cursorPositionEvaluated', event => {
 function runJavascriptAtCursor() {
   const javascriptResultElement = javascriptPanel.getElementsByClassName('result')[0];
   let javascriptSourceAtCursor = null;
-  const nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = mainSurface.getNodeAtCursor();
   if (nodeAtCursor) {
     let statements = graph.followListNodes(nodeAtCursor.dataset.id, _nextStatement).map(compileStatement);
     statements = statements.filter(statement => statement !== '');

@@ -1,5 +1,6 @@
 import {builtinNameMatches} from '/source/name_matching.mjs';
 import {mainSurface, currentSurface} from '/source/main.mjs';
+import * as graph from '/source/graph.mjs';
 
 const htmlSymbols = [];
 
@@ -27,14 +28,14 @@ document.adoptedStyleSheets = [...document.adoptedStyleSheets, htmlSyntaxHighlig
 var launchedHtmlWindow = null;
 
 function transpileHtmlAtCursor() {
-  const nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = mainSurface.getNodeAtCursor();
   if (nodeAtCursor) {
     console.log(transpileHtml(nodeAtCursor.dataset.id));
   }
 }
 
 function launchHtmlAtCursor() {
-  const nodeAtCursor = getNodeAtCursor();
+  const nodeAtCursor = mainSurface.getNodeAtCursor();
   if (nodeAtCursor) {
     const html = transpileHtml(nodeAtCursor.dataset.id);
     if (!launchedHtmlWindow || launchedHtmlWindow.window === null) {
@@ -51,7 +52,7 @@ const htmlPanel = document.querySelector('.panel[data-panel="html"]');
 document.addEventListener('cursorPositionEvaluated', event => {
   const panelContainer = htmlPanel.closest('.panels-container');
   if (currentSurface === mainSurface && panelContainer.classList.contains('expanded') && panelContainer.dataset.panel === 'html') {
-    const nodeAtCursor = getNodeAtCursor();
+    const nodeAtCursor = mainSurface.getNodeAtCursor();
     const htmlSourceElement = htmlPanel.getElementsByClassName('source')[0];
     if (nodeAtCursor) {
       const html = transpileHtml(nodeAtCursor.dataset.id);

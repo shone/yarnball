@@ -1,3 +1,5 @@
+import {mainSurface} from './main.mjs';
+
 export function getNameForId(id) {
   const node = mainSurface.querySelector(`.node[data-id='${id}']`);
   return node ? node.value : '';
@@ -20,7 +22,7 @@ export function findNodeVia(node, via) {
   return link ? link.to.dataset.id : null;
 }
 
-export findNodesVia(node, via) {
+export function findNodesVia(node, via) {
   const links = this.findLinksVia(node, via);
   return [...new Set(links.map(link => link.to.dataset.id))];
 }

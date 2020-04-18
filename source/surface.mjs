@@ -1,57 +1,44 @@
-import {createNode, initNode} from './node.mjs';
-import {makeUuid} from './utils.mjs';
+import {
+  createNode,
+  initNode,
+  getNodeWidthForName
+} from './node.mjs';
+
+import {
+  makeUuid,
+  squaredDistance,
+  getBoundingBoxForPoints
+} from './utils.mjs';
+
 import {mainSurface} from './main.mjs';
+import {nameMatchPanel} from './name_matching.mjs';
+import * as undo_redo from './undo_redo.mjs';
 
 export function initSurface(surface) {
 
-  const cursor         = surface.querySelector('.cursor');
-  const selectionBox   = surface.querySelector('.selection-box');
-  const nodesContainer = surface.querySelector('.nodes');
-
-  // Setup overflow maps
+  const cursor           = surface.querySelector('.cursor');
+  const selectionBox     = surface.querySelector('.selection-box');
+  const nodesContainer   = surface.querySelector('.nodes');
   const surfaceContainer = surface.closest('.surface-container');
-  if (surfaceContainer) {
-    for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
-      surface.addEventListener('scroll', event => {
-        overflowMap.scrollTo(surface.scrollLeft, surface.scrollTop);
-      });
-      overflowMap.addEventListener('mousedown', event => {
-        if (event.target.classList.contains('node-shadow')) {
-          if (overflowMap.dataset.edge === 'left') {
-            surface.scrollTo({left: parseInt(event.target.node.style.left), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'top') {
-            surface.scrollTo({top: parseInt(event.target.node.style.top), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'right') {
-            const nodeRight = parseInt(event.target.node.style.left) + parseInt(event.target.node.style.width) + 14;
-            surface.scrollTo({left: nodeRight - (surfaceContainer.offsetWidth - 40), behavior: 'smooth'});
-          } else if (overflowMap.dataset.edge === 'bottom') {
-            const nodeBottom = parseInt(event.target.node.style.top) + 32;
-            surface.scrollTo({top: nodeBottom - (surfaceContainer.offsetHeight - 40), behavior: 'smooth'});
-          }
-        }
-      });
-    }
-  }
+
+  surface.selectionBox = selectionBox;
+
+  const pxToGridX = px => Math.round(px / 64) * 64;
+  const pxToGridY = px => Math.round(px / 32) * 32;
 
   surface.scrollInDirection = direction => {
-    var scrollDelta = {
-      left:  {x: -64, y:   0},
-      right: {x:  64, y:   0},
-      up:    {x:   0, y: -32},
-      down:  {x:   0, y:  32},
-    }[direction];
-    surface.scrollBy(scrollDelta.x, scrollDelta.y);
+    switch (direction) {
+      case 'left':  return surface.scrollBy(-64,   0);
+      case 'right': return surface.scrollBy( 64,   0);
+      case 'up':    return surface.scrollBy(  0, -32);
+      case 'down':  return surface.scrollBy(  0,  32);
+    }
   }
 
   surface.selectAll = () => {
-    for (const node of [...surface.getElementsByClassName('node')]) {
-      node.classList.add('selected');
-    }
-    const surfaceContainer = surface.closest('.surface-container');
+    surface.querySelectorAll('.node').forEach(node => node.classList.add('selected'));
     if (surfaceContainer) {
-      for (const nodeShadow of [...surfaceContainer.getElementsByClassName('node-shadow')]) {
-        nodeShadow.classList.add('selected');
-      }
+      surfaceContainer.querySelectorAll('.node-shadow').forEach(shadow => shadow.classList.add('selected'));
     }
     selectionBox.classList.add('hidden');
   }
@@ -68,6 +55,28 @@ export function initSurface(surface) {
     selectionBox.classList.add('hidden');
   }
 
+  surface.selectNodes = nodes => {
+    for (const node of nodes) {
+      node.classList.add('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.add('selected');
+        }
+      }
+    }
+  }
+
+  surface.deselectNodes = nodes => {
+    for (const node of nodes) {
+      node.classList.remove('selected');
+      if (node.overflowMap) {
+        for (const nodeShadow of Object.values(node.overflowMap)) {
+          nodeShadow.classList.remove('selected');
+        }
+      }
+    }
+  }
+
   surface.setSelectionBox = (position, selectedNodesToPreserve) => {
     if (!position.width)  position.width  = position.right  - position.left;
     if (!position.height) position.height = position.bottom - position.top;
@@ -77,7 +86,7 @@ export function initSurface(surface) {
     selectionBox.style.top    = position.top    + 'px';
     selectionBox.style.width  = position.width  + 'px';
     selectionBox.style.height = position.height + 'px';
-    const intersectingNodes = new Set(getNodesIntersectingBox(position));
+    const intersectingNodes = new Set(surface.getNodesIntersectingBox(position));
     for (const node of [...surface.getElementsByClassName('node')]) {
       if (selectedNodesToPreserve && selectedNodesToPreserve.has(node)) continue;
       const selected = intersectingNodes.has(node);
@@ -120,6 +129,20 @@ export function initSurface(surface) {
     return null;
   }
 
+  surface.getClosestNodeTo = (position, nodes = surface.getElementsByClassName('node')) => {
+    let closestNode = null;
+    let closestNodeDistance = null;
+    for (let node of nodes) {
+      const nodePosition = { x: parseInt(node.style.left),   y: parseInt(node.style.top)    };
+      const distance = squaredDistance(position, nodePosition);
+      if (!closestNode || distance < closestNodeDistance) {
+        closestNode = node;
+        closestNodeDistance = distance;
+      }
+    }
+    return closestNode;
+  }
+
   surface.getNodesIntersectingBox = (box, nodes = [...surface.getElementsByClassName('node')]) => {
     return nodes.filter(node => {
       return !(
@@ -144,6 +167,71 @@ export function initSurface(surface) {
       }
     }
     return closestNode;
+  }
+
+  surface.getAdjacentNodesInDirection = (sourceNode, direction) => {
+    return [...surface.getElementsByClassName('node')].filter(node => {
+      if (node === sourceNode) return false;
+      return (
+        (direction === 'right' &&
+        parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
+        parseInt(node.style.left) === parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) + 14)
+        ||
+        (direction === 'left' &&
+          parseInt(node.style.top) === parseInt(sourceNode.style.top) &&
+          parseInt(node.style.left) + parseInt(node.style.width) === parseInt(sourceNode.style.left) - 14)
+        ||
+        (direction === 'up' &&
+          parseInt(node.style.top) === parseInt(sourceNode.style.top) - 32 &&
+          !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
+            parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+        ||
+        (direction === 'down' &&
+          parseInt(node.style.top) === parseInt(sourceNode.style.top) + 32 &&
+          !(parseInt(node.style.left) > parseInt(sourceNode.style.left) + parseInt(sourceNode.style.width) ||
+            parseInt(node.style.left) + parseInt(node.style.width) < parseInt(sourceNode.style.left)))
+      );
+    });
+  }
+
+  surface.getAllAdjacentNodesInDirection = (sourceNodes, direction) => {
+    var adjacentNodes = [];
+    var currentSet = [...sourceNodes];
+    do {
+      var newSet = new Set();
+      for (let node of currentSet) {
+        surface.getAdjacentNodesInDirection(node, direction).forEach(n => newSet.add(n));
+      }
+      newSet.forEach(n => adjacentNodes.push(n));
+      currentSet = [...newSet];
+    } while(currentSet.length !== 0)
+    return adjacentNodes;
+  }
+
+  function getNodesOrganizedIntoRows(nodes) {
+    var rows = [];
+    for (const node of nodes) {
+      var nodeY = parseInt(node.style.top);
+      var row = nodeY / 32;
+      rows[row] = rows[row] || [];
+      rows[row].push(node);
+    }
+    return rows;
+  }
+
+  function getNodesOrganizedIntoColumns(nodes) {
+    var columns = [];
+    for (const node of nodes) {
+      var nodeX = parseInt(node.style.left);
+      var nodeWidth = parseInt(node.style.width);
+      var column = nodeX / 64;
+      var columnCount = pxToGridX(nodeWidth) / 64;
+      for (let c=0; c < columnCount; c++) {
+        columns[column+c] = columns[column+c] || [];
+        columns[column+c].push(node);
+      }
+    }
+    return columns;
   }
 
   function getGroupsOrganizedIntoRows(groups) {
@@ -374,25 +462,31 @@ export function initSurface(surface) {
     return link;
   }
 
+  surface.layoutLinks = links => {
+    for (const link of links) {
+      surface.layoutLink(link);
+    }
+  }
+
   surface.layoutLink = (link, lastPosition) => {
     const points = [];
     if (link.from) {
-      const nextPoint = link.via ? surface.getNodeCenter(link.via) : lastPosition;
-      const anchorPoints = getNodeAnchorPoints(link.from);
+      const nextPoint = link.via ? link.via.getCenter() : lastPosition;
+      const anchorPoints = link.from.getAnchorPoints();
       for (let anchor of anchorPoints) {
-        anchor.distance = Math.pow(nextPoint.x - anchor.point.x, 2) + Math.pow(nextPoint.y - anchor.point.y, 2);
+        anchor.distance = squaredDistance(nextPoint, anchor.point);
       }
       anchorPoints.sort((a, b) => a.distance - b.distance);
       points.push(anchorPoints[0].point);
     }
     if (link.via) {
-      points.push(getNodeCenter(link.via));
+      points.push(link.via.getCenter());
     }
     if (link.to) {
-      const viaPoint = getNodeCenter(link.via);
-      const anchorPoints = getNodeAnchorPoints(link.to);
+      const viaPoint = link.via.getCenter();
+      const anchorPoints = link.to.getAnchorPoints();
       for (let anchor of anchorPoints) {
-        anchor.distance = Math.pow(viaPoint.x - anchor.point.x, 2) + Math.pow(viaPoint.y - anchor.point.y, 2);
+        anchor.distance = squaredDistance(viaPoint, anchor.point);
       }
       anchorPoints.sort((a, b) => a.distance - b.distance);
       points.push(anchorPoints[0].point);
@@ -403,6 +497,131 @@ export function initSurface(surface) {
     } else {
       link.setAttribute('points', '');
     }
+  }
+
+  surface.getConnectedLinks = link => {
+    var nodesAlreadySeen = new Set([link.from, link.via, link.to]);
+    var linksAlreadySeen = new Set([link]);
+    var allLinks = [...surface.getElementsByClassName('link')].filter(link => link.from && link.via && link.to);
+    var connectedLinks = [];
+    var connectedLink = null;
+    do {
+      connectedLink = allLinks.find(link => {
+        if (linksAlreadySeen.has(link)) return false;
+        return nodesAlreadySeen.has(link.from) ||
+              nodesAlreadySeen.has(link.via) ||
+              nodesAlreadySeen.has(link.to);
+      });
+      if (connectedLink) {
+        connectedLinks.push(connectedLink);
+        linksAlreadySeen.add(connectedLink);
+        nodesAlreadySeen.add(connectedLink.from);
+        nodesAlreadySeen.add(connectedLink.via);
+        nodesAlreadySeen.add(connectedLink.to);
+      }
+    } while(connectedLink);
+    return connectedLinks;
+  }
+
+  surface.getAllConnectedNodesAndLinks = (node, connectedNodes, connectedLinks) => {
+    connectedNodes = connectedNodes || new Set();
+    connectedLinks = connectedLinks || new Set();
+    node.links.forEach(link => {
+      if (!connectedLinks.has(link)) {
+        connectedLinks.add(link);
+        if (!connectedNodes.has(link.from)) {
+          connectedNodes.add(link.from);
+          getAllConnectedNodesAndLinks(link.from, connectedNodes, connectedLinks);
+        }
+        if (!connectedNodes.has(link.via)) {
+          connectedNodes.add(link.via);
+          getAllConnectedNodesAndLinks(link.via, connectedNodes, connectedLinks);
+        }
+        if (!connectedNodes.has(link.to)) {
+          connectedNodes.add(link.to);
+          getAllConnectedNodesAndLinks(link.to, connectedNodes, connectedLinks);
+        }
+      }
+    });
+    return {
+      nodes: connectedNodes,
+      links: connectedLinks,
+    }
+  }
+
+  let linkBeingCreated = null;
+  surface.linkBeingCreated = linkBeingCreated;
+  surface.useNodeForLinkCreationMode = node => {
+    if (linkBeingCreated) {
+      if (!linkBeingCreated.from) {
+        linkBeingCreated.from = node;
+      } else if (!linkBeingCreated.via) {
+        if (linkBeingCreated.from === node) return;
+        linkBeingCreated.via = node;
+        surface.layoutLink(linkBeingCreated, {x: parseInt(cursor.style.left) + 32, y: parseInt(cursor.style.top) + 32});
+      } else if (!linkBeingCreated.to) {
+        if (linkBeingCreated.from === node || linkBeingCreated.via === node) return;
+        const existingLink = [...surface.getElementsByClassName('link')].find(link => {
+          return link.from === linkBeingCreated.from &&
+                link.via  === linkBeingCreated.via  &&
+                link.to   === node;
+        });
+        if (existingLink) {
+          surface.deleteElements([existingLink]);
+          linkBeingCreated.remove();
+          undo_redo.markElementsDeleted([existingLink]);
+        } else {
+          linkBeingCreated.to = node;
+          linkBeingCreated.from.links.add(linkBeingCreated);
+          linkBeingCreated.via.links.add(linkBeingCreated);
+          linkBeingCreated.to.links.add(linkBeingCreated);
+          linkBeingCreated.classList.add('link');
+          linkBeingCreated.classList.remove('unfinished-link');
+          surface.layoutLink(linkBeingCreated);
+        }
+        const createdLink = linkBeingCreated;
+        linkBeingCreated = null;
+        cursor.classList.remove('insert-mode');
+        surface.resetCursorBlink();
+        return createdLink;
+      }
+    }
+    return null;
+  }
+  surface.executeLinkMode = () => {
+    if (!linkBeingCreated) {
+      linkBeingCreated = surface.createLink();
+      let nodeAtCursor = surface.getNodeAtCursor();
+      if (nodeAtCursor) {
+        surface.useNodeForLinkCreationMode(nodeAtCursor);
+      }
+      cursor.classList.add('insert-mode');
+      surface.resetCursorBlink();
+      nameMatchPanel.remove();
+    } else {
+      let nodeAtCursor = surface.getNodeAtCursor();
+      if (nodeAtCursor) {
+        var createdLink = surface.useNodeForLinkCreationMode(nodeAtCursor);
+        if (createdLink) {
+          undo_redo.markElementsCreated([createdLink]);
+        }
+      } else {
+        surface.cancelLinkMode();
+      }
+    }
+  }
+  surface.isLinkModeActive = () => linkBeingCreated !== null;
+  surface.cancelLinkMode = () => {
+    if (linkBeingCreated) {
+      linkBeingCreated.remove();
+      linkBeingCreated = null;
+      cursor.classList.remove('insert-mode');
+      surface.resetCursorBlink();
+    }
+  }
+
+  surface.getCursorPosition = () => {
+    return {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
   }
 
   surface.setCursorPosition = position => {
@@ -422,7 +641,7 @@ export function initSurface(surface) {
       surface.layoutLink(linkBeingCreated, {x: position.x + 32, y: position.y + 16});
     }
 
-    const nodeUnderCursor = getNodeAtCursor();
+    const nodeUnderCursor = surface.getNodeAtCursor();
 
     // Highlighting
     for (const element of [...surface.getElementsByClassName('highlight-for-connected')]) {
@@ -476,13 +695,13 @@ export function initSurface(surface) {
       if (selectionBox.classList.contains('hidden')) {
         selectionBox.anchorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
       }
-      setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, {x: cursorX, y: cursorY}));
+      surface.setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, {x: cursorX, y: cursorY}));
       selectionBox.classList.remove('hidden');
     } else {
       surface.deselectAll();
     }
-    setCursorPosition({x: cursorX, y: cursorY});
-    const nodeUnderCursor = getNodeAtCursor();
+    surface.setCursorPosition({x: cursorX, y: cursorY});
+    const nodeUnderCursor = surface.getNodeAtCursor();
     if (nodeUnderCursor) {
       nodeUnderCursor.focus();
       nodeUnderCursor.select();
@@ -515,6 +734,68 @@ export function initSurface(surface) {
     document.dispatchEvent(new Event('cursorPositionEvaluated'));
   }
 
+  surface.moveCursorToNode = node => {
+    surface.setCursorPosition({x: parseInt(node.style.left), y: parseInt(node.style.top)});
+  }
+  surface.getNodeAtCursor = () => {
+    const cursor_ = surface.getElementsByClassName('cursor')[0];
+    return surface.getNodeAtPosition({x: parseInt(cursor_.style.left), y: parseInt(cursor_.style.top)});
+  }
+  surface.moveCursorToBlockEdge = (direction, options) => {
+    options = options || {};
+    var cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+    var nodesInRow = [...surface.getElementsByClassName('node')].filter(node => node.style.top === cursor.style.top);
+    if (options.dragSelectionBox && selectionBox.classList.contains('hidden')) {
+      selectionBox.anchorPosition = cursorPosition;
+    }
+    if (direction === 'left') {
+      var nodesToLeft = nodesInRow.filter(node => parseInt(node.style.left) < cursorPosition.x);
+      if (nodesToLeft.length > 0) {
+        nodesToLeft.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+        var node = nodesToLeft[nodesToLeft.length - 1];
+        if ((cursorPosition.x - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+          surface.moveCursorToNode(node);
+        } else {
+          for (var i = nodesToLeft.length - 2; i >= 0; i--) {
+            if ((parseInt(node.style.left) - (parseInt(nodesToLeft[i].style.left) + parseInt(nodesToLeft[i].style.width))) > 20) {
+              break;
+            }
+            node = nodesToLeft[i];
+          }
+          surface.moveCursorToNode(node);
+        }
+      } else {
+        surface.setCursorPosition({x: 0, y: cursorPosition.y});
+      }
+    } else if (direction === 'right') {
+      var nodesToRight = nodesInRow.filter(node => parseInt(node.style.left) > cursorPosition.x);
+      if (nodesToRight.length === 0) {
+        return;
+      }
+      nodesToRight.sort((a, b) => parseInt(a.style.left) - parseInt(b.style.left));
+      var node = nodesToRight[0];
+      var nodeAtCursor = getNodeAtCursor();
+      if (!nodeAtCursor || (parseInt(node.style.left) - (parseInt(nodeAtCursor.style.left) + parseInt(nodeAtCursor.style.width)) > 20)) {
+        surface.moveCursorToNode(node);
+      } else {
+        for (var i=1; i < nodesToRight.length; i++) {
+          if ((parseInt(nodesToRight[i].style.left) - (parseInt(node.style.left) + parseInt(node.style.width))) > 20) {
+            break;
+          }
+          node = nodesToRight[i];
+        }
+        surface.moveCursorToNode(node);
+      }
+    }
+    if (options.dragSelectionBox) {
+      cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+      setSelectionBox(getBoundingBoxForPoints(selectionBox.anchorPosition, cursorPosition));
+      selectionBox.classList.remove('hidden');
+    } else {
+      surface.deselectAll();
+    }
+  }
+
   surface.selectionToClipboard = (options = {}) => {
     const selectedNodes = new Set([...surface.querySelectorAll('.node.selected')]);
     if (document.activeElement && document.activeElement.classList.contains('node')) {
@@ -531,7 +812,7 @@ export function initSurface(surface) {
         ) affectedLinks.add(link);
       }
     }
-    const html = getNodesAndLinksAsHtml(selectedNodes, affectedLinks);
+    const html = surface.getNodesAndLinksAsHtml(selectedNodes, affectedLinks);
     const previouslyFocusedElement = document.activeElement;
     const temporaryInput = document.createElement('input');
     temporaryInput.value = html;
@@ -550,7 +831,7 @@ export function initSurface(surface) {
       ));
       if (nodesToDelete.size > 0 || affectedLinks.size > 0) {
         const elements = [...nodesToDelete, ...affectedLinks];
-        deleteElements(elements);
+        surface.deleteElements(elements);
         undo_redo.markElementsDeleted(elements);
       }
       selectionBox.classList.add('hidden');
@@ -665,7 +946,7 @@ export function initSurface(surface) {
       node.style.top  = (parseInt(node.style.top)  + moveDelta.y) + 'px';
       node.links.forEach(link => affectedLinks.add(link));
     }
-    affectedLinks.forEach(link => layoutLink(link));
+    surface.layoutLinks(affectedLinks);
 
     const cursorBefore = {
       x: parseInt(cursor.style.left),
@@ -678,10 +959,10 @@ export function initSurface(surface) {
       y: parseInt(cursor.style.top),
     }
 
-    const selectionBoxBefore = getSelectionBox();
+//     const selectionBoxBefore = surface.getSelectionBox();
     selectionBox.style.left = (parseInt(selectionBox.style.left) + moveDelta.x) + 'px';
     selectionBox.style.top  = (parseInt(selectionBox.style.top)  + moveDelta.y) + 'px';
-    const selectionBoxAfter = getSelectionBox();
+//     const selectionBoxAfter = surface.getSelectionBox();
 
     const newPositions = [...nodesToMove].map(node => {return {node: node, left: node.style.left, top: node.style.top}});
 
@@ -701,14 +982,14 @@ export function initSurface(surface) {
     if (document.activeElement && document.activeElement.classList.contains('node')) {
       offsetX = {left: -64, right: parseInt(document.activeElement.offsetWidth) + 14}[options.moveAdjacent] || 0;
       offsetY = {down: 32, up: -32}[options.moveAdjacent] || 0;
-      var adjacentNodes = getAllAdjacentNodesInDirection([document.activeElement], options.moveAdjacent);
+      var adjacentNodes = surface.getAllAdjacentNodesInDirection([document.activeElement], options.moveAdjacent);
       var affectedLinks = new Set();
       for (let node of adjacentNodes) {
         node.style.left = (parseInt(node.style.left) + offsetX) + 'px';
         node.style.top  = (parseInt(node.style.top)  + offsetY) + 'px';
         for (let link of node.links) affectedLinks.add(link);
       }
-      for (let link of affectedLinks) layoutLink(link);
+      surface.layoutLinks(affectedLinks);
     }
 
     var newNode = surface.createNode({
@@ -730,7 +1011,7 @@ export function initSurface(surface) {
     surface.deselectAll();
     var createdElements = [newNode];
     if (linkBeingCreated) {
-      var createdLink = useNodeForLinkCreationMode(newNode);
+      var createdLink = surface.useNodeForLinkCreationMode(newNode);
       if (createdLink) {
         createdElements.push(createdLink);
       }
@@ -769,6 +1050,9 @@ export function initSurface(surface) {
       instance.style.top = node.style.top;
     }
     instance.links = new Set();
+
+    initNode(instance);
+
     surface.getElementsByClassName('nodes')[0].appendChild(instance);
 
     surface.setCursorPosition({x: parseInt(instance.style.left), y: parseInt(instance.style.top)});
@@ -781,7 +1065,7 @@ export function initSurface(surface) {
     if (nodeAtCursor) {
       surface.deselectAll();
       const nodes = options.onlyConnectedNodes ?
-        getConnectedNodes(nodeAtCursor).filter(connectedNode => connectedNode.dataset.id === nodeAtCursor.dataset.id)
+        nodeAtCursor.getConnectedNodes().filter(connectedNode => connectedNode.dataset.id === nodeAtCursor.dataset.id)
         :
         surface.querySelectorAll(`.node[data-id='${nodeAtCursor.dataset.id}']`);
       for (const node of nodes) {
@@ -795,43 +1079,31 @@ export function initSurface(surface) {
     }
   }
 
-  surface.insertNodesAndLinksFromHtml = (html, position=null) => {
-    const fragment = document.createRange().createContextualFragment(html);
-    const nodes = [...fragment.querySelectorAll('.node')];
-    let   links = [...fragment.querySelectorAll('.link')];
-    for (let node of nodes) surface.getElementsByClassName('nodes')[0].appendChild(node);
-    links = links.map(link => {
-      const copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-      copiedLink.id                = link.id;
-      copiedLink.className.baseVal = link.className.baseVal;
-      copiedLink.dataset.from      = link.dataset.from;
-      copiedLink.dataset.via       = link.dataset.via;
-      copiedLink.dataset.to        = link.dataset.to;
-      copiedLink.setAttribute('points', link.getAttribute('points'));
-      surface.getElementsByClassName('links')[0].appendChild(copiedLink)
-      return copiedLink;
-    });
-    deserialize(nodes, links);
-    clearSerialization(nodes, links);
-    if (position) {
-      const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
-      const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
-      const deltaX = position.x - leftmost;
-      const deltaY = position.y - topmost;
-      for (let node of nodes) {
-        node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
-        node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
-        node.classList.add('selected');
-      }
-      links.forEach(layoutLink);
+  // Setup overflow maps
+  if (surfaceContainer) {
+    for (const overflowMap of surfaceContainer.getElementsByClassName('overflow-map')) {
+      surface.addEventListener('scroll', event => {
+        overflowMap.scrollTo(surface.scrollLeft, surface.scrollTop);
+      });
+      overflowMap.addEventListener('mousedown', event => {
+        if (event.target.classList.contains('node-shadow')) {
+          if (overflowMap.dataset.edge === 'left') {
+            surface.scrollTo({left: parseInt(event.target.node.style.left), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'top') {
+            surface.scrollTo({top: parseInt(event.target.node.style.top), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'right') {
+            const nodeRight = parseInt(event.target.node.style.left) + parseInt(event.target.node.style.width) + 14;
+            surface.scrollTo({left: nodeRight - (surfaceContainer.offsetWidth - 40), behavior: 'smooth'});
+          } else if (overflowMap.dataset.edge === 'bottom') {
+            const nodeBottom = parseInt(event.target.node.style.top) + 32;
+            surface.scrollTo({top: nodeBottom - (surfaceContainer.offsetHeight - 40), behavior: 'smooth'});
+          }
+        }
+      });
     }
-    surface.updateOverflowMaps(nodes);
-    evaluateCursorPosition();
-    return {nodes, links};
   }
 
   surface.updateOverflowMaps = nodes => {
-    const surfaceContainer = surface.closest('.surface-container');
     if (!surfaceContainer) {
       return;
     }
@@ -849,7 +1121,7 @@ export function initSurface(surface) {
           overflowMap.appendChild(nodeShadow);
           node.overflowMap[edge] = nodeShadow;
         }
-        layoutNodeShadow(nodeShadow, node, edge);
+        node.layoutShadow(nodeShadow, edge);
       }
       // Remove shadows for deleted nodes
       for (const nodeShadow of [...overflowMap.getElementsByClassName('node-shadow')]) {
@@ -860,5 +1132,243 @@ export function initSurface(surface) {
       }
     }
   }
+
+  surface.deleteElements = elements => {
+    const affectedLinks = new Set();
+    for (const element of elements) {
+      if (element.classList.contains('node')) {
+        for (const link of element.links) affectedLinks.add(link);
+        if (linkBeingCreated) {
+          if (linkBeingCreated.from === element || linkBeingCreated.via === element) {
+            cancelLinkMode();
+          }
+        }
+        element.remove();
+      } else if (element.classList.contains('link')) {
+        affectedLinks.add(element);
+      }
+    }
+    for (const link of affectedLinks) {
+      link.from.links.delete(link);
+      link.via.links.delete(link);
+      link.to.links.delete(link);
+      link.remove();
+    }
+    surface.evaluateCursorPosition();
+    return affectedLinks;
+  }
+
+  surface.deleteSelection = () => {
+    const elementsToDelete = new Set(surface.getElementsByClassName('selected'));
+    let nodeAtCursor = surface.getNodeAtCursor();
+    if (nodeAtCursor) {
+      elementsToDelete.add(nodeAtCursor);
+    }
+    if (elementsToDelete.size === 0) return false;
+    var focusedNodePosition = null;
+    if (document.activeElement && document.activeElement.classList.contains('node')) {
+      focusedNodePosition = {x: parseInt(document.activeElement.style.left), y: parseInt(document.activeElement.style.top)};
+    }
+    var affectedLinks = surface.deleteElements(elementsToDelete);
+  //   recordAction(
+      undo_redo.markElementsDeleted(new Set([...elementsToDelete, ...affectedLinks]));
+  //     {
+  //       selectionBox: {before: getSelectionBox(), after: null},
+  //     }
+  //   );
+    selectionBox.classList.add('hidden');
+  }
+
+  surface.backspace = () => {
+    if (surface.getElementsByClassName('selected').length > 0) {
+      deleteSelection();
+    } else if (document.activeElement && document.activeElement.classList.contains('node')) {
+      var node = document.activeElement;
+      if (node.value !== '') {
+        node.setName(node.value.slice(0, -1));
+      } else {
+        var affectedLinks = surface.deleteElements([node]);
+        var oldCursorPosition = surface.getCursorPosition();
+        var newCursorPosition = {x: Math.max(0, oldCursorPosition.x - 64), y: oldCursorPosition.y};
+        surface.setCursorPosition(newCursorPosition);
+  //       recordAction(
+          undo_redo.markElementsDeleted([node, ...affectedLinks]);
+  //         {cursor: {before: oldCursorPosition, after: newCursorPosition}}
+  //       );
+      }
+    } else {
+      surface.setCursorPosition({x: Math.max(0, parseInt(cursor.style.left) - 64), y: parseInt(cursor.style.top)});
+    }
+  }
+
+  surface.deserialize = (nodes, links) => {
+    for (let link of links) {
+      link.from = document.getElementById(link.dataset.from);
+      link.via  = document.getElementById(link.dataset.via);
+      link.to   = document.getElementById(link.dataset.to);
+    }
+    for (let node of nodes) {
+      if (node.dataset.links) {
+        node.links = new Set(node.dataset.links.split(',').map(id => document.getElementById(id)));
+      } else {
+        node.links = new Set();
+      }
+    }
+  }
+
+  surface.clearSerialization = (nodes, links) => {
+    for (let link of links) {
+      link.removeAttribute('id');
+      link.removeAttribute('data-from');
+      link.removeAttribute('data-via');
+      link.removeAttribute('data-to');
+    }
+    for (let node of nodes) {
+      node.removeAttribute('id');
+      node.removeAttribute('data-links');
+      node.removeAttribute('data-instances')
+    }
+  }
+
+  surface.insertNodesAndLinksFromHtml = (html, position=null) => {
+    const fragment = document.createRange().createContextualFragment(html);
+    const nodes = [...fragment.querySelectorAll('.node')];
+    let   links = [...fragment.querySelectorAll('.link')];
+    nodes.forEach(initNode);
+    nodesContainer.append(...nodes);
+//     for (let node of nodes) surface.getElementsByClassName('nodes')[0].appendChild(node);
+    links = links.map(link => {
+      const copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      copiedLink.id                = link.id;
+      copiedLink.className.baseVal = link.className.baseVal;
+      copiedLink.dataset.from      = link.dataset.from;
+      copiedLink.dataset.via       = link.dataset.via;
+      copiedLink.dataset.to        = link.dataset.to;
+      copiedLink.setAttribute('points', link.getAttribute('points'));
+      surface.getElementsByClassName('links')[0].appendChild(copiedLink)
+      return copiedLink;
+    });
+    surface.deserialize(nodes, links);
+    surface.clearSerialization(nodes, links);
+    if (position) {
+      const leftmost = Math.min(...nodes.map(node => parseInt(node.style.left)));
+      const topmost  = Math.min(...nodes.map(node => parseInt(node.style.top)));
+      const deltaX = position.x - leftmost;
+      const deltaY = position.y - topmost;
+      for (let node of nodes) {
+        node.style.left = (parseInt(node.style.left) + deltaX) + 'px';
+        node.style.top  = (parseInt(node.style.top)  + deltaY) + 'px';
+        node.classList.add('selected');
+      }
+      surface.layoutLinks(links);
+    }
+    surface.updateOverflowMaps(nodes);
+    surface.evaluateCursorPosition();
+    return {nodes, links};
+  }
+
+  surface.getNodesAndLinksAsHtml = (nodes=[...surface.getElementsByClassName('node')], links=[...surface.getElementsByClassName('link')]) => {
+    const classes = new Map();
+    for (let node of nodes) {
+      classes.set(node, node.className);
+      node.className = 'node';
+    }
+    for (let link of links) {
+      classes.set(link, link.className.baseVal);
+      link.className.baseVal = 'link';
+    }
+
+    // Assign IDs to nodes and links
+    let id = 0;
+    for (let node of nodes) {
+      node.id = id++;
+    }
+    for (let link of links) {
+      link.id = id++;
+      link.dataset.from = link.from.id;
+      link.dataset.via  = link.via.id;
+      link.dataset.to   = link.to.id;
+    }
+
+    const linksSet = new Set(links);
+    for (let node of nodes) {
+      if (node.links.size > 0) {
+        node.dataset.links = [...node.links].filter(link => linksSet.has(link)).map(link => link.id).join(',');
+      }
+    }
+
+    const html = '<div class="nodes">' + [...nodes].map(node => node.outerHTML).join('') + '</div>' +
+                '<svg class="links">' + [...links].map(link => link.outerHTML).join('') + '</svg>';
+
+    surface.clearSerialization(nodes, links);
+
+    for (let [element, className] of classes) {
+      if (element.classList.contains('link')) {
+        element.className.baseVal = className;
+      } else {
+        element.className = className;
+      }
+    }
+
+    return html;
+  }
+
+  surface.getAsYarnballFile = () => {
+    let file = '';
+
+    const nodeNames = new Map();
+    for (const node of [...surface.getElementsByClassName('node')]) {
+      nodeNames.set(node.dataset.id, node.value);
+    }
+
+    file += '[node_names]\n';
+    for (const [id, name] of nodeNames) {
+      file += `${id} ${name}\n`;
+    }
+
+    file += '[node_layout]\n';
+    let index = 0;
+    let instanceIndex = 0;
+    const instanceIndexes = new Map();
+    for (const id of nodeNames.keys()) {
+      const instances = [...surface.querySelectorAll(`.node[data-id="${id}"]`)];
+      for (const instance of instances) {
+        file += `${index} ${parseInt(instance.style.left)},${parseInt(instance.style.top)}\n`;
+        instanceIndexes.set(instance, instanceIndex);
+        instanceIndex++;
+      }
+      index++;
+    }
+
+    file += '[link_layout]\n';
+    for (const link of [...surface.getElementsByClassName('link')]) {
+      file += `${instanceIndexes.get(link.from)} ${instanceIndexes.get(link.via)} ${instanceIndexes.get(link.to)}\n`;
+    }
+
+    file += '[graph]\n';
+    const uniqueLinks = new Set([...surface.getElementsByClassName('link')].map(link => `${link.from.dataset.id} ${link.via.dataset.id} ${link.to.dataset.id}`));
+    file += [...uniqueLinks].map(link => link + '\n');
+
+    return file;
+  }
+
+  surface.lastFocusedNodeOriginalName = null;
+  if (surface.getNodeAtCursor() !== null) {
+    surface.lastFocusedNodeOriginalName = getNodeAtCursor().value;
+  }
+
+  document.addEventListener('focusin', event => {
+    if (event.target.classList.contains('node')) {
+      surface.lastFocusedNodeOriginalName = event.target.value;
+    }
+  });
+
+  document.addEventListener('focusout', event => {
+    if (event.target.classList.contains('node')) {
+      if (event.target.value !== surface.lastFocusedNodeOriginalName) {
+        undo_redo.markNodeRenamed(event.target, surface.lastFocusedNodeOriginalName);
+      }
+    }
+  });
 
 }

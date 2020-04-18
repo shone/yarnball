@@ -1,20 +1,17 @@
 import * as undo_redo from './undo_redo.mjs';
+import * as name_matching from './name_matching.mjs';
 
 import {
   mainSurface,
   currentSurface,
   pxToGridX,
   pxToGridY,
-  cursor,
-  selectionBox,
-  linkBeingCreated,
   openFindPanel,
   moveSelectionToQueriedNodes,
   save,
   download,
-  useNodeForLinkCreationMode,
-  executeLinkMode,
-  cancelCurrentModeOrOperation
+  cancelCurrentModeOrOperation,
+  selectNameMatchOrInsertNodeDown
 } from './main.mjs';
 
 const commands = {
@@ -24,7 +21,7 @@ const commands = {
   move_cursor_right_block_select:       ['ShiftEND',          event => currentSurface.moveCursorToBlockEdge('right', {dragSelectionBox: true})],
   move_cursor_origin:                   ['CtrlHOME',          event => currentSurface.setCursorPosition({x: 0, y: 0})],
 
-  create_node_down:                     ['ENTER',             event => currentSurface.selectNameMatchOrInsertNodeDown()],
+  create_node_down:                     ['ENTER',             event => selectNameMatchOrInsertNodeDown()],
   create_node_right:                    [' ',                 event => currentSurface.insertNodeAtCursor({moveAdjacent: 'right'})],
 
   select_all:                           ['CtrlA',             event => currentSurface.selectAll()],
@@ -64,14 +61,14 @@ const commands = {
   move_view_up:                         ['AltARROWUP',        event => mainSurface.scrollInDirection('up')],
   move_view_down:                       ['AltARROWDOWN',      event => mainSurface.scrollInDirection('down')],
 
-  delete:                               ['DELETE',            event => deleteSelection()],
-  backspace:                            ['BACKSPACE',         event => backspace(event)],
+  delete:                               ['DELETE',            event => currentSurface.deleteSelection()],
+  backspace:                            ['BACKSPACE',         event => currentSurface.backspace(event)],
   cancel:                               ['ESCAPE',            event => cancelCurrentModeOrOperation()],
 
-  execute_link_mode:                    ['TAB',               event => executeLinkMode()],
+  execute_link_mode:                    ['TAB',               event => currentSurface.executeLinkMode()],
 
-  select_name_match_up:                 ['PAGEUP',            event => moveNameMatchSelection('previous')],
-  select_name_match_down:               ['PAGEDOWN',          event => moveNameMatchSelection('next')],
+  select_name_match_up:                 ['PAGEUP',            event => name_matching.moveNameMatchSelection('previous')],
+  select_name_match_down:               ['PAGEDOWN',          event => name_matching.moveNameMatchSelection('next')],
 
   save:                                 ['CtrlS',             event => save()],
   download:                             ['CtrlShiftS',        event => download()],
@@ -126,12 +123,13 @@ document.body.addEventListener('keydown', event => {
 
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
-    const newNode = currentSurface.createNode({position: {x: pxToGridX(parseInt(cursor.style.left)), y: pxToGridY(parseInt(cursor.style.top))}});
+    const cursorPosition = currentSurface.getCursorPosition();
+    const newNode = currentSurface.createNode({position: {x: pxToGridX(cursorPosition.x), y: pxToGridY(cursorPosition.y)}});
     newNode.focus();
-    selectionBox.classList.add('hidden');
+    currentSurface.querySelector('.selection-box').classList.add('hidden');
     const createdElements = [newNode];
-    if (linkBeingCreated) {
-      const createdLink = useNodeForLinkCreationMode(newNode);
+    if (currentSurface.linkBeingCreated) {
+      const createdLink = currentSurface.useNodeForLinkCreationMode(newNode);
       if (createdLink) {
         createdElements.push(createdLink);
       }
