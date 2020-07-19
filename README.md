@@ -6,7 +6,7 @@ A semantic network editor, intended to be used like a text editor for code and m
 
 Running live at:
 
-[joshshone.com/yarnball](https://joshshone.com/yarnball/)
+[shone.dev/yarnball](https://shone.dev/yarnball/)
 
 ## Desktop Integration
 
