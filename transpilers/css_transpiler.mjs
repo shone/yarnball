@@ -1,4 +1,4 @@
-import * as graph from '/source/graph.mjs';
+import * as graph from '/src/graph.mjs';
 
 const cssSymbols = [];
 
