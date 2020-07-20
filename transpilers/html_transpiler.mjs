@@ -1,6 +1,6 @@
-import {builtinNameMatches} from '/src/name_matching.mjs';
-import {mainSurface, currentSurface} from '/src/main.mjs';
-import * as graph from '/src/graph.mjs';
+import {builtinNameMatches} from '../src/name_matching.mjs';
+import {mainSurface, currentSurface} from '../src/main.mjs';
+import * as graph from '../src/graph.mjs';
 
 const htmlSymbols = [];
 
