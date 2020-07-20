@@ -6,7 +6,7 @@ export function createNode(options) {
   const node = document.createElement('input');
   node.classList.add('node');
   node.setAttribute('data-id', makeUuid());
-  if (options.text) node.value = text;
+  if (options.text) node.value = options.text;
   if (options.position) {
     node.style.left = String(options.position.x) + 'px';
     node.style.top  = String(options.position.y) + 'px';

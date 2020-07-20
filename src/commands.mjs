@@ -123,8 +123,12 @@ document.body.addEventListener('keydown', event => {
 
 document.addEventListener('keypress', event => {
   if ((!document.activeElement || document.activeElement.tagName !== 'INPUT') && event.key !== ' ') {
+    event.preventDefault();
     const cursorPosition = currentSurface.getCursorPosition();
-    const newNode = currentSurface.createNode({position: {x: pxToGridX(cursorPosition.x), y: pxToGridY(cursorPosition.y)}});
+    const newNode = currentSurface.createNode({
+      text: event.key,
+      position: {x: pxToGridX(cursorPosition.x), y: pxToGridY(cursorPosition.y)}
+    });
     newNode.focus();
     currentSurface.querySelector('.selection-box').classList.add('hidden');
     const createdElements = [newNode];
