@@ -57,6 +57,15 @@ const path = queryParams.get('path');
   }
 })();
 
+document.querySelector('.panel[data-panel="examples"]').onclick = async ({target}) => {
+  if (target.tagName === 'BUTTON') {
+    const response = await fetch(`../examples/${target.dataset.example}`);
+    const text = await response.text();
+    mainSurface.clear();
+    mainSurface.insertNodesAndLinksFromHtml(text);
+  }
+}
+
 const bottomPanelContainer = document.querySelectorAll('.panels-container.bottom')[0];
 
 export const pxToGridX = px => Math.round(px / 64) * 64;

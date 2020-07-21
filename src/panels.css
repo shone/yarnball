@@ -194,26 +194,26 @@
 }
 
 
-/* help */
-.panels-container[data-panel="help"] .headers button[data-panel="help"] {
+/* examples */
+.panels-container[data-panel="examples"] .headers button[data-panel="examples"] {
   background-color: #fff;
   color: #000;
   width: 110%;
   margin-left: -10%;
 }
-.panels-container[data-panel="help"] .panel[data-panel="help"] {
+.panels-container[data-panel="examples"] .panel[data-panel="examples"] {
   display: block;
 }
-.panels-container[data-panel="help"] .panels>:not([data-panel="help"]) {
+.panels-container[data-panel="examples"] .panels>:not([data-panel="examples"]) {
   display: none;
 }
-.panel[data-panel="help"] {
-  width: 50vw;
+.panel[data-panel="examples"] {
+  width: 20vw;
   box-sizing: border-box;
   overflow-y: auto;
   background-color: #fff;
 }
-.panels-container[data-panel="help"] .panels {
+.panels-container[data-panel="examples"] .panels {
   margin-right: -50vw;
 }
 

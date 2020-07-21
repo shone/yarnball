@@ -1229,13 +1229,19 @@ export function initSurface(surface) {
     }
   }
 
+  surface.clear = () => {
+    surface.querySelector('.nodes').innerHTML = '';
+    surface.querySelector('.links').innerHTML = '';
+    surface.updateOverflowMaps([]);
+    surface.evaluateCursorPosition();
+  }
+
   surface.insertNodesAndLinksFromHtml = (html, position=null) => {
     const fragment = document.createRange().createContextualFragment(html);
     const nodes = [...fragment.querySelectorAll('.node')];
     let   links = [...fragment.querySelectorAll('.link')];
     nodes.forEach(initNode);
     nodesContainer.append(...nodes);
-//     for (let node of nodes) surface.getElementsByClassName('nodes')[0].appendChild(node);
     links = links.map(link => {
       const copiedLink = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
       copiedLink.id                = link.id;
