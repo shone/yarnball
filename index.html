@@ -4,15 +4,15 @@
     <meta charset="utf-8">
 
     <title>Yarnball</title>
+    <link rel="shortcut icon" href="images/favicon.png">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <link href="src/style.css" rel="stylesheet">
-    <link href="src/panels.css" rel="stylesheet">
-    <link rel="shortcut icon" href="images/favicon.png">
+    <link rel="stylesheet" href="src/main.css">
+    <link rel="stylesheet" href="src/panels.css">
 
-    <link rel="preload" href="fonts/hack-regular-subset.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="fonts/hack-bold-subset.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/hack-regular-subset.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/hack-bold-subset.woff2">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/default.min.css">
   </head>
@@ -59,10 +59,10 @@
 
     <div class="panels-container right">
       <div class="headers">
-        <button data-panel="commands">Commands</button>
-        <button data-panel="help">Help</button>
-        <button data-panel="javascript">Javascript</button>
-        <button data-panel="html">HTML</button>
+        <button data-panel="commands"  > Commands   </button>
+        <button data-panel="help"      > Help       </button>
+        <button data-panel="javascript"> Javascript </button>
+        <button data-panel="html"      > HTML       </button>
       </div>
       <div class="panels">
         <div class="panel" data-panel="commands">
