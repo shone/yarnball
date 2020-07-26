@@ -217,7 +217,7 @@ function getQueriedNodes() {
         correspondences.push(correspondence);
       }
     }
-    var connectedLinks = getConnectedLinks(findLink);
+    var connectedLinks = findPanel.getConnectedLinks(findLink);
     for (let connectedLink of connectedLinks) {
       correspondences = correspondences.filter(correspondence => {
         var hasMatchingLink = false;
