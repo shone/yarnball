@@ -163,13 +163,13 @@ export const markNodeRenamed = (node, oldName) => {
     undo() {
       node.setName(oldName);
       if (document.activeElement === node) {
-        lastFocusedNodeOriginalName = node.value;
+        mainSurface.lastFocusedNodeOriginalName = node.value;
       }
     },
     redo() {
       node.setName(newName);
       if (document.activeElement === node) {
-        lastFocusedNodeOriginalName = node.value;
+        mainSurface.lastFocusedNodeOriginalName = node.value;
       }
     }
   });
@@ -182,7 +182,7 @@ export const markIdChanged = (node, old, new_) => recordAction({
       node.value = old.name;
       node.setAttribute('value', old.name);
       if (document.activeElement === node) {
-        lastFocusedNodeOriginalName = node.value;
+        mainSurface.lastFocusedNodeOriginalName = node.value;
       }
     }
     mainSurface.evaluateCursorPosition();
@@ -193,7 +193,7 @@ export const markIdChanged = (node, old, new_) => recordAction({
       node.value = new_.name;
       node.setAttribute('value', new_.name);
       if (document.activeElement === node) {
-        lastFocusedNodeOriginalName = node.value;
+        mainSurface.lastFocusedNodeOriginalName = node.value;
       }
     }
     mainSurface.evaluateCursorPosition();
