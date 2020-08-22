@@ -341,7 +341,7 @@ mainSurface.addEventListener('dragenter', event => {
 });
 mainSurface.addEventListener('dragover', event => {
   event.preventDefault();
-  setCursorPosition({
+  mainSurface.setCursorPosition({
     x: pxToGridX(mainSurface.scrollLeft + event.offsetX),
     y: pxToGridY(mainSurface.scrollTop  + event.offsetY),
   });
@@ -350,15 +350,15 @@ mainSurface.addEventListener('dragover', event => {
 mainSurface.addEventListener('drop', event => {
   event.preventDefault();
   const html = event.dataTransfer.getData('text/html');
-  const cursorPosition = {x: parseInt(cursor.style.left), y: parseInt(cursor.style.top)};
+  const cursorPosition = {x: parseInt(mainSurface.cursor.style.left), y: parseInt(mainSurface.cursor.style.top)};
   if (html) {
-    const inserted = insertNodesAndLinksFromHtml(html, cursorPosition);
+    const inserted = mainSurface.insertNodesAndLinksFromHtml(html, cursorPosition);
     undo_redo.markElementsPasted(inserted.nodes, inserted.links);
   } else if (event.dataTransfer.files.length > 0) {
     const file = event.dataTransfer.files[0];
     const reader = new FileReader();
     reader.onload = function(event) {
-      const inserted = insertNodesAndLinksFromHtml(event.target.result, cursorPosition);
+      const inserted = mainSurface.insertNodesAndLinksFromHtml(event.target.result, cursorPosition);
       undo_redo.markElementsPasted(inserted.nodes, inserted.links);
     };
     reader.readAsText(file);

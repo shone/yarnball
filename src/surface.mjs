@@ -21,6 +21,7 @@ export function initSurface(surface) {
   const nodesContainer   = surface.querySelector('.nodes');
   const surfaceContainer = surface.closest('.surface-container');
 
+  surface.cursor = cursor;
   surface.selectionBox = selectionBox;
 
   const pxToGridX = px => Math.round(px / 64) * 64;
