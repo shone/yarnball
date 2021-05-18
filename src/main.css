@@ -74,7 +74,7 @@ h2 {
 
 .overflow-map {
   pointer-events: none;
-  scrollbar-width: 0;
+  scrollbar-width: none;
   overflow: scroll;
   background-color: #b5b5b5;
   z-index: 2;
@@ -121,7 +121,7 @@ h2 {
   position: relative;
   background-color: #b5b5b5;
   cursor: crosshair;
-  scrollbar-width: 0;
+  scrollbar-width: none;
   overflow: scroll;
 }
 .surface::-webkit-scrollbar {
