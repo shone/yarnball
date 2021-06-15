@@ -21,9 +21,10 @@ const _class       = '6c8d5c7756858aa43f136630c279dbe4'; htmlSymbols.push({name:
 for (const symbol of htmlSymbols) {
   builtinNameMatches.push(symbol);
 }
-const htmlSyntaxHighlighting = new CSSStyleSheet();
-htmlSyntaxHighlighting.replaceSync(htmlSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: #dc4d25; font-weight: bold}');
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, htmlSyntaxHighlighting];
+const htmlSyntaxHighlighting = document.createElement('style');
+htmlSyntaxHighlighting.type = 'text/css';
+htmlSyntaxHighlighting.innerText = htmlSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: #dc4d25; font-weight: bold}';
+document.head.append(htmlSyntaxHighlighting);
 
 var launchedHtmlWindow = null;
 

@@ -45,9 +45,10 @@ for (const [id, name] of values) {
   cssSymbols.push({name: name, id: id});
 }
 
-const cssSyntaxHighlighting = new CSSStyleSheet();
-cssSyntaxHighlighting.replaceSync(cssSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: #006ebd; font-weight: bold}');
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, cssSyntaxHighlighting];
+const cssSyntaxHighlighting = document.createElement('style');
+cssSyntaxHighlighting.type = 'text/css';
+cssSyntaxHighlighting.innerText = cssSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: #006ebd; font-weight: bold}';
+document.head.append(cssSyntaxHighlighting);
 
 function transpileCss(node) {
   const rules = graph.findNodesVia(node, _rule);

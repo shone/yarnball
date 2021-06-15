@@ -118,9 +118,10 @@ const _yarnballClick  = 'd91e6d8da5d91ce3b0a45594cbf5711e';  jsSymbols.push({nam
 for (const symbol of jsSymbols) {
   builtinNameMatches.push(symbol);
 }
-const jsSyntaxHighlighting = new CSSStyleSheet();
-jsSyntaxHighlighting.replaceSync(jsSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: blue; font-weight: bold}');
-document.adoptedStyleSheets = [...document.adoptedStyleSheets, jsSyntaxHighlighting];
+const jsSyntaxHighlighting = document.createElement('style');
+jsSyntaxHighlighting.type = 'text/css'
+jsSyntaxHighlighting.innerText = jsSymbols.map(symbol => `[data-id="${symbol.id}"]`).join(',') + ' {color: blue; font-weight: bold}';
+document.head.append(jsSyntaxHighlighting);
 
 function compileStatements(id) {
   let statements = graph.followListNodes(id, _nextStatement).map(compileStatement);
