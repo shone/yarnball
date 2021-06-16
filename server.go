@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"errors"
+	"fmt"
 )
 
 func main() {
@@ -13,6 +14,7 @@ func main() {
 	http.HandleFunc("/load", handleLoad)
 	http.HandleFunc("/save", handleSave)
 
+	fmt.Println("Serving on :8089 ...")
 	err := http.ListenAndServe(":8089", nil)
 	panic(err)
 }
