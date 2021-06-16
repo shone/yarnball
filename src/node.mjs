@@ -73,14 +73,17 @@ export function initNode(node) {
   node.setName = name => {
     const instances = [...document.querySelectorAll(`[data-id="${node.dataset.id}"]`)];
     const width = getNodeWidthForName(name);
+    const affectedLinks = new Set();
+    const surface = node.closest('.surface');
     for (const instance of instances) {
       instance.value = name;
       instance.setAttribute('value', name);
       if (parseInt(instance.style.width) !== width) {
         instance.style.width = width + 'px';
-        for (const link of node.links) layoutLink(link);
+        node.links.forEach(link => affectedLinks.add(link))
       }
     }
+    surface.layoutLinks(affectedLinks);
     if (node.closest('[data-panel="find"]')) {
       highlightQueriedNodes();
     }
