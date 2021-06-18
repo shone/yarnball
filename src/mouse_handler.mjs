@@ -234,6 +234,7 @@ function handlePointerDownForSurface(event) {
       selectedNodesToPreserve = new Set(currentSurface.getElementsByClassName('selected'));
     }
     currentSurface.selectionBox.anchorPosition = undefined;
+    setActionInProgress(true);
     handlePointerDrag(event, {
       onmove: function(cursor) {
         document.body.classList.add('dragging-selection-box');
@@ -249,6 +250,7 @@ function handlePointerDownForSurface(event) {
       },
       onup: function() {
         document.body.classList.remove('dragging-selection-box');
+        setActionInProgress(false);
       }
     });
 
@@ -261,6 +263,7 @@ function handlePointerDownForSurface(event) {
     const link = surface.createLink();
     link.from = event.target;
     const fromPosition = link.from.getPos();
+    setActionInProgress(true);
     handlePointerDrag(event, {
       onmove: cursor => surface.layoutLink(link, {x: fromPosition.x + cursor.deltaTotal.x + 32, y: fromPosition.y + cursor.deltaTotal.y + 16}),
       onup: function(event) {
@@ -270,6 +273,7 @@ function handlePointerDownForSurface(event) {
           link.remove();
         }
         surface.removeEventListener('mouseover', handleMouseover);
+        setActionInProgress(false);
       },
       target: surface,
       capturePointer: false,
@@ -288,6 +292,7 @@ function handlePointerDownForSurface(event) {
           link.to.links.add(link);
           link.classList.add('link');
           link.classList.remove('unfinished-link');
+          setActionInProgress(false);
         }
       }
     }
